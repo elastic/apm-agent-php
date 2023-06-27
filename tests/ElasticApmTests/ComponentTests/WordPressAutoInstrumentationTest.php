@@ -537,8 +537,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             function (AppCodeHostParams $appCodeParams) use ($testArgs): void {
                 $appCodeParams->setAgentOptionIfNotDefaultValue(OptionNames::AST_PROCESS_ENABLED, $testArgs->getBool(self::IS_AST_PROCESS_ENABLED_KEY));
                 $appCodeParams->setAgentOption(OptionNames::DISABLE_INSTRUMENTATIONS, $testArgs->getString(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY));
-                // Disable span compression to have all the expected spans individually
-                $appCodeParams->setAgentOption(OptionNames::SPAN_COMPRESSION_ENABLED, false);
+                self::disableTimingDependentFeatures($appCodeParams);
                 $appCodeParams->setAgentOption(OptionNames::NON_KEYWORD_STRING_MAX_LENGTH, self::NON_KEYWORD_STRING_MAX_LENGTH);
             }
         );

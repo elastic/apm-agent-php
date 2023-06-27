@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\StackTraceFrame;
+use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrame;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
 
 /**
@@ -69,6 +70,13 @@ final class StackTraceFrameExpectations extends ExpectationsBase
         return $result;
     }
 
+    public static function fromClassMethodUnknownLine(string $fileName, string $class, bool $isStatic, string $method): self
+    {
+        $result = self::fromClassMethodUnknownLocation($class, $isStatic, $method);
+        $result->filename->setValue($fileName);
+        return $result;
+    }
+
     public static function fromClassMethodUnknownLocation(string $class, bool $isStatic, string $method): self
     {
         $result = new self();
@@ -107,6 +115,25 @@ final class StackTraceFrameExpectations extends ExpectationsBase
         $result->filename->setValue($fileName);
         $result->lineno->setValue($lineNumber);
         $result->function->setValue(null);
+        return $result;
+    }
+
+    public static function fromClassicFormat(ClassicFormatStackTraceFrame $currentFrame, ?ClassicFormatStackTraceFrame $prevFrame): self
+    {
+        $result = new self();
+        $result->filename->setValue($currentFrame->file ?? StackTraceUtil::FILE_NAME_NOT_AVAILABLE_SUBSTITUTE);
+        $result->lineno->setValue($currentFrame->line ?? StackTraceUtil::LINE_NUMBER_NOT_AVAILABLE_SUBSTITUTE);
+        if ($prevFrame === null) {
+            $result->function->setValue(null);
+        } else {
+            if ($prevFrame->function === null) {
+                $result->function->setValue(null);
+            } elseif ($prevFrame->class === null || $prevFrame->isStaticMethod === null) {
+                $result->function->setValue($prevFrame->function);
+            } else {
+                $result->function->setValue(self::buildFunctionFromClassMethod($prevFrame->class, $prevFrame->isStaticMethod, $prevFrame->function));
+            }
+        }
         return $result;
     }
 

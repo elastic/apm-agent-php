@@ -24,11 +24,14 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Ds\Map;
+use Elastic\Apm\Impl\Clock;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\NumericUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
+use ElasticApmTests\Util\BoolUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\MixedMap;
 use PHPUnit\Framework\Assert;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -40,10 +43,13 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
 {
     public const MOCK_API_URI_PREFIX = '/mock_apm_server_api/';
     private const INTAKE_API_URI = '/intake/v2/events';
-    public const GET_INTAKE_API_REQUESTS = 'get_intake_api_requests';
+    public const GET_INTAKE_API_REQUESTS_URI_SUBPATH = 'get_intake_api_requests';
     public const FROM_INDEX_HEADER_NAME = RequestHeadersRawSnapshotSource::HEADER_NAMES_PREFIX . 'FROM_INDEX';
     public const RAW_DATA_FROM_AGENT_RECEIVER_EVENTS_JSON_KEY = 'raw_data_from_agent_receiver_events';
-    public const DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS = 10;
+    public const SHOULD_WAIT_HEADER_NAME = RequestHeadersRawSnapshotSource::HEADER_NAMES_PREFIX . 'SHOULD_WAIT';
+
+    public const SET_TEST_SCOPED_BEHAVIOR_URI_SUBPATH = 'set_test_scoped_behavior';
+    public const BEHAVIOR_HEADER_NAME = RequestHeadersRawSnapshotSource::HEADER_NAMES_PREFIX . 'behavior';
 
     /** @var RawDataFromAgentReceiverEvent[] */
     private $receiverEvents;
@@ -57,19 +63,22 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
     /** @var Logger */
     private $logger;
 
+    /** @var MockApmServerBehavior */
+    private $behavior;
+
+    /** @var Clock */
+    private $clock;
+
     public function __construct()
     {
         parent::__construct();
 
+        $this->clock = new Clock(AmbientContextForTests::loggerFactory());
+
         $this->pendingDataRequests = new Map();
         $this->cleanTestScoped();
 
-        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
-            LogCategoryForTests::TEST_UTIL,
-            __NAMESPACE__,
-            __CLASS__,
-            __FILE__
-        )->addContext('this', $this);
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(LogCategoryForTests::TEST_UTIL, __NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
     }
 
     /**
@@ -90,7 +99,9 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         // $socketIndex 0 is used for test infrastructure communication
         // $socketIndex 1 is used for APM Agent <-> Server communication
         if ($socketIndex == 1) {
-            $this->addReceiverEvent(new RawDataFromAgentReceiverEventConnectionStarted());
+            $newEvent = new RawDataFromAgentReceiverEventConnectionStarted();
+            $newEvent->timestampMonotonic = $this->clock->getMonotonicClockCurrentTime();
+            $this->addReceiverEvent($newEvent);
         }
     }
 
@@ -99,6 +110,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         Assert::assertNotNull($this->reactLoop);
         $this->receiverEvents[] = $event;
 
+        /** @var MockApmServerPendingDataRequest $pendingDataRequest */
         foreach ($this->pendingDataRequests as $pendingDataRequest) {
             $this->reactLoop->cancelTimer($pendingDataRequest->timer);
             ($pendingDataRequest->resolveCallback)($this->fulfillDataRequest($pendingDataRequest->fromIndex));
@@ -133,13 +145,15 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
 
     private function processIntakeApiRequest(ServerRequestInterface $request): ResponseInterface
     {
+        return $this->behavior->processIntakeApiRequest($request);
+    }
+
+    public function doProcessIntakeApiRequest(ServerRequestInterface $request): ResponseInterface
+    {
         Assert::assertNotNull($this->reactLoop);
 
         if ($request->getBody()->getSize() === 0) {
-            return $this->buildIntakeApiErrorResponse(
-                HttpConstantsForTests::STATUS_BAD_REQUEST /* status */,
-                'Intake API request should not have empty body'
-            );
+            return $this->buildIntakeApiErrorResponse(/* status */ HttpConstantsForTests::STATUS_BAD_REQUEST, 'Intake API request should not have empty body');
         }
 
         $newRequest = new IntakeApiRequest();
@@ -162,16 +176,14 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
      */
     private function processMockApiRequest(ServerRequestInterface $request)
     {
-        $command = substr($request->getUri()->getPath(), strlen(self::MOCK_API_URI_PREFIX));
-
-        if ($command === self::GET_INTAKE_API_REQUESTS) {
-            return $this->getIntakeApiRequests($request);
+        switch ($command = substr($request->getUri()->getPath(), strlen(self::MOCK_API_URI_PREFIX))) {
+            case self::GET_INTAKE_API_REQUESTS_URI_SUBPATH:
+                return $this->getIntakeApiRequests($request);
+            case self::SET_TEST_SCOPED_BEHAVIOR_URI_SUBPATH:
+                return $this->setTestScopedBehavior($request);
+            default:
+                return $this->buildErrorResponse(HttpConstantsForTests::STATUS_BAD_REQUEST, 'Unknown Mock API command `' . $command . '\'');
         }
-
-        return $this->buildErrorResponse(
-            HttpConstantsForTests::STATUS_BAD_REQUEST,
-            'Unknown Mock API command `' . $command . '\''
-        );
     }
 
     /**
@@ -182,6 +194,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
     private function getIntakeApiRequests(ServerRequestInterface $request)
     {
         $fromIndex = intval(self::getRequiredRequestHeader($request, self::FROM_INDEX_HEADER_NAME));
+        $shouldWait = BoolUtilForTests::fromString(self::getRequiredRequestHeader($request, self::SHOULD_WAIT_HEADER_NAME));
         if (!NumericUtil::isInClosedInterval(0, $fromIndex, count($this->receiverEvents))) {
             return $this->buildErrorResponse(
                 HttpConstantsForTests::STATUS_BAD_REQUEST /* status */,
@@ -190,7 +203,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
             );
         }
 
-        if ($this->hasNewDataFromAgentRequest($fromIndex)) {
+        if ($this->hasNewDataFromAgentRequest($fromIndex) || !$shouldWait) {
             return $this->fulfillDataRequest($fromIndex);
         }
 
@@ -199,15 +212,12 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
                 $pendingDataRequestId = $this->pendingDataRequestNextId++;
                 Assert::assertNotNull($this->reactLoop);
                 $timer = $this->reactLoop->addTimer(
-                    self::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS,
+                    HttpClientUtilForTests::MAX_WAIT_TIME_SECONDS,
                     function () use ($pendingDataRequestId) {
                         $this->fulfillTimedOutPendingDataRequest($pendingDataRequestId);
                     }
                 );
-                $this->pendingDataRequests->put(
-                    $pendingDataRequestId,
-                    new MockApmServerPendingDataRequest($fromIndex, $resolve, $timer)
-                );
+                $this->pendingDataRequests->put($pendingDataRequestId, new MockApmServerPendingDataRequest($fromIndex, $resolve, $timer));
             }
         );
     }
@@ -245,7 +255,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
 
         ($loggerProxy = $this->logger->ifWarningLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
-            'Timed out while waiting for ' . self::GET_INTAKE_API_REQUESTS . ' to be fulfilled'
+            'Timed out while waiting for ' . self::GET_INTAKE_API_REQUESTS_URI_SUBPATH . ' to be fulfilled'
             . ' - returning empty data set...',
             ['pendingDataRequestId' => $pendingDataRequestId]
         );
@@ -276,11 +286,24 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
         );
     }
 
+    private function setTestScopedBehavior(ServerRequestInterface $request): ResponseInterface
+    {
+        $behaviorDtoSerializedToString = self::getRequiredRequestHeader($request, self::BEHAVIOR_HEADER_NAME);
+        $behaviorDto = MockApmServerBehaviorDto::deserializeFromString($behaviorDtoSerializedToString);
+        $this->behavior = ($behaviorDto->buildCallable)($this, new MixedMap($behaviorDto->args));
+
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('', ['behaviorDto' => $behaviorDto]);
+
+        return new Response(/* status: */ 200);
+    }
+
     private function cleanTestScoped(): void
     {
         $this->receiverEvents = [];
         $this->pendingDataRequestNextId = 1;
         $this->pendingDataRequests->clear();
+        $this->behavior = new MockApmServerBehavior($this);
     }
 
     /** @inheritDoc */

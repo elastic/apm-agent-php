@@ -40,8 +40,9 @@ final class HttpClientUtilForTests
 {
     use StaticClassTrait;
 
-    private const CONNECT_TIMEOUT_SECONDS = MockApmServer::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS * 2;
-    private const TIMEOUT_SECONDS = MockApmServer::DATA_FROM_AGENT_MAX_WAIT_TIME_SECONDS * 2;
+    public const MAX_WAIT_TIME_SECONDS = 10;
+    private const CONNECT_TIMEOUT_SECONDS = self::MAX_WAIT_TIME_SECONDS * 2;
+    private const TIMEOUT_SECONDS = self::MAX_WAIT_TIME_SECONDS * 2;
 
     /** @var ?Logger */
     private static $logger = null;

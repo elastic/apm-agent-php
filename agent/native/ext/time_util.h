@@ -112,12 +112,19 @@ Duration makeDuration( Int64 valueInUnits, DurationUnits units )
     return (Duration){ .valueInUnits = valueInUnits, .units = units };
 }
 
+static inline
+Duration makeZeroDuration( DurationUnits units )
+{
+    return (Duration){ .valueInUnits = 0, .units = units };
+}
+
 ResultCode parseDuration( StringView inputString, DurationUnits defaultUnits, /* out */ Duration* result );
 
 String streamDuration( Duration duration, TextOutputStream* txtOutStream );
 
 Int64 durationToMilliseconds( Duration duration );
 
+ResultCode getClockTimeSpec( bool isRealTime, /* out */ TimeSpec* currentAbsTimeSpec );
 ResultCode getCurrentAbsTimeSpec( /* out */ TimeSpec* currentAbsTimeSpec );
 
 void addDelayToAbsTimeSpec( /* in, out */ TimeSpec* absTimeSpec, long delayInNanoseconds );
@@ -125,6 +132,8 @@ void addDelayToAbsTimeSpec( /* in, out */ TimeSpec* absTimeSpec, long delayInNan
 String streamCurrentLocalTime( TextOutputStream* txtOutStream );
 
 String streamUtcTimeSpecAsLocal( const TimeSpec* utcTimeSpec, TextOutputStream* txtOutStream );
+
+String streamTimeSpecDiff( const TimeSpec* fromTimeSpec, const TimeSpec* toTimeSpec, TextOutputStream* txtOutStream );
 
 int compareAbsTimeSpecs( const TimeSpec* a, const TimeSpec* b );
 

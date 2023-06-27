@@ -254,6 +254,27 @@ class TestCaseBase extends TestCase
     }
 
     /**
+     * @template TExecutionSegment of ExecutionSegmentDto
+     *
+     * @param array<array-key, TExecutionSegment> $executionSegments
+     * @param string                              $labelKey
+     * @param mixed                               $labelVal
+     *
+     * @return TExecutionSegment[]
+     * @noinspection PhpUndefinedClassInspection
+     */
+    public static function findExecutionSegmentsWithLabelValue(array $executionSegments, string $labelKey, $labelVal): array
+    {
+        $result = [];
+        foreach ($executionSegments as $executionSegment) {
+            if (self::getLabel($executionSegment, $labelKey) === $labelVal) {
+                $result[] = $executionSegment;
+            }
+        }
+        return $result;
+    }
+
+    /**
      * @param array<mixed> $actual
      */
     public static function assertArrayIsList(array $actual): void
@@ -438,7 +459,13 @@ class TestCaseBase extends TestCase
     protected static function addMessageStackToException(Exception $ex): void
     {
         $formattedContextsStack = LoggableToString::convert(AssertMessageStack::getContextsStack(), /* prettyPrint */ true);
-        AssertMessageStackExceptionHelper::setMessage($ex, $ex->getMessage() . "\n" . 'AssertMessageStack:' . "\n" . $formattedContextsStack);
+        AssertMessageStackExceptionHelper::setMessage(
+            $ex,
+            $ex->getMessage()
+            . "\n" . 'AssertMessageStack begin' . "\n"
+            . $formattedContextsStack
+            . "\n" . 'AssertMessageStack end'
+        );
     }
 
     /**
@@ -638,6 +665,7 @@ class TestCaseBase extends TestCase
      * @inheritDoc
      *
      * @return never
+     * @psalm-return never-return
      */
     public static function fail(string $message = ''): void
     {
@@ -672,7 +700,7 @@ class TestCaseBase extends TestCase
     public static function assertCount(int $expectedCount, $haystack, string $message = ''): void
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
-        $dbgCtx->add(['count($haystack)' => count($haystack)]);
+        $dbgCtx->add(['haystack count' => count($haystack)]);
         try {
             Assert::assertCount($expectedCount, $haystack, $message);
         } catch (AssertionFailedError $ex) {

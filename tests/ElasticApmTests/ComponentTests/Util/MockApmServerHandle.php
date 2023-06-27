@@ -26,10 +26,11 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
-use PHPUnit\Framework\Assert;
+use ElasticApmTests\Util\TestCaseBase;
 use RuntimeException;
 
 final class MockApmServerHandle extends HttpServerHandle
@@ -59,22 +60,27 @@ final class MockApmServerHandle extends HttpServerHandle
 
     public function getPortForAgent(): int
     {
-        Assert::assertCount(2, $this->getPorts());
+        TestCaseBase::assertCount(2, $this->getPorts());
         return $this->getPorts()[1];
     }
 
     /**
+     * @param bool $shouldWait
+     *
      * @return RawDataFromAgentReceiverEvent[]
      */
-    public function fetchNewData(): array
+    public function fetchNewData(bool $shouldWait): array
     {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Starting...');
 
         $response = $this->sendRequest(
             HttpConstantsForTests::METHOD_GET,
-            MockApmServer::MOCK_API_URI_PREFIX . MockApmServer::GET_INTAKE_API_REQUESTS,
-            [MockApmServer::FROM_INDEX_HEADER_NAME => strval($this->nextIntakeApiRequestIndexToFetch)]
+            MockApmServer::MOCK_API_URI_PREFIX . MockApmServer::GET_INTAKE_API_REQUESTS_URI_SUBPATH,
+            [
+                MockApmServer::FROM_INDEX_HEADER_NAME => strval($this->nextIntakeApiRequestIndexToFetch),
+                MockApmServer::SHOULD_WAIT_HEADER_NAME => BoolUtil::toString($shouldWait),
+            ]
         );
 
         $responseBody = $response->getBody()->getContents();
@@ -97,7 +103,7 @@ final class MockApmServerHandle extends HttpServerHandle
         /** @var array<array<string, mixed>> $receiverEventsJson */
         $newReceiverEvents = [];
         foreach ($receiverEventsJson as $receiverEventJson) {
-            $newReceiverEvent = RawDataFromAgentReceiverEvent::deserializeFromDecodedJson($receiverEventJson);
+            $newReceiverEvent = RawDataFromAgentReceiverEvent::fromDecodedJson($receiverEventJson);
             $newReceiverEvents[] = $newReceiverEvent;
         }
 
@@ -107,22 +113,26 @@ final class MockApmServerHandle extends HttpServerHandle
         } else {
             $this->nextIntakeApiRequestIndexToFetch += count($newReceiverEvents);
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Fetched new data from agent receiver events',
-                ['count(newReceiverEvents)' => count($newReceiverEvents)]
-            );
+            && $loggerProxy->log('Fetched new data from agent receiver events', ['count(newReceiverEvents)' => count($newReceiverEvents)]);
         }
         return $newReceiverEvents;
+    }
+
+    public function setTestScopedBehavior(MockApmServerBehaviorDto $behaviorDto): void
+    {
+        $response = $this->sendRequest(
+            HttpConstantsForTests::METHOD_POST,
+            MockApmServer::MOCK_API_URI_PREFIX . MockApmServer::SET_TEST_SCOPED_BEHAVIOR_URI_SUBPATH,
+            [MockApmServer::BEHAVIOR_HEADER_NAME => $behaviorDto->serializeToString()]
+        );
+        TestCaseBase::assertSame(HttpConstantsForTests::STATUS_OK, $response->getStatusCode());
     }
 
     public function cleanTestScoped(): void
     {
         $this->nextIntakeApiRequestIndexToFetch = 0;
 
-        $response = $this->sendRequest(
-            HttpConstantsForTests::METHOD_POST,
-            TestInfraHttpServerProcessBase::CLEAN_TEST_SCOPED_URI_PATH
-        );
-        Assert::assertSame(HttpConstantsForTests::STATUS_OK, $response->getStatusCode());
+        $response = $this->sendRequest(HttpConstantsForTests::METHOD_POST, TestInfraHttpServerProcessBase::CLEAN_TEST_SCOPED_URI_PATH);
+        TestCaseBase::assertSame(HttpConstantsForTests::STATUS_OK, $response->getStatusCode());
     }
 }

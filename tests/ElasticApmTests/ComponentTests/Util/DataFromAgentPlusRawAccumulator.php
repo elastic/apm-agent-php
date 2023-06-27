@@ -27,14 +27,12 @@ use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Util\ArrayUtil;
 use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
 use ElasticApmTests\Util\LogCategoryForTests;
-use PHPUnit\Framework\Assert;
-use PHPUnit\Framework\TestCase;
+use ElasticApmTests\Util\TestCaseBase;
 
 final class DataFromAgentPlusRawAccumulator implements RawDataFromAgentReceiverEventVisitorInterface, LoggableInterface
 {
@@ -44,8 +42,8 @@ final class DataFromAgentPlusRawAccumulator implements RawDataFromAgentReceiverE
     /** @var IntakeApiConnection[] */
     private $closedIntakeApiConnections = [];
 
-    /** @var bool */
-    private $isOpenIntakeApiConnection = false;
+    /** @var ?RawDataFromAgentReceiverEventConnectionStarted */
+    private $openIntakeApiConnection = null;
 
     /** @var IntakeApiRequest[] */
     private $openIntakeApiConnectionRequests = [];
@@ -58,12 +56,7 @@ final class DataFromAgentPlusRawAccumulator implements RawDataFromAgentReceiverE
 
     public function __construct()
     {
-        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
-            LogCategoryForTests::TEST_UTIL,
-            __NAMESPACE__,
-            __CLASS__,
-            __FILE__
-        )->addContext('this', $this);
+        $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(LogCategoryForTests::TEST_UTIL, __NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
 
         $this->dataParsed = new DataFromAgent();
     }
@@ -99,17 +92,16 @@ final class DataFromAgentPlusRawAccumulator implements RawDataFromAgentReceiverE
         $this->addIntakeApiRequest($event->request);
     }
 
-    /** @noinspection PhpUnusedParameterInspection */
     private function addNewConnection(RawDataFromAgentReceiverEventConnectionStarted $event): void
     {
-        if (!$this->isOpenIntakeApiConnection) {
-            $this->isOpenIntakeApiConnection = true;
-            Assert::assertCount(0, $this->openIntakeApiConnectionRequests);
-            return;
+        if ($this->openIntakeApiConnection === null) {
+            TestCaseBase::assertCount(0, $this->openIntakeApiConnectionRequests);
+        } else {
+            $this->closedIntakeApiConnections[] = new IntakeApiConnection($this->openIntakeApiConnection, $this->openIntakeApiConnectionRequests);
+            $this->openIntakeApiConnectionRequests = [];
         }
 
-        $this->closedIntakeApiConnections[] = new IntakeApiConnection($this->openIntakeApiConnectionRequests);
-        $this->openIntakeApiConnectionRequests = [];
+        $this->openIntakeApiConnection = $event;
     }
 
     private function addIntakeApiRequest(IntakeApiRequest $intakeApiRequest): void
@@ -117,11 +109,11 @@ final class DataFromAgentPlusRawAccumulator implements RawDataFromAgentReceiverE
         $this->openIntakeApiConnectionRequests[] = $intakeApiRequest;
 
         $newDataParsed = IntakeApiRequestDeserializer::deserialize($intakeApiRequest);
-        TestCase::assertCount(1, $newDataParsed->metadatas);
+        TestCaseBase::assertCount(1, $newDataParsed->metadatas);
         $metadata = $newDataParsed->metadatas[0];
-        TestCase::assertNotNull($metadata->service->agent);
+        TestCaseBase::assertNotNull($metadata->service->agent);
         $dbgCtx = ['intakeApiRequest' => $intakeApiRequest, '$metadata' => $metadata];
-        TestCase::assertNotNull($metadata->service->agent->ephemeralId, LoggableToString::convert($dbgCtx));
+        TestCaseBase::assertNotNull($metadata->service->agent->ephemeralId, LoggableToString::convert($dbgCtx));
         $intakeApiRequest->agentEphemeralId = $metadata->service->agent->ephemeralId;
         $this->appendParsedData($newDataParsed, $this->dataParsed);
     }
@@ -129,8 +121,8 @@ final class DataFromAgentPlusRawAccumulator implements RawDataFromAgentReceiverE
     private static function appendParsedData(DataFromAgent $from, DataFromAgent $to): void
     {
         foreach (get_object_vars($from) as $propName => $propValue) {
-            TestCase::assertIsArray($propValue);
-            TestCase::assertIsArray($to->$propName);
+            TestCaseBase::assertIsArray($propValue);
+            TestCaseBase::assertIsArray($to->$propName);
             ArrayUtilForTests::append(/* from */ $propValue, /* to, ref */ $to->$propName);
         }
     }
@@ -159,8 +151,8 @@ final class DataFromAgentPlusRawAccumulator implements RawDataFromAgentReceiverE
     public function getAccumulatedData(): DataFromAgentPlusRaw
     {
         $intakeApiConnections = $this->closedIntakeApiConnections;
-        if (!ArrayUtil::isEmpty($this->openIntakeApiConnectionRequests)) {
-            $intakeApiConnections[] = new IntakeApiConnection($this->openIntakeApiConnectionRequests);
+        if ($this->openIntakeApiConnection !== null) {
+            $intakeApiConnections[] = new IntakeApiConnection($this->openIntakeApiConnection, $this->openIntakeApiConnectionRequests);
         }
         $result = new DataFromAgentPlusRaw(new RawDataFromAgent($intakeApiConnections));
         self::appendParsedData($this->dataParsed, $result);

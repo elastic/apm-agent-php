@@ -188,6 +188,12 @@ final class Snapshot implements LoggableInterface
     /** @var float */
     private $spanCompressionSameKindMaxDuration;
 
+    /** @var float */
+    private $spanStackTraceMinDuration;
+
+    /** @var int */
+    private $stackTraceLimit;
+
     /** @var ?WildcardListMatcher */
     private $transactionIgnoreUrls;
 
@@ -366,6 +372,16 @@ final class Snapshot implements LoggableInterface
     public function spanCompressionSameKindMaxDuration(): float
     {
         return $this->spanCompressionSameKindMaxDuration;
+    }
+
+    public function spanStackTraceMinDuration(): float
+    {
+        return $this->spanStackTraceMinDuration;
+    }
+
+    public function stackTraceLimit(): int
+    {
+        return $this->stackTraceLimit;
     }
 
     public function transactionIgnoreUrls(): ?WildcardListMatcher

@@ -32,7 +32,7 @@ use stdClass;
 
 use const ElasticApmTests\DUMMY_FUNC_FOR_TESTS_WITH_NAMESPACE_CALLABLE_FILE_NAME;
 
-class WordPressAutoInstrumentationUnitTest extends TestCaseBase
+final class WordPressAutoInstrumentationUnitTest extends TestCaseBase
 {
     public function testFindAddonNameInFilePath(): void
     {

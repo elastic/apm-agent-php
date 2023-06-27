@@ -49,12 +49,7 @@ final class Clock implements ClockInterface
 
     public function __construct(LoggerFactory $loggerFactory)
     {
-        $this->logger = $loggerFactory->loggerForClass(
-            LogCategory::INFRASTRUCTURE,
-            __NAMESPACE__,
-            __CLASS__,
-            __FILE__
-        )->addContext('this', $this);
+        $this->logger = $loggerFactory->loggerForClass(LogCategory::INFRASTRUCTURE, __NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
 
         $this->hasMonotonicTimeSource = function_exists('hrtime');
     }

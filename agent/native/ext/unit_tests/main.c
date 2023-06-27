@@ -35,7 +35,7 @@
 void printInfo();
 
 int run_basic_macros_tests();
-int run_basic_types_tests_tests();
+int run_basic_types_tests();
 int run_util_tests();
 int run_IntrusiveDoublyLinkedList_tests();
 int run_TextOutputStream_tests();
@@ -51,6 +51,7 @@ int run_time_util_tests();
 int run_iterateOverCStackTrace_tests();
 int run_ResultCode_tests();
 int run_parse_value_with_units_tests();
+int run_backend_comm_backoff_tests();
 
 int main( int argc, char* argv[] )
 {
@@ -59,7 +60,7 @@ int main( int argc, char* argv[] )
     int failedTestsCount = 0;
 
     failedTestsCount += run_basic_macros_tests();
-    failedTestsCount += run_basic_types_tests_tests();
+    failedTestsCount += run_basic_types_tests();
     failedTestsCount += run_util_tests();
     failedTestsCount += run_IntrusiveDoublyLinkedList_tests();
     failedTestsCount += run_TextOutputStream_tests();
@@ -75,6 +76,7 @@ int main( int argc, char* argv[] )
     failedTestsCount += run_iterateOverCStackTrace_tests();
     failedTestsCount += run_ResultCode_tests();
     failedTestsCount += run_parse_value_with_units_tests();
+    failedTestsCount += run_backend_comm_backoff_tests();
 
     // gen_numbered_intercepting_callbacks_src( 1000 );
 

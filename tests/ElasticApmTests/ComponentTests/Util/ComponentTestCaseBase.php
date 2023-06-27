@@ -260,7 +260,7 @@ class ComponentTestCaseBase extends TestCaseBase
      *
      * @return iterable<T>
      */
-    public function adaptToSmoke(iterable $variants): iterable
+    public static function adaptToSmoke(iterable $variants): iterable
     {
         if (!self::isSmoke()) {
             return $variants;
@@ -269,6 +269,23 @@ class ComponentTestCaseBase extends TestCaseBase
             return [$key => $value];
         }
         return [];
+    }
+
+    /**
+     * @return callable(iterable<mixed>): iterable<mixed>
+     */
+    public static function adaptToSmokeAsCallable(): callable
+    {
+        /**
+         * @template T
+         *
+         * @param iterable<T> $dataSets
+         *
+         * @return iterable<T>
+         */
+        return function (iterable $dataSets): iterable {
+            return self::adaptToSmoke($dataSets);
+        };
     }
 
     /**
@@ -538,5 +555,13 @@ class ComponentTestCaseBase extends TestCaseBase
         $calculatedCrc = crc32($valueSerialized);
         self::assertSame($receivedCrc, $calculatedCrc);
         return unserialize(base64_decode($valueSerialized));
+    }
+
+    protected static function disableTimingDependentFeatures(AppCodeHostParams $appCodeParams): void
+    {
+        // Disable Span Compression feature to have all the expected spans individually
+        $appCodeParams->setAgentOption(OptionNames::SPAN_COMPRESSION_ENABLED, false);
+        // Enable span stack trace collection for span with any duration
+        $appCodeParams->setAgentOption(OptionNames::SPAN_STACK_TRACE_MIN_DURATION, 0);
     }
 }

@@ -160,6 +160,8 @@ final class ConfigSettingTest extends ComponentTestCaseBase
                                                         => $durationRawToParsedValues,
             OptionNames::SPAN_COMPRESSION_SAME_KIND_MAX_DURATION
                                                         => $durationRawToParsedValues,
+            OptionNames::SPAN_STACK_TRACE_MIN_DURATION  => $durationRawToParsedValues,
+            OptionNames::STACK_TRACE_LIMIT              => $intRawToParsedValues,
             OptionNames::TRANSACTION_IGNORE_URLS        => $wildcardListRawToParsedValues,
             OptionNames::TRANSACTION_MAX_SPANS          => $intRawToParsedValues,
             OptionNames::TRANSACTION_SAMPLE_RATE        => $doubleRawToParsedValues,

@@ -1,3 +1,5 @@
+<?php
+
 /*
  * Licensed to Elasticsearch B.V. under one or more contributor
  * license agreements. See the NOTICE file distributed with
@@ -17,21 +19,23 @@
  * under the License.
  */
 
-#pragma once
+declare(strict_types=1);
 
-#include <zend_types.h>
-#include "ResultCode.h"
-#include "ConfigSnapshot_forward_decl.h"
-#include "time_util.h"
+namespace ElasticApmTests\Util;
 
-ResultCode tracerPhpPartOnRequestInit( const ConfigSnapshot* config, const TimePoint* requestInitStartTime );
-void tracerPhpPartOnRequestShutdown();
+use Elastic\Apm\Impl\Util\StaticClassTrait;
 
-bool tracerPhpPartInternalFuncCallPreHook( uint32_t interceptRegistrationId, zend_execute_data* execute_data );
-void tracerPhpPartInternalFuncCallPostHook( uint32_t dbgInterceptRegistrationId, zval* interceptedCallRetValOrThrown );
+/**
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ */
+final class BoolUtilForTests
+{
+    use StaticClassTrait;
 
-void tracerPhpPartInterceptedCallEmptyMethod();
-
-void tracerPhpPartAstInstrumentationCallPreHook( zend_execute_data* execute_data, zval* return_value );
-void tracerPhpPartAstInstrumentationDirectCall( zend_execute_data* execute_data );
-void tracerPhpPartOnRequestInitSetInitialTracerState();
+    public static function fromString(string $stringVal): bool
+    {
+        return $stringVal === 'true';
+    }
+}

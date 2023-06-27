@@ -35,6 +35,7 @@ use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\IdGenerator;
 use Elastic\Apm\Impl\Util\ObserverSet;
 use Elastic\Apm\Impl\Util\RandomUtil;
+use Elastic\Apm\Impl\Util\StackTraceUtil;
 use Elastic\Apm\SpanInterface;
 use Elastic\Apm\TransactionContextInterface;
 use Elastic\Apm\TransactionInterface;
@@ -94,6 +95,12 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
 
     /** @var ?bool */
     private $cachedIsSpanCompressionEnabled = null;
+
+    /** @var ?int */
+    private $cachedStackTraceLimitConfig = null;
+
+    /** @var ?float */
+    private $cachedSpanStackTraceMinDurationConfig = null;
 
     public function __construct(TransactionBuilder $builder)
     {
@@ -565,6 +572,77 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             );
         }
         return $this->cachedIsSpanCompressionEnabled;
+    }
+
+    public function getStackTraceLimitConfig(): int
+    {
+        if ($this->cachedStackTraceLimitConfig === null) {
+            $this->cachedStackTraceLimitConfig = $this->getConfig()->stackTraceLimit();
+
+            /**
+             * stack_trace_limit
+             *      0 - stack trace collection should be disabled
+             *      any positive value - the value is the maximum number of frames to collect
+             *      any negative value - all frames should be collected
+             */
+            $msgPrefix = $this->cachedStackTraceLimitConfig === 0
+                ? 'Span stack trace collection is DISABLED'
+                : ($this->cachedStackTraceLimitConfig < 0
+                    ? 'Span stack trace collection will include all the frames'
+                    : 'Span stack trace collection will include up to ' . $this->cachedStackTraceLimitConfig . ' frames');
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log($msgPrefix . ' (set by configuration option `' . OptionNames::STACK_TRACE_LIMIT . '\')');
+        }
+
+        return $this->cachedStackTraceLimitConfig;
+    }
+
+    private function getSpanStackTraceMinDurationConfig(): float
+    {
+        if ($this->cachedSpanStackTraceMinDurationConfig === null) {
+            $this->cachedSpanStackTraceMinDurationConfig = $this->getConfig()->spanStackTraceMinDuration();
+
+            /**
+             * span_stack_trace_min_duration
+             *      0 - collect stack traces for spans with any duration
+             *      any positive value - it limits stack trace collection to spans with duration equal to or greater than
+             *      any negative value - it disable stack trace collection for spans completely
+             */
+            $msgPrefix = $this->cachedSpanStackTraceMinDurationConfig === 0.0
+                ? 'Span stack trace collection is enabled for spans with any duration'
+                : ($this->cachedSpanStackTraceMinDurationConfig < 0
+                    ? 'Span stack trace collection is DISABLED for spans with any duration'
+                    : 'Span stack trace collection is enabled for spans with duration >= ' . $this->cachedSpanStackTraceMinDurationConfig . ' ms');
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log($msgPrefix . ' (set by configuration option `' . OptionNames::SPAN_STACK_TRACE_MIN_DURATION . '\')');
+        }
+
+        return $this->cachedSpanStackTraceMinDurationConfig;
+    }
+
+    public function shouldCollectStackTraceForSpanDuration(float $durationInMilliseconds): bool
+    {
+        /**
+         * span_stack_trace_min_duration
+         *      0 - collect stack traces for spans with any duration
+         *      any positive value - it limits stack trace collection to spans with duration equal to or greater than
+         *      any negative value - it disable stack trace collection for spans completely
+         */
+        return (($stackTraceMinDuration = $this->getSpanStackTraceMinDurationConfig()) >= 0) && $durationInMilliseconds >= $stackTraceMinDuration;
+    }
+
+    /**
+     * @param int $numberOfStackFramesToSkip
+     *
+     * @return null|StackTraceFrame[]
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     */
+    public function captureApmFormatStackTrace(int $numberOfStackFramesToSkip): ?array
+    {
+        return ($maxNumberOfFrames = StackTraceUtil::convertLimitConfigToMaxNumberOfFrames($this->getStackTraceLimitConfig())) === 0
+            ? null
+            : $this->tracer->stackTraceUtil()->captureInApmFormat(/* offset */ $numberOfStackFramesToSkip + 1, $maxNumberOfFrames);
     }
 
     private function prepareForSerialization(): void

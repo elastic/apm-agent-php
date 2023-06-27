@@ -49,7 +49,7 @@ abstract class RawDataFromAgentReceiverEvent implements JsonSerializable, Loggab
     /**
      * @param array<string, mixed> $decodedJson
      */
-    public static function deserializeFromDecodedJson(array $decodedJson): self
+    public static function fromDecodedJson(array $decodedJson): self
     {
         Assert::assertArrayHasKey('shortClassName', $decodedJson);
         $shortClassName = $decodedJson['shortClassName'];

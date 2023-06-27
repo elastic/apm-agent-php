@@ -80,6 +80,8 @@ struct ConfigSnapshot
     bool spanCompressionEnabled;
     String spanCompressionExactMatchMaxDuration;
     String spanCompressionSameKindMaxDuration;
+    String spanStackTraceMinDuration;
+    String stackTraceLimit;
     String transactionIgnoreUrls;
     String transactionMaxSpans;
     String transactionSampleRate;

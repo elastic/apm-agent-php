@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests\UtilTests;
 
 use Elastic\Apm\Impl\Util\BoolUtil;
+use ElasticApmTests\Util\BoolUtilForTests;
 use PHPUnit\Framework\TestCase;
 
 class BoolUtilTest extends TestCase
@@ -35,5 +36,24 @@ class BoolUtilTest extends TestCase
         self::assertTrue(BoolUtil::ifThen(false, false));
 
         self::assertTrue(!BoolUtil::ifThen(true, false));
+    }
+
+    public function testToInt(): void
+    {
+        self::assertSame(1, BoolUtil::toInt(true));
+        self::assertSame(0, BoolUtil::toInt(false));
+    }
+
+    public function testToString(): void
+    {
+        self::assertSame('true', BoolUtil::toString(true));
+        self::assertSame('false', BoolUtil::toString(false));
+    }
+
+    public function testFromString(): void
+    {
+        foreach ([true, false] as $boolVal) {
+            self::assertSame($boolVal, BoolUtilForTests::fromString(BoolUtil::toString($boolVal)));
+        }
     }
 }
