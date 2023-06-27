@@ -35,6 +35,7 @@ use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
+use ElasticApmTests\Util\MetadataExpectations;
 use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\TransactionExpectations;
 use RuntimeException;
@@ -274,12 +275,8 @@ final class ConfigSettingTest extends ComponentTestCaseBase
      * @param string                $optRawVal
      * @param mixed                 $optExpectedVal
      */
-    public function testAllWaysToSetConfig(
-        AgentConfigSourceKind $agentConfigSourceKind,
-        string $optName,
-        string $optRawVal,
-        $optExpectedVal
-    ): void {
+    public function testAllWaysToSetConfig(AgentConfigSourceKind $agentConfigSourceKind, string $optName, string $optRawVal, $optExpectedVal): void
+    {
         $dbgTestArgs = ['agentConfigSourceKind' => $agentConfigSourceKind, 'optName' => $optName, 'optRawVal' => $optRawVal, 'optExpectedVal' => $optExpectedVal];
         self::runAndEscalateLogLevelOnFailure(
             self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, new MixedMap($dbgTestArgs)),
@@ -295,14 +292,12 @@ final class ConfigSettingTest extends ComponentTestCaseBase
      * @param string                $optRawVal
      * @param mixed                 $optExpectedVal
      */
-    private function implTestAllWaysToSetConfig(
-        AgentConfigSourceKind $agentConfigSourceKind,
-        string $optName,
-        string $optRawVal,
-        $optExpectedVal
-    ): void {
+    private function implTestAllWaysToSetConfig(AgentConfigSourceKind $agentConfigSourceKind, string $optName, string $optRawVal, $optExpectedVal): void
+    {
         TransactionExpectations::$defaultIsSampled = null;
         TransactionExpectations::$defaultDroppedSpansCount = null;
+        MetadataExpectations::$labelsDefault->reset();
+
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams) use ($agentConfigSourceKind, $optName, $optRawVal): void {
