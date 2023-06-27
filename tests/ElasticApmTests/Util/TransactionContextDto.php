@@ -27,7 +27,7 @@ use ElasticApmTests\Util\Deserialization\DeserializationUtil;
 
 final class TransactionContextDto extends ExecutionSegmentContextDto
 {
-    /** @var ?array<string, null|string|bool|int|float> */
+    /** @var ?array<string|bool|int|float|null> */
     public $custom = null;
 
     /** @var ?TransactionContextRequestDto */
@@ -53,7 +53,7 @@ final class TransactionContextDto extends ExecutionSegmentContextDto
 
                 switch ($key) {
                     case 'custom':
-                        $result->custom = self::assertValidCustom($value);
+                        $result->custom = self::assertValidCustom(self::deserializeApmMap($value));
                         return true;
                     case 'request':
                         $result->request = TransactionContextRequestDto::deserialize($value);
@@ -72,10 +72,10 @@ final class TransactionContextDto extends ExecutionSegmentContextDto
     }
 
     /**
-     * @param Optional<?array<string, string|bool|int|float|null>> $expected
-     * @param mixed                                                $actual
+     * @param Optional<?array<string|bool|int|float|null>> $expected
+     * @param mixed                                                   $actual
      *
-     * @phpstan-assert ?array<string, string|bool|int|float|null> $actual
+     * @phpstan-assert ?array<string|bool|int|float|null> $actual
      */
     private static function assertCustomMatches(Optional $expected, $actual): void
     {
@@ -85,19 +85,18 @@ final class TransactionContextDto extends ExecutionSegmentContextDto
     /**
      * @param mixed $actual
      *
-     * @return ?array<string, string|bool|int|float|null>
+     * @return ?array<string|bool|int|float|null>
      */
     private static function assertValidCustom($actual): ?array
     {
         /**
-         * @var Optional<?array<string, string|bool|int|float|null>> $expected
+         * @var Optional<?array<string|bool|int|float|null>> $expected
          * @noinspection PhpRedundantVariableDocTypeInspection
          */
         $expected = new Optional();
         self::assertCustomMatches($expected, $actual);
         return $actual;
     }
-
 
     public function assertMatches(TransactionContextExpectations $expectations): void
     {

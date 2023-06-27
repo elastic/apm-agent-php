@@ -42,7 +42,7 @@ use Elastic\Apm\Impl\Util\DbgUtil;
  */
 abstract class ExecutionSegmentContext extends ContextPartWrapper implements ExecutionSegmentContextInterface
 {
-    /** @var ?array<string, string|bool|int|float|null> */
+    /** @var ?array<string|bool|int|float|null> */
     public $labels = null;
 
     /** @var Logger */
@@ -57,21 +57,16 @@ abstract class ExecutionSegmentContext extends ContextPartWrapper implements Exe
     }
 
     /**
-     * @param string                                     $key
-     * @param string|bool|int|float|null                 $value
-     * @param bool                                       $enforceKeywordString
-     * @param ?array<string, string|bool|int|float|null> $map
-     * @param string                                     $dbgMapName
+     * @param string                              $key
+     * @param string|bool|int|float|null          $value
+     * @param bool                                $enforceKeywordString
+     * @param ?array<string|bool|int|float|null> &$map
+     * @param string                              $dbgMapName
      *
      * @return void
      */
-    protected function setInKeyValueMap(
-        string $key,
-        $value,
-        bool $enforceKeywordString,
-        ?array &$map,
-        string $dbgMapName
-    ): void {
+    protected function setInKeyValueMap(string $key, $value, bool $enforceKeywordString, ?array &$map, string $dbgMapName): void
+    {
         if ($this->beforeMutating()) {
             return;
         }
@@ -89,9 +84,7 @@ abstract class ExecutionSegmentContext extends ContextPartWrapper implements Exe
             $map = [];
         }
 
-        $map[$this->tracer()->limitString($key, $enforceKeywordString)] = is_string($value)
-            ? $this->tracer()->limitString($value, $enforceKeywordString)
-            : $value;
+        $map[$this->tracer()->limitString($key, $enforceKeywordString)] = is_string($value) ? $this->tracer()->limitString($value, $enforceKeywordString) : $value;
     }
 
     /** @inheritDoc */
@@ -125,7 +118,7 @@ abstract class ExecutionSegmentContext extends ContextPartWrapper implements Exe
         // https://github.com/elastic/apm-server/blob/7.0/docs/spec/context.json#L46
         // https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L88
         if ($this->labels !== null) {
-            SerializationUtil::addNameValueIfNotEmpty('tags', $this->labels, /* ref */ $result);
+            SerializationUtil::addNameValueIfNotEmpty('tags', (object)$this->labels, /* ref */ $result);
         }
 
         return SerializationUtil::postProcessResult($result);
