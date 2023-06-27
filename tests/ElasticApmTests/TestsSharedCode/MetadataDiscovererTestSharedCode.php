@@ -80,6 +80,9 @@ final class MetadataDiscovererTestSharedCode
             $optRawValue .= ", \n key_with_empty_value =";
             $expectedParsedValue['key_with_empty_value'] = '';
             yield [OptionNames::GLOBAL_LABELS => $optRawValue, self::EXPECTED_LABELS_KEY => $expectedParsedValue];
+
+            // Numeric string key
+            yield [OptionNames::GLOBAL_LABELS => '0=value_0', self::EXPECTED_LABELS_KEY => ['0' => 'value_0']];
         };
 
         return DataProviderForTestBuilder::convertEachDataSetToMixedMapAndAddDesc(

@@ -73,7 +73,7 @@ final class Metadata implements SerializableDataInterface, LoggableInterface
         $result = [];
 
         if ($this->labels !== null) {
-            SerializationUtil::addNameValueIfNotEmpty('labels', $this->labels, /* ref */ $result);
+            SerializationUtil::addNameValueIfNotEmpty('labels', (object)$this->labels, /* ref */ $result);
         }
         SerializationUtil::addNameValue('process', $this->process, /* ref */ $result);
         SerializationUtil::addNameValue('service', $this->service, /* ref */ $result);
