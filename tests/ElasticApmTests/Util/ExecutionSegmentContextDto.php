@@ -121,11 +121,30 @@ abstract class ExecutionSegmentContextDto
     {
         switch ($key) {
             case 'tags':
-                $result->labels = self::assertValidLabels($value);
+                $result->labels = self::assertValidLabels(self::deserializeApmMap($value));
                 return true;
             default:
                 return false;
         }
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return ?array<array-key, mixed>
+     */
+    protected static function deserializeApmMap($value): ?array
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_array($value)) {
+            return $value;
+        }
+
+        TestCaseBase::assertIsObject($value);
+        return get_object_vars($value);
     }
 
     protected function assertMatchesExecutionSegment(ExecutionSegmentContextExpectations $expectations): void
