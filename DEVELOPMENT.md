@@ -31,6 +31,12 @@ GITHUB_TOKEN=**** TAG_NAME=v1.0.0 make -f .ci/Makefile draft-release
 make -f .ci/Makefile help
 ```
 
+
+_NOTE_: 
+
+* `PHP_VERSION` can be set to a different PHP version.
+* For testing of Alpine specific binaries you must run "prepare" task with `DOCKERFILE=Dockerfile.alpine` environment variable set to build proper docker image. 
+
 ### Local development with direct calls to cmake inside docker container
 \
 If you want to make local development easier, you can call build directly via docker commands.\
@@ -47,12 +53,6 @@ docker run -v "/path/to/your/apm-agent-php:/source"  -v "/path/to/your/conan:/ho
 docker run -v "/path/to/your/apm-agent-php:/source"  -v "/path/to/your/conan:/home/build/.conan:rw"  -w /source/agent/native elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-linuxmusl-x86-64-0.0.2  sh -c  "cmake --preset linuxmusl-x86-64-release && cmake --build --preset linuxmusl-x86-64-release"
 
 ```
-
-
-_NOTE_: 
-
-* `PHP_VERSION` can be set to a different PHP version.
-* For testing of Alpine specific binaries you must run "prepare" task with `DOCKERFILE=Dockerfile.alpine` environment variable set to build proper docker image. 
 
 To generate the packages then you can use the `packaging/Dockerfile`, see the below commands:
 
