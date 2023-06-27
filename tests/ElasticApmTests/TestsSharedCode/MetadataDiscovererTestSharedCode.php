@@ -73,10 +73,12 @@ final class MetadataDiscovererTestSharedCode
             $maxLengthKeywordString = TestCaseBase::generateMaxLengthKeywordString();
             $optRawValue .= ', key5 = ' . $maxLengthKeywordString . '+';
             $expectedParsedValue['key5'] = $maxLengthKeywordString;
+            $optRawValue .= ', ' . $maxLengthKeywordString . '+' . ' = value with max length keyword key  ';
+            $expectedParsedValue[$maxLengthKeywordString] = 'value with max length keyword key';
             $optRawValue .= ', = value_for_empty_key';
             $expectedParsedValue[''] = 'value_for_empty_key';
-            $optRawValue .= ", \n key7 =";
-            $expectedParsedValue['key7'] = '';
+            $optRawValue .= ", \n key_with_empty_value =";
+            $expectedParsedValue['key_with_empty_value'] = '';
             yield [OptionNames::GLOBAL_LABELS => $optRawValue, self::EXPECTED_LABELS_KEY => $expectedParsedValue];
         };
 

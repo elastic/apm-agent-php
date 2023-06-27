@@ -401,6 +401,10 @@ Labels from this configuration are added to all the entities produced by the age
 The format is `key=value[,key=value[,...]]`.
 For example `dept=engineering,rack=number8`.
 
+NOTE: When setting this configuration option in `.ini` file
+    it is required to enclose the value in quotes (because the value contains equal sign).
+    For example `elastic_apm.global_labels = "dept=engineering,rack=number8"`
+
 Any labels set by the application via the agent's public API
 will override global labels with the same keys.
 

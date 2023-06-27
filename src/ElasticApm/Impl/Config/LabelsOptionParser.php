@@ -75,7 +75,7 @@ final class LabelsOptionParser extends OptionParser
 
         $result = [];
         foreach ((new KeyValuePairsOptionParser())->parse($rawValue) as $key => $valueAsString) {
-            $result[$key] = self::parseValue($valueAsString);
+            $result[is_string($key) ? Tracer::limitKeywordString($key) : $key] = self::parseValue($valueAsString);
         }
         return $result;
     }
