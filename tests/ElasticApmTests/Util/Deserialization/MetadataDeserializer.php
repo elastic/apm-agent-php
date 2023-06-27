@@ -52,7 +52,7 @@ final class MetadataDeserializer
             function ($key, $value) use ($result): bool {
                 switch ($key) {
                     case 'labels':
-                        $result->labels = ExecutionSegmentContextDto::assertValidLabels(ExecutionSegmentContextDto::deserializeApmMap($value));
+                        $result->labels = ExecutionSegmentContextDto::assertValidLabels($value);
                         return true;
 
                     case 'process':

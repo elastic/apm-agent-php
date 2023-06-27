@@ -41,54 +41,6 @@ trait SerializedEventSinkTrait
     public $shouldValidateAgainstSchema = true;
 
     /**
-     * @param mixed $input
-     *
-     * @return mixed
-     */
-    public static function convertObjectToStringKeyArrayRecursively($input)
-    {
-        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
-
-        if (is_array($input)) {
-            $dbgCtx->pushSubScope();
-            foreach ($input as $arrKey => $arrValue) {
-                $input[$arrKey] = self::convertObjectToStringKeyArrayRecursively($arrValue);
-            }
-            $dbgCtx->popSubScope();
-            return $input;
-        }
-
-        if (!is_object($input)) {
-            return $input;
-        }
-
-        $allKeysAreStrings = true;
-        $dbgCtx->pushSubScope();
-        foreach (get_object_vars($input) as $propKey => $propValue) {
-            $dbgCtx->add(['propKey' => $propKey, 'propValue' => $propValue]);
-            if (is_numeric($propKey)) {
-                $allKeysAreStrings = false;
-            }
-
-            $input->{$propKey} = self::convertObjectToStringKeyArrayRecursively($propValue);
-        }
-        $dbgCtx->popSubScope();
-
-        if (!$allKeysAreStrings) {
-            return $input;
-        }
-
-        $asArray = [];
-        $dbgCtx->pushSubScope();
-        foreach (get_object_vars($input) as $propKey => $propValue) {
-            $dbgCtx->add(['propKey' => $propKey, 'propValue' => $propValue]);
-            $asArray[$propKey] = $propValue;
-        }
-        $dbgCtx->popSubScope();
-        return $asArray;
-    }
-
-    /**
      * @template T of object
      *
      * @param string                   $serializedData
@@ -102,16 +54,12 @@ trait SerializedEventSinkTrait
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, ['serializedData' => $serializedData]);
 
-        /** @var object $decodedJson */
-        $decodedJson = JsonUtil::decode($serializedData, /* asAssocArray */ false);
+        $decodedJson = JsonUtil::decode($serializedData, /* asAssocArray */ true);
         $dbgCtx->add(['decodedJson' => $decodedJson]);
-
-        $postProcessedDecodedJson = self::convertObjectToStringKeyArrayRecursively($decodedJson);
-        $dbgCtx->add(['postProcessedDecodedJson' => $postProcessedDecodedJson]);
-        TestCaseBase::assertIsArray($postProcessedDecodedJson);
+        TestCaseBase::assertIsArray($decodedJson);
 
         $validateAgainstSchema($serializedData);
-        $deserializedData = $deserialize($postProcessedDecodedJson);
+        $deserializedData = $deserialize($decodedJson);
         $dbgCtx->add(['deserializedData' => $deserializedData]);
         $assertValid($deserializedData);
         return $deserializedData;

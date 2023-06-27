@@ -53,7 +53,7 @@ final class TransactionContextDto extends ExecutionSegmentContextDto
 
                 switch ($key) {
                     case 'custom':
-                        $result->custom = self::assertValidCustom(self::deserializeApmMap($value));
+                        $result->custom = self::assertValidCustom($value);
                         return true;
                     case 'request':
                         $result->request = TransactionContextRequestDto::deserialize($value);
