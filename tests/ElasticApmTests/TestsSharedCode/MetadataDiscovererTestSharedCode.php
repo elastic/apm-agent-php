@@ -62,10 +62,22 @@ final class MetadataDiscovererTestSharedCode
             // Valid values
             //
 
-            yield [
-                OptionNames::GLOBAL_LABELS => 'key1=value1,2=3,key3=34.5,key5=true,key6=,=value_for_empty_key',
-                self::EXPECTED_LABELS_KEY  => ['key1' => 'value1', 2 => 3, 'key3' => 34.5, 'key5' => true, 'key6' => '', '' => 'value_for_empty_key'],
-            ];
+            $optRawValue = "key1 \n= \t  value1 ";
+            $expectedParsedValue = ['key1' => 'value1'];
+            $optRawValue .= ',2 =3  ';
+            $expectedParsedValue[2] = 3;
+            $optRawValue .= ",key3 \t =\n 34.5";
+            $expectedParsedValue['key3'] = 34.5;
+            $optRawValue .= ',key4 = true';
+            $expectedParsedValue['key4'] = true;
+            $maxLengthKeywordString = TestCaseBase::generateMaxLengthKeywordString();
+            $optRawValue .= ', key5 = ' . $maxLengthKeywordString . '+';
+            $expectedParsedValue['key5'] = $maxLengthKeywordString;
+            $optRawValue .= ', = value_for_empty_key';
+            $expectedParsedValue[''] = 'value_for_empty_key';
+            $optRawValue .= ", \n key7 =";
+            $expectedParsedValue['key7'] = '';
+            yield [OptionNames::GLOBAL_LABELS => $optRawValue, self::EXPECTED_LABELS_KEY => $expectedParsedValue];
         };
 
         return DataProviderForTestBuilder::convertEachDataSetToMixedMapAndAddDesc(

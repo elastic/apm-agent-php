@@ -1149,4 +1149,24 @@ class TestCaseBase extends TestCase
             Assert::assertDirectoryNotExists($directory, $message);
         }
     }
+
+    private const VERY_LONG_STRING_BASE_PREFIX = '<very long string prefix';
+    private const VERY_LONG_STRING_BASE_SUFFIX = 'very long string suffix>';
+
+    /**
+     * @param positive-int $length
+     *
+     * @return string
+     */
+    public static function generateVeryLongString(int $length): string
+    {
+        $midLength = $length - (strlen(self::VERY_LONG_STRING_BASE_PREFIX) + strlen(self::VERY_LONG_STRING_BASE_SUFFIX));
+        self::assertGreaterThanOrEqual(0, $midLength);
+        return self::VERY_LONG_STRING_BASE_PREFIX . str_repeat('-', $midLength) . self::VERY_LONG_STRING_BASE_SUFFIX;
+    }
+
+    public static function generateMaxLengthKeywordString(): string
+    {
+        return self::generateVeryLongString(/* baseLength */ Constants::KEYWORD_STRING_MAX_LENGTH);
+    }
 }
