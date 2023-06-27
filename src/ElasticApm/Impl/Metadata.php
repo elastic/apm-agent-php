@@ -26,6 +26,7 @@ namespace Elastic\Apm\Impl;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -72,8 +73,8 @@ final class Metadata implements SerializableDataInterface, LoggableInterface
     {
         $result = [];
 
-        if ($this->labels !== null) {
-            SerializationUtil::addNameValueIfNotEmpty('labels', (object)$this->labels, /* ref */ $result);
+        if ($this->labels !== null && !ArrayUtil::isEmpty($this->labels)) {
+            SerializationUtil::addNameValue('labels', (object)$this->labels, /* ref */ $result);
         }
         SerializationUtil::addNameValue('process', $this->process, /* ref */ $result);
         SerializationUtil::addNameValue('service', $this->service, /* ref */ $result);

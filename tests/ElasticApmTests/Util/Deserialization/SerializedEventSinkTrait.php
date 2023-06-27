@@ -44,13 +44,13 @@ trait SerializedEventSinkTrait
      * @template T of object
      *
      * @param string                   $serializedData
-     * @param Closure(string): void    $validateAgainstSchema
+     * @param Closure(string): void    $validateSerializedData
      * @param Closure(array<mixed>): T $deserialize
-     * @param Closure(T): void         $assertValid
+     * @param Closure(T): void         $assertValidDeserializedData
      *
      * @return T
      */
-    private static function validateAndDeserialize(string $serializedData, Closure $validateAgainstSchema, Closure $deserialize, Closure $assertValid)
+    private static function validateAndDeserialize(string $serializedData, Closure $validateSerializedData, Closure $deserialize, Closure $assertValidDeserializedData)
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, ['serializedData' => $serializedData]);
 
@@ -58,10 +58,10 @@ trait SerializedEventSinkTrait
         $dbgCtx->add(['decodedJson' => $decodedJson]);
         TestCaseBase::assertIsArray($decodedJson);
 
-        $validateAgainstSchema($serializedData);
+        $validateSerializedData($serializedData);
         $deserializedData = $deserialize($decodedJson);
         $dbgCtx->add(['deserializedData' => $deserializedData]);
-        $assertValid($deserializedData);
+        $assertValidDeserializedData($deserializedData);
         return $deserializedData;
     }
 

@@ -81,8 +81,9 @@ final class MetadataDiscovererTestSharedCode
             $expectedParsedValue['key_with_empty_value'] = '';
             yield [OptionNames::GLOBAL_LABELS => $optRawValue, self::EXPECTED_LABELS_KEY => $expectedParsedValue];
 
-            // Numeric string key
-            yield [OptionNames::GLOBAL_LABELS => '0=value_0', self::EXPECTED_LABELS_KEY => ['0' => 'value_0']];
+            // Numeric string keys only
+            yield [OptionNames::GLOBAL_LABELS => " 0 = \t 0 \t ", self::EXPECTED_LABELS_KEY => [0 => 0]];
+            yield [OptionNames::GLOBAL_LABELS => " 0 = \t 0 \t, \t  1 \n=  123.5 \t", self::EXPECTED_LABELS_KEY => [0 => 0, 1 => 123.5]];
         };
 
         return DataProviderForTestBuilder::convertEachDataSetToMixedMapAndAddDesc(

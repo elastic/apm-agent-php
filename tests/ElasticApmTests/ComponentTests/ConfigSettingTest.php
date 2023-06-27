@@ -124,7 +124,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         $keyValuePairsRawToParsedValues = [
             'dept=engineering,rack=number8'                    => ['dept' => 'engineering', 'rack' => 'number8'],
             " \t key1 = \t value1 \t, \t  key2 \n=  value2 \t" => ['key1' => 'value1', 'key2' => 'value2'],
-            " 0 = \t 0 \t, \t  1 \n=  123.5 \t"                => [0 => '0', 1 => '123.5'],
+            " 0 = \t 0 \t, \t  1 \n=  123.5 \t"                => [0 => 0, 1 => 123.5],
         ];
 
         return [

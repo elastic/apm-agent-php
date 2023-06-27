@@ -117,8 +117,8 @@ abstract class ExecutionSegmentContext extends ContextPartWrapper implements Exe
         // APM Server Intake API expects 'tags' key for labels
         // https://github.com/elastic/apm-server/blob/7.0/docs/spec/context.json#L46
         // https://github.com/elastic/apm-server/blob/7.0/docs/spec/spans/span.json#L88
-        if ($this->labels !== null) {
-            SerializationUtil::addNameValueIfNotEmpty('tags', (object)$this->labels, /* ref */ $result);
+        if ($this->labels !== null && !ArrayUtil::isEmpty($this->labels)) {
+            SerializationUtil::addNameValue('tags', (object)$this->labels, /* ref */ $result);
         }
 
         return SerializationUtil::postProcessResult($result);
