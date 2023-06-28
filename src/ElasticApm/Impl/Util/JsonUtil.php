@@ -54,5 +54,4 @@ final class JsonUtil
         }
         return $encodedData;
     }
-
 }
