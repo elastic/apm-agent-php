@@ -21,38 +21,31 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\Util;
+namespace ElasticApmTests\Util;
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
-final class JsonUtil
+use Elastic\Apm\Impl\Util\JsonException;
+use Elastic\Apm\Impl\Util\StaticClassTrait;
+
+final class JsonUtilForTests
 {
     use StaticClassTrait;
 
     /**
-     * @param mixed $data
-     * @param bool  $prettyPrint
+     * @param string $encodedData
+     * @param bool   $asAssocArray
      *
-     * @return string
-     *
-     * @throws JsonException
+     * @return mixed
      */
-    public static function encode($data, bool $prettyPrint = false): string
+    public static function decode(string $encodedData, bool $asAssocArray)
     {
-        $options = 0;
-        $options |= $prettyPrint ? JSON_PRETTY_PRINT : 0;
-        $encodedData = json_encode($data, $options);
-        if ($encodedData === false) {
+        $decodedData = json_decode($encodedData, /* assoc: */ $asAssocArray);
+        if ($decodedData === null && ($encodedData !== 'null')) {
             throw new JsonException(
-                'json_encode() failed'
-                . '. json_last_error_msg(): ' . json_last_error_msg()
-                . '. dataType: ' . DbgUtil::getType($data)
+                'json_decode() failed.'
+                . ' json_last_error_msg(): ' . json_last_error_msg() . '.'
+                . ' encodedData: `' . $encodedData . '\''
             );
         }
-        return $encodedData;
+        return $decodedData;
     }
-
 }

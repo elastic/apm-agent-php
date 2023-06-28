@@ -32,6 +32,7 @@ use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\DataFromAgent;
 use ElasticApmTests\Util\Deserialization\SerializedEventSinkTrait;
+use ElasticApmTests\Util\JsonUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\TextUtilForTests;
@@ -87,7 +88,7 @@ final class IntakeApiRequestDeserializer implements LoggableInterface
 
             ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Processing a line from intake API request', ['bodyLine' => $bodyLine]);
 
-            $lineDecodedJson = JsonUtil::decode($bodyLine, /* asAssocArray */ false);
+            $lineDecodedJson = JsonUtilForTests::decode($bodyLine, /* asAssocArray */ false);
             TestCaseBase::assertInstanceOf(stdClass::class, $lineDecodedJson);
             $lineDecodedJsonAsArray = get_object_vars($lineDecodedJson);
             TestCaseBase::assertCount(1, $lineDecodedJsonAsArray, 'Each decoded line should have exactly one top level key');

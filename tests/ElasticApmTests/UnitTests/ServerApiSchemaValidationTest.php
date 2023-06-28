@@ -25,11 +25,11 @@ namespace ElasticApmTests\UnitTests;
 
 use Closure;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
-use Elastic\Apm\Impl\Util\JsonUtil;
 use ElasticApmTests\UnitTests\Util\MockEventSink;
 use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\Deserialization\ServerApiSchemaValidationException;
 use ElasticApmTests\Util\Deserialization\ServerApiSchemaValidator;
+use ElasticApmTests\Util\JsonUtilForTests;
 use ElasticApmTests\Util\TestCaseBase;
 
 class ServerApiSchemaValidationTest extends TestCaseBase
@@ -138,7 +138,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
     ): void {
         $unknownPropertyName = 'dummy_property_added_to_corrupt_key';
         $unknownPropertyValue = 'dummy_property_added_to_corrupt_value';
-        $deserializedEventToCorrupt = JsonUtil::decode($serializedEvent, /* asAssocArray */ true);
+        $deserializedEventToCorrupt = JsonUtilForTests::decode($serializedEvent, /* asAssocArray */ true);
 
         /** @var array<mixed> $parentJsonNode */
         $parentJsonNode = &$this->findJsonElement(/* ref */ $deserializedEventToCorrupt, $pathToParentElement);
@@ -202,7 +202,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
         array $pathToElement,
         $wrongTypeValue
     ): void {
-        $deserializedEventToCorrupt = JsonUtil::decode($serializedEvent, /* asAssocArray */ true);
+        $deserializedEventToCorrupt = JsonUtilForTests::decode($serializedEvent, /* asAssocArray */ true);
         $propToCorrupt = &$this->findJsonElement(/* ref */ $deserializedEventToCorrupt, $pathToElement);
         $propToCorrupt = $wrongTypeValue;
 

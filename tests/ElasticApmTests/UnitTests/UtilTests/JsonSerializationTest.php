@@ -24,8 +24,8 @@ declare(strict_types=1);
 namespace ElasticApmTests\UnitTests\UtilTests;
 
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
-use Elastic\Apm\Impl\Util\JsonUtil;
 use ElasticApmTests\Util\AssertMessageStack;
+use ElasticApmTests\Util\JsonUtilForTests;
 use ElasticApmTests\Util\TestCaseBase;
 
 class JsonSerializationTest extends TestCaseBase
@@ -38,7 +38,7 @@ class JsonSerializationTest extends TestCaseBase
         $serialized = SerializationUtil::serializeAsJson((object)$original);
         $dbgCtx->add(['serialized' => $serialized]);
         self::assertSame(1, preg_match('/^\s*{\s*"0"\s*:\s*0\s*}\s*$/', $serialized));
-        $decodedJson = JsonUtil::decode($serialized, /* asAssocArray */ true);
+        $decodedJson = JsonUtilForTests::decode($serialized, /* asAssocArray */ true);
         self::assertIsArray($decodedJson);
         self::assertEqualMaps($original, $decodedJson);
     }

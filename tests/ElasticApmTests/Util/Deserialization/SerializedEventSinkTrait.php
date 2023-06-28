@@ -26,9 +26,9 @@ namespace ElasticApmTests\Util\Deserialization;
 use Closure;
 use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetricSet;
-use Elastic\Apm\Impl\Util\JsonUtil;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\ErrorDto;
+use ElasticApmTests\Util\JsonUtilForTests;
 use ElasticApmTests\Util\MetadataValidator;
 use ElasticApmTests\Util\MetricSetValidator;
 use ElasticApmTests\Util\SpanDto;
@@ -102,7 +102,7 @@ trait SerializedEventSinkTrait
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, ['serializedData' => $serializedData]);
 
-        $decodedJson = JsonUtil::decode($serializedData, /* asAssocArray */ true);
+        $decodedJson = JsonUtilForTests::decode($serializedData, /* asAssocArray */ true);
         $dbgCtx->add(['decodedJson' => $decodedJson]);
         TestCaseBase::assertIsArray($decodedJson);
 
