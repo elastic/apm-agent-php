@@ -28,7 +28,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
-use Elastic\Apm\Impl\Util\JsonUtil;
+use ElasticApmTests\Util\JsonUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\TestCaseBase;
 use RuntimeException;
@@ -97,7 +97,7 @@ final class MockApmServerHandle extends HttpServerHandle
         }
 
         /** @var array<string, mixed> $decodedBody */
-        $decodedBody = JsonUtil::decode($responseBody, /* asAssocArray */ true);
+        $decodedBody = JsonUtilForTests::decode($responseBody, /* asAssocArray */ true);
 
         $receiverEventsJson = $decodedBody[MockApmServer::RAW_DATA_FROM_AGENT_RECEIVER_EVENTS_JSON_KEY];
         /** @var array<array<string, mixed>> $receiverEventsJson */

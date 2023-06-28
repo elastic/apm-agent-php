@@ -105,6 +105,7 @@ final class MockEventSink implements EventSinkInterface
 
         self::assertValidMetadata($deserialized);
         TestCaseBase::assertEqualsEx($original, $deserialized);
+        $this->dataFromAgent->metadatas[] = $deserialized;
     }
 
     private function consumeTransaction(Transaction $original): void

@@ -80,6 +80,7 @@ enum OptionId
     optionId_disableSend,
     optionId_enabled,
     optionId_environment,
+    optionId_globalLabels,
     optionId_hostname,
     optionId_internalChecksLevel,
     optionId_logFile,
@@ -262,6 +263,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_DISABLE_SEND "disable_send"
 #define ELASTIC_APM_CFG_OPT_NAME_ENABLED "enabled"
 #define ELASTIC_APM_CFG_OPT_NAME_ENVIRONMENT "environment"
+#define ELASTIC_APM_CFG_OPT_NAME_GLOBAL_LABELS "global_labels"
 #define ELASTIC_APM_CFG_OPT_NAME_HOSTNAME "hostname"
 
 /**

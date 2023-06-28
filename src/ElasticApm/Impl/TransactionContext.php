@@ -97,8 +97,8 @@ final class TransactionContext extends ExecutionSegmentContext implements Transa
     {
         $result = SerializationUtil::preProcessResult(parent::jsonSerialize());
 
-        if ($this->custom !== null) {
-            SerializationUtil::addNameValueIfNotEmpty('custom', (object)$this->custom, /* ref */ $result);
+        if ($this->custom !== null && !ArrayUtil::isEmpty($this->custom)) {
+            SerializationUtil::addNameValue('custom', (object)$this->custom, /* ref */ $result);
         }
         SerializationUtil::addNameValueIfNotNull('request', $this->request, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('user', $this->user, /* ref */ $result);

@@ -100,9 +100,7 @@ final class SpanStackTraceMinDurationUnitTest extends TracerUnitTestCaseBase
         $this->setUpTestEnv(
             function (TracerBuilderForTests $tracerBuilder) use ($testArgs, $mockClock): void {
                 $tracerBuilder->withClock($mockClock);
-                if (($optVal = $testArgs->getNullableString(OptionNames::SPAN_STACK_TRACE_MIN_DURATION)) !== null) {
-                    $tracerBuilder->withConfig(OptionNames::SPAN_STACK_TRACE_MIN_DURATION, $optVal);
-                }
+                self::setConfigIfNotNull($testArgs, OptionNames::SPAN_STACK_TRACE_MIN_DURATION, $tracerBuilder);
             }
         );
 

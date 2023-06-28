@@ -93,8 +93,6 @@ class IntOptionTestValuesGenerator extends NumericOptionTestValuesGeneratorBase
      * @param int $max
      *
      * @return int
-     *
-     * @noinspection PhpMissingParamTypeInspection
      */
     protected static function randomValue($min, $max)
     {
@@ -105,14 +103,13 @@ class IntOptionTestValuesGenerator extends NumericOptionTestValuesGeneratorBase
      * @param int $value
      *
      * @return OptionTestValidValue<int>
-     *
-     * @noinspection PhpMissingParamTypeInspection
      */
     protected static function createOptionTestValidValue($value)
     {
         return new OptionTestValidValue(strval($value), $value);
     }
 
+    /** @inheritDoc */
     public function invalidRawValues(): iterable
     {
         yield from ['0.0', '1.0', '-1.0', '1.5', '-1.5', '20.2', '-30.3'];

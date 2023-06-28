@@ -23,7 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests;
 
-use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\Util\FileUtilForTests;
@@ -71,6 +70,6 @@ final class ExternalTestData
             }
         );
 
-        return JsonUtil::decode($fileContent, /* asAssocArray */ true);
+        return Util\JsonUtilForTests::decode($fileContent, /* asAssocArray */ true);
     }
 }

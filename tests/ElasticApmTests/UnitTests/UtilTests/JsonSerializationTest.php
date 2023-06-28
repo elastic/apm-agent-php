@@ -21,31 +21,25 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\UnitTests\ConfigTests;
+namespace ElasticApmTests\UnitTests\UtilTests;
 
-use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use ElasticApmTests\Util\AssertMessageStack;
+use ElasticApmTests\Util\JsonUtilForTests;
+use ElasticApmTests\Util\TestCaseBase;
 
-/**
- * @template TParsedValue
- */
-final class OptionTestValidValue implements LoggableInterface
+class JsonSerializationTest extends TestCaseBase
 {
-    use LoggableTrait;
-
-    /** @var string */
-    public $rawValue;
-
-    /** @var TParsedValue */
-    public $parsedValue;
-
-    /**
-     * @param string       $rawValue
-     * @param TParsedValue $parsedValue
-     */
-    public function __construct(string $rawValue, $parsedValue)
+    public function testMapWithNumericKeys(): void
     {
-        $this->rawValue = $rawValue;
-        $this->parsedValue = $parsedValue;
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+
+        $original = ['0' => 0];
+        $serialized = SerializationUtil::serializeAsJson((object)$original);
+        $dbgCtx->add(['serialized' => $serialized]);
+        self::assertSame(1, preg_match('/^\s*{\s*"0"\s*:\s*0\s*}\s*$/', $serialized));
+        $decodedJson = JsonUtilForTests::decode($serialized, /* asAssocArray */ true);
+        self::assertIsArray($decodedJson);
+        self::assertEqualMaps($original, $decodedJson);
     }
 }

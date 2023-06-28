@@ -353,8 +353,26 @@ class TestCaseBase extends TestCase
      */
     public static function assertEqualMaps(array $expected, array $actual): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        self::assertSameCount($expected, $actual);
         self::assertMapIsSubsetOf($expected, $actual);
-        self::assertMapIsSubsetOf($actual, $expected);
+    }
+
+    /**
+     * @param mixed $expected
+     * @param mixed $actual
+     */
+    public static function assertEqualRecursively($expected, $actual): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        if (is_array($actual)) {
+            self::assertIsArray($expected);
+            self::assertEqualMaps($expected, $actual);
+            return;
+        }
+
+        self::assertSame($expected, $actual);
     }
 
     /**
@@ -1130,5 +1148,25 @@ class TestCaseBase extends TestCase
             /** @noinspection PhpDeprecationInspection, PhpUnitDeprecatedCallsIn10VersionInspection */
             Assert::assertDirectoryNotExists($directory, $message);
         }
+    }
+
+    private const VERY_LONG_STRING_BASE_PREFIX = '<very long string prefix';
+    private const VERY_LONG_STRING_BASE_SUFFIX = 'very long string suffix>';
+
+    /**
+     * @param positive-int $length
+     *
+     * @return string
+     */
+    public static function generateVeryLongString(int $length): string
+    {
+        $midLength = $length - (strlen(self::VERY_LONG_STRING_BASE_PREFIX) + strlen(self::VERY_LONG_STRING_BASE_SUFFIX));
+        self::assertGreaterThanOrEqual(0, $midLength);
+        return self::VERY_LONG_STRING_BASE_PREFIX . str_repeat('-', $midLength) . self::VERY_LONG_STRING_BASE_SUFFIX;
+    }
+
+    public static function generateMaxLengthKeywordString(): string
+    {
+        return self::generateVeryLongString(/* baseLength */ Constants::KEYWORD_STRING_MAX_LENGTH);
     }
 }

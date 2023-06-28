@@ -27,10 +27,10 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\ArrayUtilForTests;
+use ElasticApmTests\Util\JsonUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\RandomUtilForTests;
 use PHPUnit\Framework\Assert;
@@ -245,7 +245,7 @@ abstract class HttpServerStarter
                 }
 
                 /** @var array<string, mixed> $decodedBody */
-                $decodedBody = JsonUtil::decode($response->getBody()->getContents(), /* asAssocArray */ true);
+                $decodedBody = JsonUtilForTests::decode($response->getBody()->getContents(), /* asAssocArray */ true);
                 TestCase::assertArrayHasKey(HttpServerHandle::PID_KEY, $decodedBody);
                 $receivedPid = $decodedBody[HttpServerHandle::PID_KEY];
                 TestCase::assertIsInt($receivedPid, LoggableToString::convert(['$decodedBody' => $decodedBody]));

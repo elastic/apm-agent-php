@@ -381,6 +381,36 @@ NOTE: This feature is fully supported in the APM app in Kibana versions >= 7.2.
 You must use the query bar to filter for a specific environment in versions prior to 7.2.
 
 [float]
+[[config-global-labels]]
+==== `global_labels`
+
+[options="header"]
+|============
+| Hostname variable name      | Option name in `php.ini`
+| `ELASTIC_APM_GLOBAL_LABELS` | `elastic_apm.global_labels`
+|============
+
+[options="header"]
+|============
+| Default     | Type
+| empty map   | string to string map
+|============
+
+Labels from this configuration are added to all the entities produced by the agent.
+
+The format is `key=value[,key=value[,...]]`.
+For example `dept=engineering,rack=number8`.
+
+NOTE: When setting this configuration option in `.ini` file
+    it is required to enclose the value in quotes (because the value contains equal sign).
+    For example `elastic_apm.global_labels = "dept=engineering,rack=number8"`
+
+Any labels set by the application via the agent's public API
+will override global labels with the same keys.
+
+NOTE: This option requires APM Server 7.2 or later. It will have no effect on older versions.
+
+[float]
 [[config-hostname]]
 ==== `hostname`
 

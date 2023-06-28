@@ -26,9 +26,9 @@ namespace ElasticApmTests\Util\Deserialization;
 use Closure;
 use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetricSet;
-use Elastic\Apm\Impl\Util\JsonUtil;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\ErrorDto;
+use ElasticApmTests\Util\JsonUtilForTests;
 use ElasticApmTests\Util\MetadataValidator;
 use ElasticApmTests\Util\MetricSetValidator;
 use ElasticApmTests\Util\SpanDto;
@@ -92,28 +92,24 @@ trait SerializedEventSinkTrait
      * @template T of object
      *
      * @param string                   $serializedData
-     * @param Closure(string): void    $validateAgainstSchema
+     * @param Closure(string): void    $validateSerializedData
      * @param Closure(array<mixed>): T $deserialize
-     * @param Closure(T): void         $assertValid
+     * @param Closure(T): void         $assertValidDeserializedData
      *
      * @return T
      */
-    private static function validateAndDeserialize(string $serializedData, Closure $validateAgainstSchema, Closure $deserialize, Closure $assertValid)
+    private static function validateAndDeserialize(string $serializedData, Closure $validateSerializedData, Closure $deserialize, Closure $assertValidDeserializedData)
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, ['serializedData' => $serializedData]);
 
-        /** @var object $decodedJson */
-        $decodedJson = JsonUtil::decode($serializedData, /* asAssocArray */ false);
+        $decodedJson = JsonUtilForTests::decode($serializedData, /* asAssocArray */ true);
         $dbgCtx->add(['decodedJson' => $decodedJson]);
+        TestCaseBase::assertIsArray($decodedJson);
 
-        $postProcessedDecodedJson = self::convertObjectToStringKeyArrayRecursively($decodedJson);
-        $dbgCtx->add(['postProcessedDecodedJson' => $postProcessedDecodedJson]);
-        TestCaseBase::assertIsArray($postProcessedDecodedJson);
-
-        $validateAgainstSchema($serializedData);
-        $deserializedData = $deserialize($postProcessedDecodedJson);
+        $validateSerializedData($serializedData);
+        $deserializedData = $deserialize($decodedJson);
         $dbgCtx->add(['deserializedData' => $deserializedData]);
-        $assertValid($deserializedData);
+        $assertValidDeserializedData($deserializedData);
         return $deserializedData;
     }
 

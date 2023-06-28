@@ -21,31 +21,21 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\UnitTests\ConfigTests;
-
-use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LoggableTrait;
+namespace Elastic\Apm\Impl\Config;
 
 /**
- * @template TParsedValue
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ *
+ * @extends NullableOptionMetadata<array<string|bool|int|float|null>>
+ *
+ * @noinspection PhpUnused
  */
-final class OptionTestValidValue implements LoggableInterface
+final class NullableLabelsOptionMetadata extends NullableOptionMetadata
 {
-    use LoggableTrait;
-
-    /** @var string */
-    public $rawValue;
-
-    /** @var TParsedValue */
-    public $parsedValue;
-
-    /**
-     * @param string       $rawValue
-     * @param TParsedValue $parsedValue
-     */
-    public function __construct(string $rawValue, $parsedValue)
+    public function __construct()
     {
-        $this->rawValue = $rawValue;
-        $this->parsedValue = $parsedValue;
+        parent::__construct(new LabelsOptionParser());
     }
 }

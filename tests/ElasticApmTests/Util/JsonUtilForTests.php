@@ -21,31 +21,31 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\UnitTests\ConfigTests;
+namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Util\JsonException;
+use Elastic\Apm\Impl\Util\StaticClassTrait;
 
-/**
- * @template TParsedValue
- */
-final class OptionTestValidValue implements LoggableInterface
+final class JsonUtilForTests
 {
-    use LoggableTrait;
-
-    /** @var string */
-    public $rawValue;
-
-    /** @var TParsedValue */
-    public $parsedValue;
+    use StaticClassTrait;
 
     /**
-     * @param string       $rawValue
-     * @param TParsedValue $parsedValue
+     * @param string $encodedData
+     * @param bool   $asAssocArray
+     *
+     * @return mixed
      */
-    public function __construct(string $rawValue, $parsedValue)
+    public static function decode(string $encodedData, bool $asAssocArray)
     {
-        $this->rawValue = $rawValue;
-        $this->parsedValue = $parsedValue;
+        $decodedData = json_decode($encodedData, /* assoc: */ $asAssocArray);
+        if ($decodedData === null && ($encodedData !== 'null')) {
+            throw new JsonException(
+                'json_decode() failed.'
+                . ' json_last_error_msg(): ' . json_last_error_msg() . '.'
+                . ' encodedData: `' . $encodedData . '\''
+            );
+        }
+        return $decodedData;
     }
 }

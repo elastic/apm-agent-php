@@ -23,11 +23,11 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
-use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\TestsRootDir;
 use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\FlakyAssertions;
+use ElasticApmTests\Util\JsonUtilForTests;
 use ElasticApmTests\Util\TestCaseBase;
 
 final class DataFromAgentPlusRawValidatorDebugTest extends TestCaseBase
@@ -50,7 +50,7 @@ final class DataFromAgentPlusRawValidatorDebugTest extends TestCaseBase
             return;
         }
 
-        $inputFileContentsDecoded = JsonUtil::decode($inputFileContents, /* asAssocArray */ true);
+        $inputFileContentsDecoded = JsonUtilForTests::decode($inputFileContents, /* asAssocArray */ true);
         self::assertIsArray($inputFileContentsDecoded);
 
         $expectations = self::unserializeDecodedJsonSubObj($inputFileContentsDecoded, TestCaseHandle::SERIALIZED_EXPECTATIONS_KEY);
