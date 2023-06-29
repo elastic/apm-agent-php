@@ -20,9 +20,10 @@ ifeq ($(DOCKERFILE), Dockerfile.alpine)
     ADD_LIBUNWIND_DEPENDENCY_BUILD_ARG_OPT:=--build-arg ADD_LIBUNWIND_DEPENDENCY=${ADD_LIBUNWIND_DEPENDENCY}
 endif
 
+CONAN_USER_HOME:=/tmp/conan_user_home
 MAP_CONAN_HOME_TO_DOCKER_HOST_CMD_LINE_ARG:=
 ifdef MAP_CONAN_HOME_TO_DOCKER_HOST
-    MAP_CONAN_HOME_TO_DOCKER_HOST_CMD_LINE_ARG:=-v "${MAP_CONAN_HOME_TO_DOCKER_HOST}:/conan_user_home"
+    MAP_CONAN_HOME_TO_DOCKER_HOST_CMD_LINE_ARG:=-v "${MAP_CONAN_HOME_TO_DOCKER_HOST}:$(CONAN_USER_HOME)"
 endif
 
 CURRENT_UID := $(shell id -u)
@@ -53,9 +54,11 @@ build:
 		-v $(PWD):/source \
 		${MAP_CONAN_HOME_TO_DOCKER_HOST_CMD_LINE_ARG} \
 		-w /source/agent/native \
-		-e CONAN_USER_HOME=/conan_user_home \
+		-e CONAN_USER_HOME=$(CONAN_USER_HOME) \
 		elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-$(BUILD_ARCHITECTURE)-0.0.2 \
-		sh -c "cmake --preset $(BUILD_ARCHITECTURE)-release && cmake --build --preset $(BUILD_ARCHITECTURE)-release && /source/agent/native/_build/$(BUILD_ARCHITECTURE)-release/ext/unit_tests/unit_tests"
+		sh -c "cmake --preset $(BUILD_ARCHITECTURE)-release \
+				&& cmake --build --preset $(BUILD_ARCHITECTURE)-release \
+				&& /source/agent/native/_build/$(BUILD_ARCHITECTURE)-release/ext/unit_tests/unit_tests"
 	@echo "::endgroup::"
 
 .PHONY: static-check-unit-test
