@@ -26,7 +26,7 @@ namespace ElasticApmTests\ComponentTests\Util;
 use Ds\Set;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Util\JsonUtil;
+use ElasticApmTests\Util\JsonUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
@@ -244,7 +244,7 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
     {
         $pid = intval(self::getRequiredRequestHeader($request, self::PID_QUERY_HEADER_NAME));
         $isTestScopedAsString = self::getRequiredRequestHeader($request, self::IS_TEST_SCOPED_QUERY_HEADER_NAME);
-        $isTestScoped = JsonUtil::decode($isTestScopedAsString, /* asAssocArray */ true);
+        $isTestScoped = JsonUtilForTests::decode($isTestScopedAsString, /* asAssocArray */ true);
         $processesToTerminateIds
             = $isTestScoped ? $this->testScopedProcessesToTerminateIds : $this->globalProcessesToTerminateIds;
         $processesToTerminateIds->add($pid);
@@ -263,7 +263,7 @@ final class ResourcesCleaner extends TestInfraHttpServerProcessBase
     {
         $path = self::getRequiredRequestHeader($request, self::PATH_QUERY_HEADER_NAME);
         $isTestScopedAsString = self::getRequiredRequestHeader($request, self::IS_TEST_SCOPED_QUERY_HEADER_NAME);
-        $isTestScoped = JsonUtil::decode($isTestScopedAsString, /* asAssocArray */ true);
+        $isTestScoped = JsonUtilForTests::decode($isTestScopedAsString, /* asAssocArray */ true);
         $filesToDeletePaths = $isTestScoped ? $this->testScopedFilesToDeletePaths : $this->globalFilesToDeletePaths;
         $filesToDeletePaths->add($path);
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))

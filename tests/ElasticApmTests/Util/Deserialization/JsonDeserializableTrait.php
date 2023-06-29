@@ -25,8 +25,8 @@ namespace ElasticApmTests\Util\Deserialization;
 
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
-use Elastic\Apm\Impl\Util\JsonUtil;
 use ElasticApmTests\Util\AssertMessageStack;
+use ElasticApmTests\Util\JsonUtilForTests;
 use ElasticApmTests\Util\TestCaseBase;
 
 trait JsonDeserializableTrait
@@ -72,7 +72,7 @@ trait JsonDeserializableTrait
      */
     public function deserializeFromString(string $serializedToString): void
     {
-        $decodedJson = JsonUtil::decode($serializedToString, /* asAssocArray */ true);
+        $decodedJson = JsonUtilForTests::decode($serializedToString, /* asAssocArray */ true);
         /** @var array<string, mixed> $decodedJson */
         $this->deserializeFromDecodedJson($decodedJson);
     }

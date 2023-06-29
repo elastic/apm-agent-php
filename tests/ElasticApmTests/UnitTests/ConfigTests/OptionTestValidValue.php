@@ -27,7 +27,7 @@ use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 
 /**
- * @template T
+ * @template TParsedValue
  */
 final class OptionTestValidValue implements LoggableInterface
 {
@@ -36,19 +36,12 @@ final class OptionTestValidValue implements LoggableInterface
     /** @var string */
     public $rawValue;
 
-    /**
-     * @var mixed
-     * @phpstan-var T
-     */
+    /** @var TParsedValue */
     public $parsedValue;
 
     /**
-     * OptionTestValidValue constructor.
-     *
-     * @param string $rawValue
-     * @param mixed  $parsedValue
-     *
-     * @phpstan-param T $parsedValue
+     * @param string       $rawValue
+     * @param TParsedValue $parsedValue
      */
     public function __construct(string $rawValue, $parsedValue)
     {

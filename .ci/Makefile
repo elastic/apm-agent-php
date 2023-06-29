@@ -13,11 +13,9 @@ PHP_VERSION ?= 7.2
 DOCKERFILE ?= Dockerfile
 LOOPS ?= 50
 SUFFIX :=
-ADD_LIBUNWIND_DEPENDENCY_BUILD_ARG_OPT:=
 ifeq ($(DOCKERFILE), Dockerfile.alpine)
     ## This is only required to tag the docker images used for building/testing this project
     SUFFIX := -alpine
-    ADD_LIBUNWIND_DEPENDENCY_BUILD_ARG_OPT:=--build-arg ADD_LIBUNWIND_DEPENDENCY=${ADD_LIBUNWIND_DEPENDENCY}
 endif
 
 MAP_CONAN_HOME_TO_DOCKER_HOST_CMD_LINE_ARG:=
@@ -39,7 +37,6 @@ prepare:  ## Build docker image for building and testing the project
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
 	docker build \
 		--build-arg PHP_VERSION=${PHP_VERSION} \
-		${ADD_LIBUNWIND_DEPENDENCY_BUILD_ARG_OPT} \
 		--tag $(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		-f ${DOCKERFILE} .
 	@echo "::endgroup::"

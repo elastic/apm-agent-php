@@ -60,9 +60,34 @@ final class MetadataValidator
 
     private function validateImpl(): void
     {
+        $this->validateLabels();
         $this->validateProcessData($this->actual->process);
         $this->validateServiceData();
         $this->validateSystemData();
+    }
+
+    public function validateLabels(): void
+    {
+        ExecutionSegmentContextDto::assertValidLabels($this->actual->labels);
+        if ($this->expectations->labels->isValueSet()) {
+            self::assertLabels($this->expectations->labels->getValue(), $this->actual->labels);
+        }
+    }
+
+    /**
+     * @param ?array<string|bool|int|float|null> $expected
+     * @param ?array<string|bool|int|float|null> $actual
+     */
+    public static function assertLabels(?array $expected, ?array $actual): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        if ($expected === null) {
+            TestCaseBase::assertNull($actual);
+        } else {
+            TestCaseBase::assertNotNull($actual);
+            TestCaseBase::assertEqualMaps($expected, $actual);
+        }
     }
 
     /**

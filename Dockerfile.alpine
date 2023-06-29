@@ -12,12 +12,6 @@ RUN apk update \
     git \
     unzip
 
-ARG ADD_LIBUNWIND_DEPENDENCY=false
-RUN echo "ADD_LIBUNWIND_DEPENDENCY: ${ADD_LIBUNWIND_DEPENDENCY}"
-ENV ADD_LIBUNWIND_DEPENDENCY=${ADD_LIBUNWIND_DEPENDENCY}
-RUN if [[ "${ADD_LIBUNWIND_DEPENDENCY}" = "true" ]] ; then apk add libunwind-dev ; fi
-ENV ELASTIC_APM_ASSUME_CAN_CAPTURE_C_STACK_TRACE=${ADD_LIBUNWIND_DEPENDENCY}
-
 RUN docker-php-ext-install \
     mysqli \
     pcntl \

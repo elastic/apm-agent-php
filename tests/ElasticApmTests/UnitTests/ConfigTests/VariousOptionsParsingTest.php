@@ -32,6 +32,7 @@ use Elastic\Apm\Impl\Config\EnumOptionParser;
 use Elastic\Apm\Impl\Config\FloatOptionMetadata;
 use Elastic\Apm\Impl\Config\FloatOptionParser;
 use Elastic\Apm\Impl\Config\IntOptionParser;
+use Elastic\Apm\Impl\Config\LabelsOptionParser;
 use Elastic\Apm\Impl\Config\OptionMetadata;
 use Elastic\Apm\Impl\Config\OptionParser;
 use Elastic\Apm\Impl\Config\ParseException;
@@ -41,9 +42,11 @@ use Elastic\Apm\Impl\Config\WildcardListOptionParser;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
+use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\ComponentTests\Util\AllComponentTestsOptionsMetadata;
 use ElasticApmTests\ComponentTests\Util\ConfigSnapshotForTests;
 use ElasticApmTests\ComponentTests\Util\CustomOptionParser;
+use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\IterableUtilForTests;
 use ElasticApmTests\Util\RandomUtilForTests;
 use ElasticApmTests\Util\TestCaseBase;
@@ -57,9 +60,8 @@ class VariousOptionsParsingTest extends TestCaseBase
      *
      * @return OptionTestValuesGeneratorInterface<mixed>
      */
-    private static function selectTestValuesGenerator(
-        OptionMetadata $optMeta
-    ): OptionTestValuesGeneratorInterface {
+    private static function selectTestValuesGenerator(OptionMetadata $optMeta): OptionTestValuesGeneratorInterface
+    {
         $optionParser = $optMeta->parser();
 
         if ($optionParser instanceof BoolOptionParser) {
@@ -85,6 +87,9 @@ class VariousOptionsParsingTest extends TestCaseBase
         }
         if ($optionParser instanceof WildcardListOptionParser) {
             return WildcardListOptionTestValuesGenerator::singletonInstance(); // @phpstan-ignore-line
+        }
+        if ($optionParser instanceof LabelsOptionParser) {
+            return LabelsOptionTestValuesGenerator::singletonInstance(); // @phpstan-ignore-line
         }
 
         throw new RuntimeException('Unknown option metadata type: ' . DbgUtil::getType($optMeta));
@@ -193,34 +198,32 @@ class VariousOptionsParsingTest extends TestCaseBase
      * @param OptionTestValuesGeneratorInterface<mixed> $testValuesGenerator
      * @param OptionParser<mixed>                       $optParser
      */
-    public static function parseInvalidValueTestImpl(
-        OptionTestValuesGeneratorInterface $testValuesGenerator,
-        OptionParser $optParser
-    ): void {
+    public static function parseInvalidValueTestImpl(OptionTestValuesGeneratorInterface $testValuesGenerator, OptionParser $optParser): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
         $invalidRawValues = $testValuesGenerator->invalidRawValues();
-        if ($invalidRawValues === []) {
+        if (IterableUtilForTests::isEmpty($invalidRawValues)) {
             self::dummyAssert();
             return;
         }
+        $dbgCtx->add(['invalidRawValues' => $invalidRawValues]);
 
+        $dbgCtx->pushSubScope();
         foreach ($invalidRawValues as $invalidRawValue) {
             $invalidRawValue = self::genOptionalWhitespace() . $invalidRawValue . self::genOptionalWhitespace();
+            $dbgCtx->add(['invalidRawValue' => $invalidRawValue, 'strlen($invalidRawValue)' => strlen($invalidRawValue)]);
+            if (!TextUtil::isEmptyString($invalidRawValue)) {
+                $dbgCtx->add(['ord($invalidRawValue[0])' => ord($invalidRawValue[0])]);
+            }
             self::assertThrows(
                 ParseException::class,
                 function () use ($optParser, $invalidRawValue): void {
                     Parser::parseOptionRawValue($invalidRawValue, $optParser);
-                },
-                LoggableToString::convert(
-                    [
-                        'optParser'                => $optParser,
-                        'invalidRawValue'          => $invalidRawValue,
-                        'strlen($invalidRawValue)' => strlen($invalidRawValue),
-                    ]
-                    +
-                    (strlen($invalidRawValue) === 0 ? [] : ['ord($invalidRawValue[0])' => ord($invalidRawValue[0])])
-                )
+                }
             );
         }
+        $dbgCtx->popSubScope();
     }
 
     /**
@@ -248,15 +251,16 @@ class VariousOptionsParsingTest extends TestCaseBase
      * @param OptionTestValuesGeneratorInterface<mixed> $testValuesGenerator
      * @param OptionParser<mixed>                       $optParser
      */
-    public static function parseValidValueTestImpl(
-        OptionTestValuesGeneratorInterface $testValuesGenerator,
-        OptionParser $optParser
-    ): void {
+    public static function parseValidValueTestImpl(OptionTestValuesGeneratorInterface $testValuesGenerator, OptionParser $optParser): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
         $validValues = $testValuesGenerator->validValues();
-        if ($validValues === []) {
+        if (IterableUtilForTests::isEmpty($validValues)) {
             self::dummyAssert();
             return;
         }
+        $dbgCtx->add(['validValues' => $validValues]);
 
         /**
          * @param mixed $value
@@ -271,24 +275,16 @@ class VariousOptionsParsingTest extends TestCaseBase
             return ['$value' => $value, 'number_format($value)' => number_format($value)];
         };
 
+        $dbgCtx->pushSubScope();
         /** @var OptionTestValidValue<mixed> $validValueData */
         foreach ($validValues as $validValueData) {
-            $validValueData->rawValue =
-                self::genOptionalWhitespace() . $validValueData->rawValue . self::genOptionalWhitespace();
+            $dbgCtx->add(['validValueData' => $validValueData, '$validValueData->parsedValue' => $valueWithDetails($validValueData->parsedValue)]);
+            $validValueData->rawValue = self::genOptionalWhitespace() . $validValueData->rawValue . self::genOptionalWhitespace();
             $actualParsedValue = Parser::parseOptionRawValue($validValueData->rawValue, $optParser);
-            self::assertSame(
-                $validValueData->parsedValue,
-                $actualParsedValue,
-                LoggableToString::convert(
-                    [
-                        '$optParser'                   => $optParser,
-                        '$validValueData'              => $validValueData,
-                        '$validValueData->parsedValue' => $valueWithDetails($validValueData->parsedValue),
-                        '$actualParsedValue'           => $valueWithDetails($actualParsedValue),
-                    ]
-                )
-            );
+            $dbgCtx->add(['actualParsedValue' => $valueWithDetails($actualParsedValue)]);
+            self::assertEqualRecursively($validValueData->parsedValue, $actualParsedValue);
         }
+        $dbgCtx->popSubScope();
     }
 
     /**

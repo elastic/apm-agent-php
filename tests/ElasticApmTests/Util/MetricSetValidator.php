@@ -24,8 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\MetricSet;
-use Elastic\Apm\Impl\Util\ArrayUtil;
-use PHPUnit\Framework\TestCase;
 
 final class MetricSetValidator
 {
@@ -55,10 +53,10 @@ final class MetricSetValidator
         TestCaseBase::assertSameNullness($this->actual->transactionName, $this->actual->transactionType);
 
         if ($this->actual->spanSubtype !== null) {
-            TestCase::assertNotNull($this->actual->spanType);
+            TestCaseBase::assertNotNull($this->actual->spanType);
         }
         if ($this->actual->spanType !== null) {
-            TestCase::assertNotNull($this->actual->transactionType);
+            TestCaseBase::assertNotNull($this->actual->transactionType);
         }
 
         self::assertValidSamples($this->actual->samples);
@@ -76,18 +74,18 @@ final class MetricSetValidator
      */
     public static function assertValidSamples($samples): array
     {
-        TestCase::assertTrue(is_array($samples));
+        TestCaseBase::assertIsArray($samples);
         /** @var array<mixed> $samples */
-        TestCase::assertTrue(!ArrayUtil::isEmpty($samples));
+        TestCaseBase::assertCountableNotEmpty($samples);
 
         foreach ($samples as $key => $valueArr) {
             self::assertValidKeywordString($key);
-            TestCase::assertTrue(is_array($valueArr));
+            TestCaseBase::assertTrue(is_array($valueArr));
             /** @var array<mixed> $valueArr */
-            TestCase::assertTrue(count($valueArr) === 1);
-            TestCase::assertTrue(array_key_exists('value', $valueArr));
+            TestCaseBase::assertTrue(count($valueArr) === 1);
+            TestCaseBase::assertTrue(array_key_exists('value', $valueArr));
             $value = $valueArr['value'];
-            TestCase::assertTrue(is_int($value) || is_float($value));
+            TestCaseBase::assertTrue(is_int($value) || is_float($value));
             /** @var float|int $value */
         }
         /** @var array<string, array<string, float|int>> $samples */

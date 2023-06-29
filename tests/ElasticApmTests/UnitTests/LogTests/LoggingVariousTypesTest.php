@@ -32,10 +32,10 @@ use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\NoopLogSink;
 use Elastic\Apm\Impl\NoopSpan;
 use Elastic\Apm\Impl\NoopTransaction;
-use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\FloatLimits;
+use ElasticApmTests\Util\JsonUtilForTests;
 use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\PhpUnitExtensionBase;
 use ElasticApmTests\Util\TestCaseBase;
@@ -50,7 +50,7 @@ class LoggingVariousTypesTest extends TestCaseBase
      */
     public static function logValueAndDecodeToJson($valueToLog)
     {
-        return JsonUtil::decode(LoggableToEncodedJson::convert($valueToLog), /* asAssocArray */ true);
+        return JsonUtilForTests::decode(LoggableToEncodedJson::convert($valueToLog), /* asAssocArray */ true);
     }
 
     /**

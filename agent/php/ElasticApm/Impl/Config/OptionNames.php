@@ -47,6 +47,7 @@ final class OptionNames
     public const DISABLE_SEND = 'disable_send';
     public const ENABLED = 'enabled';
     public const ENVIRONMENT = 'environment';
+    public const GLOBAL_LABELS = 'global_labels';
     public const HOSTNAME = 'hostname';
     public const INTERNAL_CHECKS_LEVEL = 'internal_checks_level';
     public const LOG_LEVEL = 'log_level';

@@ -198,7 +198,7 @@ final class StackTraceLimitTestSharedCode
             }
 
             TestCaseBase::assertNotNull($span->stackTrace);
-            TestCaseBase::assertCountAtLeast(1, $span->stackTrace);
+            TestCaseBase::assertCountableNotEmpty($span->stackTrace);
 
             $dbgCtx->pushSubScope();
             foreach (RangeUtil::generateUpTo(min($additionalStackDepth + 2, count($span->stackTrace))) as $additionalDepthCallIndex) {

@@ -39,6 +39,12 @@ final class MetadataExpectations extends EventExpectations
     /** @var Optional<?string> */
     public $detectedHostname;
 
+    /** @var Optional<?array<string|bool|int|float|null>> */
+    public $labels;
+
+    /** @var Optional<?array<string|bool|int|float|null>> */
+    public static $labelsDefault;
+
     /** @var Optional<?string> */
     public $serviceEnvironment;
 
@@ -66,6 +72,14 @@ final class MetadataExpectations extends EventExpectations
         $serviceFrameworkDefault = new Optional();
         self::$serviceFrameworkDefault = $serviceFrameworkDefault;
         self::$serviceFrameworkDefault->setValue(null);
+
+        /**
+         * @var Optional<?array<string|bool|int|float|null>> $labelsDefault
+         * @noinspection PhpRedundantVariableDocTypeInspection
+         */
+        $labelsDefault = new Optional();
+        self::$labelsDefault = $labelsDefault;
+        self::$labelsDefault->setValue(null);
     }
 
     public function __construct()
@@ -76,6 +90,7 @@ final class MetadataExpectations extends EventExpectations
         $this->configuredHostname = new Optional();
         $this->containerId = new Optional();
         $this->detectedHostname = new Optional();
+        $this->labels = self::$labelsDefault;
         $this->serviceEnvironment = new Optional();
         $this->serviceFramework = self::$serviceFrameworkDefault;
         $this->serviceName = new Optional();

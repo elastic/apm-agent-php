@@ -23,14 +23,29 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-class TransactionContextExpectations extends ExecutionSegmentContextExpectations
-{
-    /** @var Optional<?array<string|bool|int|float|null>> */
-    public $custom;
+use Elastic\Apm\Impl\Util\JsonException;
+use Elastic\Apm\Impl\Util\StaticClassTrait;
 
-    public function __construct()
+final class JsonUtilForTests
+{
+    use StaticClassTrait;
+
+    /**
+     * @param string $encodedData
+     * @param bool   $asAssocArray
+     *
+     * @return mixed
+     */
+    public static function decode(string $encodedData, bool $asAssocArray)
     {
-        parent::__construct();
-        $this->custom = new Optional();
+        $decodedData = json_decode($encodedData, /* assoc: */ $asAssocArray);
+        if ($decodedData === null && ($encodedData !== 'null')) {
+            throw new JsonException(
+                'json_decode() failed.'
+                . ' json_last_error_msg(): ' . json_last_error_msg() . '.'
+                . ' encodedData: `' . $encodedData . '\''
+            );
+        }
+        return $decodedData;
     }
 }

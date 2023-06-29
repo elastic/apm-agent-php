@@ -35,6 +35,7 @@ use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
+use ElasticApmTests\Util\MetadataExpectations;
 use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\TransactionExpectations;
 use RuntimeException;
@@ -120,6 +121,12 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             self::isMainAppCodeHostHttp() ? null : true /* <- valueToExclude */
         );
 
+        $keyValuePairsRawToParsedValues = [
+            'dept=engineering,rack=number8'                    => ['dept' => 'engineering', 'rack' => 'number8'],
+            " \t key1 = \t value1 \t, \t  key2 \n=  value2 \t" => ['key1' => 'value1', 'key2' => 'value2'],
+            " 0 = \t 0 \t, \t  1 \n=  123.5 \t"                => [0 => 0, 1 => 123.5],
+        ];
+
         return [
             OptionNames::API_KEY                        => $stringRawToParsedValues(['1my_api_key3', "my api \t key"]),
             OptionNames::AST_PROCESS_ENABLED            => $boolRawToParsedValues(),
@@ -136,12 +143,12 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::DISABLE_INSTRUMENTATIONS       => $wildcardListRawToParsedValues,
             OptionNames::DISABLE_SEND                   => $boolRawToParsedValues(/* valueToExclude: */ true),
             OptionNames::ENVIRONMENT                    => $stringRawToParsedValues([" my_environment \t "]),
+            OptionNames::GLOBAL_LABELS                  => $keyValuePairsRawToParsedValues,
             OptionNames::HOSTNAME                       => $stringRawToParsedValues([" \t my_hostname"]),
             OptionNames::LOG_LEVEL                      => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_STDERR               => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_SYSLOG               => $logLevelRawToParsedValues,
-            OptionNames::NON_KEYWORD_STRING_MAX_LENGTH
-                                                        => $intRawToParsedValues,
+            OptionNames::NON_KEYWORD_STRING_MAX_LENGTH  => $intRawToParsedValues,
             // OLD TODO: Sergey Kleyman: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
             OptionNames::PROFILING_INFERRED_SPANS_ENABLED
                                                         => $boolRawToParsedValues(/* valueToExclude: */ true),
@@ -268,12 +275,8 @@ final class ConfigSettingTest extends ComponentTestCaseBase
      * @param string                $optRawVal
      * @param mixed                 $optExpectedVal
      */
-    public function testAllWaysToSetConfig(
-        AgentConfigSourceKind $agentConfigSourceKind,
-        string $optName,
-        string $optRawVal,
-        $optExpectedVal
-    ): void {
+    public function testAllWaysToSetConfig(AgentConfigSourceKind $agentConfigSourceKind, string $optName, string $optRawVal, $optExpectedVal): void
+    {
         $dbgTestArgs = ['agentConfigSourceKind' => $agentConfigSourceKind, 'optName' => $optName, 'optRawVal' => $optRawVal, 'optExpectedVal' => $optExpectedVal];
         self::runAndEscalateLogLevelOnFailure(
             self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, new MixedMap($dbgTestArgs)),
@@ -289,14 +292,12 @@ final class ConfigSettingTest extends ComponentTestCaseBase
      * @param string                $optRawVal
      * @param mixed                 $optExpectedVal
      */
-    private function implTestAllWaysToSetConfig(
-        AgentConfigSourceKind $agentConfigSourceKind,
-        string $optName,
-        string $optRawVal,
-        $optExpectedVal
-    ): void {
+    private function implTestAllWaysToSetConfig(AgentConfigSourceKind $agentConfigSourceKind, string $optName, string $optRawVal, $optExpectedVal): void
+    {
         TransactionExpectations::$defaultIsSampled = null;
         TransactionExpectations::$defaultDroppedSpansCount = null;
+        MetadataExpectations::$labelsDefault->reset();
+
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams) use ($agentConfigSourceKind, $optName, $optRawVal): void {

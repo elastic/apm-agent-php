@@ -21,16 +21,21 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\Util;
+namespace Elastic\Apm\Impl\Config;
 
-class TransactionContextExpectations extends ExecutionSegmentContextExpectations
+/**
+ * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
+ *
+ * @internal
+ *
+ * @extends NullableOptionMetadata<array<string|bool|int|float|null>>
+ *
+ * @noinspection PhpUnused
+ */
+final class NullableLabelsOptionMetadata extends NullableOptionMetadata
 {
-    /** @var Optional<?array<string|bool|int|float|null>> */
-    public $custom;
-
     public function __construct()
     {
-        parent::__construct();
-        $this->custom = new Optional();
+        parent::__construct(new LabelsOptionParser());
     }
 }

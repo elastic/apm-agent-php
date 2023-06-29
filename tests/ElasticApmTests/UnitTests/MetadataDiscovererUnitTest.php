@@ -25,17 +25,21 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\UnitTests;
 
+use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\NoopLoggerFactory;
 use Elastic\Apm\Impl\MetadataDiscoverer;
 use Elastic\Apm\Impl\Tracer;
+use ElasticApmTests\TestsSharedCode\MetadataDiscovererTestSharedCode;
+use ElasticApmTests\UnitTests\Util\TracerUnitTestCaseBase;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
+use ElasticApmTests\Util\MetadataExpectations;
 use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\Pair;
-use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\TracerBuilderForTests;
 
-class MetadataDiscovererUnitTest extends TestCaseBase
+class MetadataDiscovererUnitTest extends TracerUnitTestCaseBase
 {
     public function testDefaultServiceNameUsesAgentName(): void
     {
@@ -166,5 +170,44 @@ class MetadataDiscovererUnitTest extends TestCaseBase
             }
         );
         self::assertSame($expectedContainerId, $actualContainerId);
+    }
+
+    /**
+     * @return iterable<string, array{MixedMap}>
+     */
+    public static function dataProviderForTestGlobalLabels(): iterable
+    {
+        return MetadataDiscovererTestSharedCode::dataProviderForTestGlobalLabels();
+    }
+
+    /**
+     * @dataProvider dataProviderForTestGlobalLabels
+     */
+    public function testGlobalLabels(MixedMap $testArgs): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        /** @var ?array<string|bool|int|float|null> $expectedLabels */
+        $expectedLabels = $testArgs->getNullableArray(MetadataDiscovererTestSharedCode::EXPECTED_LABELS_KEY);
+
+        ///////////////////////////////
+        // Arrange
+
+        $this->setUpTestEnv(
+            function (TracerBuilderForTests $builder) use ($testArgs): void {
+                self::setConfigIfNotNull($testArgs, OptionNames::GLOBAL_LABELS, $builder);
+            }
+        );
+        MetadataExpectations::$labelsDefault->setValue($expectedLabels);
+
+        ///////////////////////////////
+        // Act
+
+        $tx = ElasticApm::beginCurrentTransaction('test_TX_name', 'test_TX_type');
+        $tx->end();
+
+        ///////////////////////////////
+        // Assert
+
+        MetadataDiscovererTestSharedCode::implTestGlobalLabelsAssertPart($expectedLabels, $this->mockEventSink->dataFromAgent);
     }
 }

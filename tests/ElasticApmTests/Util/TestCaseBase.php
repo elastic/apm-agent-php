@@ -208,7 +208,7 @@ class TestCaseBase extends TestCase
     /**
      * @param ExecutionSegmentDto $execSegData
      *
-     * @return array<string, string|bool|int|float|null>
+     * @return array<string|bool|int|float|null>
      */
     public static function getLabels(ExecutionSegmentDto $execSegData): array
     {
@@ -232,6 +232,20 @@ class TestCaseBase extends TestCase
         self::assertNotNull($context->labels);
         self::assertArrayHasKey($key, $context->labels);
         return $context->labels[$key];
+    }
+
+    /**
+     * @param TransactionDto $tx
+     * @param string         $key
+     *
+     * @return string|bool|int|float|null
+     */
+    public static function getTransactionContextCustom(TransactionDto $tx, string $key)
+    {
+        self::assertNotNull($tx->context);
+        self::assertNotNull($tx->context->custom);
+        self::assertArrayHasKey($key, $tx->context->custom);
+        return $tx->context->custom[$key];
     }
 
     public static function assertHasLabel(ExecutionSegmentDto $execSegData, string $key): void
@@ -339,8 +353,26 @@ class TestCaseBase extends TestCase
      */
     public static function assertEqualMaps(array $expected, array $actual): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        self::assertSameCount($expected, $actual);
         self::assertMapIsSubsetOf($expected, $actual);
-        self::assertMapIsSubsetOf($actual, $expected);
+    }
+
+    /**
+     * @param mixed $expected
+     * @param mixed $actual
+     */
+    public static function assertEqualRecursively($expected, $actual): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        if (is_array($actual)) {
+            self::assertIsArray($expected);
+            self::assertEqualMaps($expected, $actual);
+            return;
+        }
+
+        self::assertSame($expected, $actual);
     }
 
     /**
@@ -716,6 +748,14 @@ class TestCaseBase extends TestCase
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         self::assertGreaterThanOrEqual($expectedMinCount, count($haystack));
+    }
+
+    /**
+     * @param array<mixed>|Countable $haystack
+     */
+    public static function assertCountableNotEmpty($haystack): void
+    {
+        self::assertCountAtLeast(1, $haystack);
     }
 
     /**
@@ -1108,5 +1148,25 @@ class TestCaseBase extends TestCase
             /** @noinspection PhpDeprecationInspection, PhpUnitDeprecatedCallsIn10VersionInspection */
             Assert::assertDirectoryNotExists($directory, $message);
         }
+    }
+
+    private const VERY_LONG_STRING_BASE_PREFIX = '<very long string prefix';
+    private const VERY_LONG_STRING_BASE_SUFFIX = 'very long string suffix>';
+
+    /**
+     * @param positive-int $length
+     *
+     * @return string
+     */
+    public static function generateVeryLongString(int $length): string
+    {
+        $midLength = $length - (strlen(self::VERY_LONG_STRING_BASE_PREFIX) + strlen(self::VERY_LONG_STRING_BASE_SUFFIX));
+        self::assertGreaterThanOrEqual(0, $midLength);
+        return self::VERY_LONG_STRING_BASE_PREFIX . str_repeat('-', $midLength) . self::VERY_LONG_STRING_BASE_SUFFIX;
+    }
+
+    public static function generateMaxLengthKeywordString(): string
+    {
+        return self::generateVeryLongString(/* baseLength */ Constants::KEYWORD_STRING_MAX_LENGTH);
     }
 }

@@ -26,6 +26,7 @@ namespace Elastic\Apm\Impl;
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -35,6 +36,13 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 final class Metadata implements SerializableDataInterface, LoggableInterface
 {
     use LoggableTrait;
+
+    /**
+     * @var ?array<string|bool|int|float|null>
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.2.0/docs/spec/metadata.json#L32C10-L32C16
+     */
+    public $labels = null;
 
     /**
      * @var ProcessData
@@ -65,6 +73,9 @@ final class Metadata implements SerializableDataInterface, LoggableInterface
     {
         $result = [];
 
+        if ($this->labels !== null && !ArrayUtil::isEmpty($this->labels)) {
+            SerializationUtil::addNameValue('labels', (object)$this->labels, /* ref */ $result);
+        }
         SerializationUtil::addNameValue('process', $this->process, /* ref */ $result);
         SerializationUtil::addNameValue('service', $this->service, /* ref */ $result);
         SerializationUtil::addNameValue('system', $this->system, /* ref */ $result);
