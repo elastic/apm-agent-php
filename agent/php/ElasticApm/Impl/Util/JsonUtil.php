@@ -54,23 +54,4 @@ final class JsonUtil
         }
         return $encodedData;
     }
-
-    /**
-     * @param string $encodedData
-     * @param bool   $asAssocArray
-     *
-     * @return mixed
-     */
-    public static function decode(string $encodedData, bool $asAssocArray)
-    {
-        $decodedData = json_decode($encodedData, /* assoc: */ $asAssocArray);
-        if ($decodedData === null && ($encodedData !== 'null')) {
-            throw new JsonException(
-                'json_decode() failed.'
-                . ' json_last_error_msg(): ' . json_last_error_msg() . '.'
-                . ' encodedData: `' . $encodedData . '\''
-            );
-        }
-        return $decodedData;
-    }
 }

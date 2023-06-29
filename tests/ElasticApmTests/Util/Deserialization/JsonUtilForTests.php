@@ -27,6 +27,7 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ElasticApmTests\Util\JsonUtilForTests as JsonUtilForTestsAlias;
 use PHPUnit\Framework\Constraint\IsType;
 use PHPUnit\Framework\TestCase;
 
@@ -46,7 +47,7 @@ final class JsonUtilForTests
      */
     public static function prettyFormat(string $inputJson): string
     {
-        return JsonUtil::encode(JsonUtil::decode($inputJson, /* asAssocArray */ true), /* prettyPrint: */ true);
+        return JsonUtil::encode(JsonUtilForTestsAlias::decode($inputJson, /* asAssocArray */ true), /* prettyPrint: */ true);
     }
 
     /**

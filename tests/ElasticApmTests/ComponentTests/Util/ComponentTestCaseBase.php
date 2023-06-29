@@ -564,4 +564,12 @@ class ComponentTestCaseBase extends TestCaseBase
         // Enable span stack trace collection for span with any duration
         $appCodeParams->setAgentOption(OptionNames::SPAN_STACK_TRACE_MIN_DURATION, 0);
     }
+
+    protected static function setConfigIfNotNull(MixedMap $testArgs, string $optName, AppCodeHostParams $appCodeParams): void
+    {
+        $optVal = $testArgs->getNullableString($optName);
+        if ($optVal !== null) {
+            $appCodeParams->setAgentOption($optName, $optVal);
+        }
+    }
 }

@@ -33,9 +33,9 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Log\LoggerFactory;
 use Elastic\Apm\Impl\Log\SinkInterface as LogSinkInterface;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
-use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
 use ElasticApmTests\UnitTests\Util\MockLogPreformattedSink;
+use ElasticApmTests\Util\JsonUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\TestCaseBase;
 
@@ -111,7 +111,7 @@ class IncludeStackTraceTest extends TestCaseBase
             $actualLogStatement->srcCodeFunc
         );
 
-        $actualCtx = JsonUtil::decode($actualLogStatement->messageWithContext, /* asAssocArray */ true);
+        $actualCtx = JsonUtilForTests::decode($actualLogStatement->messageWithContext, /* asAssocArray */ true);
         self::assertIsArray($actualCtx);
         self::assertArrayHasKeyWithValue(LogBackend::NAMESPACE_KEY, __NAMESPACE__, $actualCtx);
         self::assertArrayHasKey(LogBackend::CLASS_KEY, $actualCtx);

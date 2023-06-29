@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
+use ElasticApmTests\Util\JsonUtilForTests;
 use GuzzleHttp\Exception\GuzzleException;
 use PHPUnit\Framework\Assert;
 use Psr\Http\Message\ResponseInterface;
@@ -137,7 +138,7 @@ class HttpServerHandle implements LoggableInterface
 
     public static function deserialize(string $serialized): HttpServerHandle
     {
-        $decodeJson = JsonUtil::decode($serialized, /* asAssocArray: */ true);
+        $decodeJson = JsonUtilForTests::decode($serialized, /* asAssocArray: */ true);
         Assert::assertIsArray($decodeJson);
 
         $getDecodedIntValue = function (string $propName) use ($decodeJson): int {

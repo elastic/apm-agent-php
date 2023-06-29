@@ -26,12 +26,13 @@ namespace ElasticApmTests\Util\Deserialization;
 use Closure;
 use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\MetricSet;
-use Elastic\Apm\Impl\Util\JsonUtil;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\ErrorDto;
+use ElasticApmTests\Util\JsonUtilForTests;
 use ElasticApmTests\Util\MetadataValidator;
 use ElasticApmTests\Util\MetricSetValidator;
 use ElasticApmTests\Util\SpanDto;
+use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\TransactionDto;
 
 trait SerializedEventSinkTrait
@@ -40,27 +41,75 @@ trait SerializedEventSinkTrait
     public $shouldValidateAgainstSchema = true;
 
     /**
+     * @param mixed $input
+     *
+     * @return mixed
+     */
+    public static function convertObjectToStringKeyArrayRecursively($input)
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        if (is_array($input)) {
+            $dbgCtx->pushSubScope();
+            foreach ($input as $arrKey => $arrValue) {
+                $input[$arrKey] = self::convertObjectToStringKeyArrayRecursively($arrValue);
+            }
+            $dbgCtx->popSubScope();
+            return $input;
+        }
+
+        if (!is_object($input)) {
+            return $input;
+        }
+
+        $allKeysAreStrings = true;
+        $dbgCtx->pushSubScope();
+        foreach (get_object_vars($input) as $propKey => $propValue) {
+            $dbgCtx->add(['propKey' => $propKey, 'propValue' => $propValue]);
+            if (is_numeric($propKey)) {
+                $allKeysAreStrings = false;
+            }
+
+            $input->{$propKey} = self::convertObjectToStringKeyArrayRecursively($propValue);
+        }
+        $dbgCtx->popSubScope();
+
+        if (!$allKeysAreStrings) {
+            return $input;
+        }
+
+        $asArray = [];
+        $dbgCtx->pushSubScope();
+        foreach (get_object_vars($input) as $propKey => $propValue) {
+            $dbgCtx->add(['propKey' => $propKey, 'propValue' => $propValue]);
+            $asArray[$propKey] = $propValue;
+        }
+        $dbgCtx->popSubScope();
+        return $asArray;
+    }
+
+    /**
      * @template T of object
      *
-     * @param string                          $serializedData
-     * @param Closure(string): void           $validateAgainstSchema
+     * @param string                   $serializedData
+     * @param Closure(string): void    $validateSerializedData
      * @param Closure(array<mixed>): T $deserialize
-     * @param Closure(T): void                $assertValid
+     * @param Closure(T): void         $assertValidDeserializedData
      *
      * @return T
      */
-    private static function validateAndDeserialize(string $serializedData, Closure $validateAgainstSchema, Closure $deserialize, Closure $assertValid)
+    private static function validateAndDeserialize(string $serializedData, Closure $validateSerializedData, Closure $deserialize, Closure $assertValidDeserializedData)
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, ['serializedData' => $serializedData]);
 
-        /** @var array<string, mixed> $decodedJson */
-        $decodedJson = JsonUtil::decode($serializedData, /* asAssocArray */ true);
+        $decodedJson = JsonUtilForTests::decode($serializedData, /* asAssocArray */ true);
         $dbgCtx->add(['decodedJson' => $decodedJson]);
+        TestCaseBase::assertIsArray($decodedJson);
 
-        $validateAgainstSchema($serializedData);
+        $validateSerializedData($serializedData);
         $deserializedData = $deserialize($decodedJson);
         $dbgCtx->add(['deserializedData' => $deserializedData]);
-        $assertValid($deserializedData);
+        $assertValidDeserializedData($deserializedData);
         return $deserializedData;
     }
 

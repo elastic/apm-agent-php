@@ -31,6 +31,7 @@ use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\ExternalTestData;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\FileUtilForTests;
+use ElasticApmTests\Util\JsonUtilForTests;
 use JsonSchema\Constraints\Constraint;
 use JsonSchema\Validator;
 use PHPUnit\Framework\TestCase;
@@ -160,7 +161,7 @@ final class ServerApiSchemaValidator
         bool $allowAdditionalProperties
     ): void {
         $validator = new Validator();
-        $deserializedRawData = JsonUtil::decode($serializedData, /* asAssocArray */ false);
+        $deserializedRawData = JsonUtilForTests::decode($serializedData, /* asAssocArray */ false);
         $validator->validate(
             $deserializedRawData,
             (object)($this->loadSchema(
@@ -224,7 +225,7 @@ final class ServerApiSchemaValidator
     {
         $fileContents = file_get_contents($absolutePath);
         TestCase::assertNotFalse($fileContents, "Failed to load schema from `$absolutePath'");
-        $decodedSchema = JsonUtil::decode($fileContents, /* asAssocArray */ true);
+        $decodedSchema = JsonUtilForTests::decode($fileContents, /* asAssocArray */ true);
         self::resolveRefs($absolutePath, /* ref */ $decodedSchema);
         return $decodedSchema;
     }

@@ -21,16 +21,25 @@
 
 declare(strict_types=1);
 
-namespace ElasticApmTests\Util;
+namespace ElasticApmTests\UnitTests\UtilTests;
 
-class TransactionContextExpectations extends ExecutionSegmentContextExpectations
+use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use ElasticApmTests\Util\AssertMessageStack;
+use ElasticApmTests\Util\JsonUtilForTests;
+use ElasticApmTests\Util\TestCaseBase;
+
+class JsonSerializationTest extends TestCaseBase
 {
-    /** @var Optional<?array<string|bool|int|float|null>> */
-    public $custom;
-
-    public function __construct()
+    public function testMapWithNumericKeys(): void
     {
-        parent::__construct();
-        $this->custom = new Optional();
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+
+        $original = ['0' => 0];
+        $serialized = SerializationUtil::serializeAsJson((object)$original);
+        $dbgCtx->add(['serialized' => $serialized]);
+        self::assertSame(1, preg_match('/^\s*{\s*"0"\s*:\s*0\s*}\s*$/', $serialized));
+        $decodedJson = JsonUtilForTests::decode($serialized, /* asAssocArray */ true);
+        self::assertIsArray($decodedJson);
+        self::assertEqualMaps($original, $decodedJson);
     }
 }

@@ -71,10 +71,7 @@ final class SamplingComponentTest extends ComponentTestCaseBase
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams) use ($transactionSampleRateOptVal): void {
                 if ($transactionSampleRateOptVal !== null) {
-                    $appCodeParams->setAgentOption(
-                        OptionNames::TRANSACTION_SAMPLE_RATE,
-                        strval($transactionSampleRateOptVal)
-                    );
+                    $appCodeParams->setAgentOption(OptionNames::TRANSACTION_SAMPLE_RATE, strval($transactionSampleRateOptVal));
                 }
             }
         );

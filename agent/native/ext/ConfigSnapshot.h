@@ -51,6 +51,7 @@ struct ConfigSnapshot
     bool disableSend;
     bool enabled;
     String environment;
+    String globalLabels;
     String hostname;
     InternalChecksLevel internalChecksLevel;
     String logFile;

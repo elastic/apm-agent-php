@@ -1322,9 +1322,7 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
         //
         $this->setUpTestEnv(
             function (TracerBuilderForTests $builder) use ($testArgs): void {
-                if (($optVal = $testArgs->getNullableString(OptionNames::STACK_TRACE_LIMIT)) !== null) {
-                    $builder->withConfig(OptionNames::STACK_TRACE_LIMIT, $optVal);
-                }
+                self::setConfigIfNotNull($testArgs, OptionNames::STACK_TRACE_LIMIT, $builder);
             }
         );
 
@@ -1402,9 +1400,7 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
         $this->setUpTestEnv(
             function (TracerBuilderForTests $builder) use ($testArgs): void {
                 $builder->withConfig(OptionNames::PROFILING_INFERRED_SPANS_MIN_DURATION, '0');
-                if (($optVal = $testArgs->getNullableString(OptionNames::SPAN_STACK_TRACE_MIN_DURATION)) !== null) {
-                    $builder->withConfig(OptionNames::SPAN_STACK_TRACE_MIN_DURATION, $optVal);
-                }
+                self::setConfigIfNotNull($testArgs, OptionNames::SPAN_STACK_TRACE_MIN_DURATION, $builder);
             }
         );
 
