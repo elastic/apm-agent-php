@@ -31,7 +31,6 @@ pipeline {
     choice(name: 'AGENT_LOG_LEVEL', choices: LOG_LEVELS, description: "Agent's log level")
     choice(name: 'TESTS_LOG_LEVEL', choices: LOG_LEVELS, description: "Tests' log level")
     booleanParam(name: 'INCLUDE_TESTING', defaultValue: true, description: 'Should the testing stages be included?')
-    booleanParam(name: 'ADD_LIBUNWIND_DEPENDENCY', defaultValue: false, description: 'Should Alpine (.apk) build have dependency on libunwind (to be able to log C call stack on crash)?')
   }
   stages {
     stage('Initializing'){
@@ -149,7 +148,7 @@ pipeline {
                     // When running in the CI with multiple parallel stages
                     // the access could be considered as a DDOS attack.
                     retryWithSleep(retries: 3, seconds: 45, backoff: true) {
-                        sh script: "BUILD_ARCHITECTURE=${BUILD_ARCHITECTURE} PHP_VERSION=${PHP_VERSION} ADD_LIBUNWIND_DEPENDENCY=${params.ADD_LIBUNWIND_DEPENDENCY} make -f .ci/Makefile prepare", label: 'prepare docker image'
+                        sh script: "BUILD_ARCHITECTURE=${BUILD_ARCHITECTURE} PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile prepare", label: 'prepare docker image'
                     }
                     unstash "built-extensions-${BUILD_ARCHITECTURE}"
                     sh script: "BUILD_ARCHITECTURE=${BUILD_ARCHITECTURE} PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile run-phpt-tests", label: 'run-phpt-tests'
@@ -604,7 +603,6 @@ def addEnvVarsFromParams(def withEnvList) {
     if (params.TESTS_LOG_LEVEL != null && !params.TESTS_LOG_LEVEL.equals(LOG_LEVEL_NOT_SET)) {
       withEnvList.add('ELASTIC_APM_PHP_TESTS_LOG_LEVEL=' + params.TESTS_LOG_LEVEL)
     }
-    withEnvList.add('ADD_LIBUNWIND_DEPENDENCY=' + params.ADD_LIBUNWIND_DEPENDENCY)
     return withEnvList
 }
 

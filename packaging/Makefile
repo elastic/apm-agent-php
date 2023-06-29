@@ -102,7 +102,7 @@ tar-info:  ## Show the tar package metadata
 prepare-apk:  ## Build the docker image for the apk smoke tests
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
 	cd $(PWD)/packaging/test/alpine ;\
-	docker build --build-arg PHP_VERSION=$(PHP_VERSION) --build-arg ADD_LIBUNWIND_DEPENDENCY=${ADD_LIBUNWIND_DEPENDENCY} -t $@ . || exit 1 ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . || exit 1 ;\
 	cd -
 	@echo "::endgroup::"
 

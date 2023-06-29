@@ -183,7 +183,6 @@ services:
             dockerfile: Dockerfile
             args:
                 - PHP_VERSION=8.2
-                - ADD_LIBUNWIND_DEPENDENCY=
     apk-php81:
         image: elasticobservability/apm-agent-php-dev:packages-test-apk-php-8.1-0.0.1
         build:
@@ -191,7 +190,6 @@ services:
             dockerfile: Dockerfile
             args:
                 - PHP_VERSION=8.1
-                - ADD_LIBUNWIND_DEPENDENCY=
     apk-php80:
         image: elasticobservability/apm-agent-php-dev:packages-test-apk-php-8.0-0.0.1
         build:
@@ -199,7 +197,6 @@ services:
             dockerfile: Dockerfile
             args:
                 - PHP_VERSION=8.0
-                - ADD_LIBUNWIND_DEPENDENCY=
     apk-php74:
         image: elasticobservability/apm-agent-php-dev:packages-test-apk-php-7.4-0.0.1
         build:
@@ -207,7 +204,6 @@ services:
             dockerfile: Dockerfile
             args:
                 - PHP_VERSION=7.4
-                - ADD_LIBUNWIND_DEPENDENCY=
     apk-php73:
         image: elasticobservability/apm-agent-php-dev:packages-test-apk-php-7.3-0.0.1
         build:
@@ -215,7 +211,6 @@ services:
             dockerfile: Dockerfile
             args:
                 - PHP_VERSION=7.3
-                - ADD_LIBUNWIND_DEPENDENCY=
     apk-php72:
         image: elasticobservability/apm-agent-php-dev:packages-test-apk-php-7.2-0.0.1
         build:
@@ -223,4 +218,3 @@ services:
             dockerfile: Dockerfile
             args:
                 - PHP_VERSION=7.2
-                - ADD_LIBUNWIND_DEPENDENCY=
