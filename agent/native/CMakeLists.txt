@@ -31,7 +31,7 @@ if(EXISTS /etc/alpine-release)
 endif()
 
 if ((NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Linux") OR (NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64"))
-     message(FATAL_ERROR "System or architecure not supported")
+     message(FATAL_ERROR "System or architecture not supported")
 endif()
 
 include(elastic_set_default_build_options)
