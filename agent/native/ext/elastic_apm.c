@@ -668,6 +668,16 @@ PHP_FUNCTION( elastic_apm_ast_instrumentation_direct_call )
 }
 /* }}} */
 
+ZEND_BEGIN_ARG_INFO_EX( elastic_apm_get_version_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 0 )
+ZEND_END_ARG_INFO()
+/* {{{ elastic_apm_get_version(): string
+ */
+PHP_FUNCTION( elastic_apm_get_version )
+{
+    RETURN_STRING( PHP_ELASTIC_APM_VERSION );
+}
+/* }}} */
+
 /* {{{ arginfo
  */
 ZEND_BEGIN_ARG_INFO(elastic_apm_no_paramters_arginfo, 0)

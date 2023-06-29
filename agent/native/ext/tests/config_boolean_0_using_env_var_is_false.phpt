@@ -14,6 +14,8 @@ elasticApmAssertSame("getenv('ELASTIC_APM_ENABLED')", getenv('ELASTIC_APM_ENABLE
 
 elasticApmAssertSame('elastic_apm_is_enabled()', elastic_apm_is_enabled(), false);
 
+elasticApmAssertSame('elastic_apm_get_version()', elastic_apm_get_version(), 'x' . \Elastic\Apm\ElasticApm::VERSION);
+
 echo 'Test completed'
 ?>
 --EXPECT--
