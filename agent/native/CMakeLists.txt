@@ -60,6 +60,19 @@ endfunction()
 
 
 message(STATUS "Creating dependencies from local directories")
+
+# build pkgconf from local reciepe because default one rely on unstable sources host, we're fetching from github tag
+elastic_conan_create(
+    PATH ${CMAKE_SOURCE_DIR}/building/dependencies/pkgconf
+    REFERENCE pkgconf/1.9.3@elastic/local
+    PROFILE ${_CONAN_PROFILE}
+    )
+
+elastic_conan_alias(
+    REFERENCE pkgconf/1.9.3
+    TARGET pkgconf/1.9.3@elastic/local
+)
+
 foreach(_php_version ${_supported_php_versions})
     elastic_conan_create(
         PATH ${CMAKE_SOURCE_DIR}/building/dependencies/php${_php_version}
@@ -67,6 +80,8 @@ foreach(_php_version ${_supported_php_versions})
         PROFILE ${_CONAN_PROFILE}
         )
 endforeach()
+
+
 
 # TODO implement multiarray with mapping of library->version
 

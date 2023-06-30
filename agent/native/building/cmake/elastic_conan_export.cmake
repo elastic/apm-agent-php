@@ -30,3 +30,14 @@ function(elastic_conan_create)
                     COMMAND_ERROR_IS_FATAL ANY
     )
 endfunction()
+
+
+function(elastic_conan_alias)
+    set(oneValueArgs PATH REFERENCE TARGET)
+    cmake_parse_arguments(_elastic_conan_alias "" "${oneValueArgs}" "" ${ARGN} )
+
+    message(STATUS "${CONAN_CMD} alias ${_elastic_conan_alias_REFERENCE} ${_elastic_conan_alias_TARGET}")
+    execute_process(COMMAND ${CONAN_CMD} alias ${_elastic_conan_alias_REFERENCE} ${_elastic_conan_alias_TARGET}
+                    COMMAND_ERROR_IS_FATAL ANY
+    )
+endfunction()
