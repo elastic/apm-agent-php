@@ -31,7 +31,6 @@ pipeline {
     choice(name: 'AGENT_LOG_LEVEL', choices: LOG_LEVELS, description: "Agent's log level")
     choice(name: 'TESTS_LOG_LEVEL', choices: LOG_LEVELS, description: "Tests' log level")
     booleanParam(name: 'INCLUDE_TESTING', defaultValue: true, description: 'Should the testing stages be included?')
-    booleanParam(name: 'ADD_LIBUNWIND_DEPENDENCY', defaultValue: false, description: 'Should Alpine (.apk) build have dependency on libunwind (to be able to log C call stack on crash)?')
   }
   stages {
     stage('Initializing'){
@@ -84,7 +83,82 @@ pipeline {
             }
           }
         }
-        stage('Build binaries and basic testing') {
+        stage('Build binaries') {
+          options { skipDefaultCheckout() }
+          when {
+            beforeAgent true
+            expression { return env.ONLY_DOCS == "false" }
+          }
+          failFast false
+          matrix {
+            agent { label 'ubuntu-18.04 && immutable' }
+            axes {
+              axis {
+                name 'BUILD_ARCHITECTURE'
+                values 'linux-x86-64', 'linuxmusl-x86-64'
+              }
+            }
+
+            stages {
+              stage('Build PHP extension') {
+                steps {
+                  initWorkspace(context: "Build-${BUILD_ARCHITECTURE}") {
+                    sh script: "BUILD_ARCHITECTURE=${BUILD_ARCHITECTURE} make -f .ci/Makefile build", label: 'build'
+                  }
+                  withGithubNotify(context: "Build-${BUILD_ARCHITECTURE}") {
+                    dir("${BASE_DIR}"){
+                      stash includes: "agent/native/_build/${BUILD_ARCHITECTURE}-release/ext/elastic_apm-*", name: "built-extensions-${BUILD_ARCHITECTURE}"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        stage('PHP tests of extension') {
+          options { skipDefaultCheckout() }
+          when {
+            beforeAgent true
+            expression { return env.ONLY_DOCS == "false" }
+          }
+          failFast false
+          matrix {
+            agent { label 'ubuntu-18.04 && immutable' }
+            axes {
+              axis {
+                name 'BUILD_ARCHITECTURE'
+                values 'linux-x86-64', 'linuxmusl-x86-64'
+              }
+              axis {
+                name 'PHP_VERSION'
+                // Make sure list of PHP versions supported by the Elastic APM PHP Agent is in sync.
+                // See the comment in .ci/shared.sh
+                values '7.2', '7.3', '7.4', '8.0', '8.1', '8.2'
+              }
+            }
+
+            stages {
+              stage('Execute phpt tests') {
+                when {
+                  beforeAgent true
+                  expression { return params.INCLUDE_TESTING }
+                }
+                steps {
+                  initWorkspace(context: "PHPT-${PHP_VERSION}", tab: "tests") {
+                    // When running in the CI with multiple parallel stages
+                    // the access could be considered as a DDOS attack.
+                    retryWithSleep(retries: 3, seconds: 45, backoff: true) {
+                        sh script: "BUILD_ARCHITECTURE=${BUILD_ARCHITECTURE} PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile prepare", label: 'prepare docker image'
+                    }
+                    unstash "built-extensions-${BUILD_ARCHITECTURE}"
+                    sh script: "BUILD_ARCHITECTURE=${BUILD_ARCHITECTURE} PHP_VERSION=${PHP_VERSION} make -f .ci/Makefile run-phpt-tests", label: 'run-phpt-tests'
+                  }
+                }
+              }
+            }
+          }
+        }
+        stage('Static analysis and tests') {
           options { skipDefaultCheckout() }
           when {
             beforeAgent true
@@ -99,61 +173,42 @@ pipeline {
                 // Make sure list of PHP versions supported by the Elastic APM PHP Agent is in sync.
                 // See the comment in .ci/shared.sh
                 values '7.2', '7.3', '7.4', '8.0', '8.1', '8.2'
-              }
+              } 
               axis {
                 name 'DOCKERFILE'
                 values 'Dockerfile', 'Dockerfile.alpine'
               }
             }
             stages {
-              stage('Build PHP extension') {
-                steps {
-                  echo "params.INCLUDE_TESTING: ${params.INCLUDE_TESTING}"
-                  echo "params.ADD_LIBUNWIND_DEPENDENCY: ${params.ADD_LIBUNWIND_DEPENDENCY}"
-                  initWorkspace(context: "Build-${PHP_VERSION}") {
-                    // When running in the CI with multiple parallel stages
-                    // the access could be considered as a DDOS attack.
-                    retryWithSleep(retries: 3, seconds: 5, backoff: true) {
-                        sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} ADD_LIBUNWIND_DEPENDENCY=${params.ADD_LIBUNWIND_DEPENDENCY} make -f .ci/Makefile prepare", label: 'prepare docker image'
-                    }
-                    sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile build", label: 'build'
-                  }
-                }
-              }
               stage('Static analysis and unit tests') {
                 when {
                   beforeAgent true
                   expression { return params.INCLUDE_TESTING }
                 }
                 steps {
+                  echo "params.INCLUDE_TESTING: ${params.INCLUDE_TESTING}"
                   echo "params.AGENT_LOG_LEVEL: ${params.AGENT_LOG_LEVEL}"
                   echo "params.AGENT_LOG_LEVEL == null: " + (params.AGENT_LOG_LEVEL == null)
                   echo "params.TESTS_LOG_LEVEL: ${params.TESTS_LOG_LEVEL}"
                   echo "params.TESTS_LOG_LEVEL == null: " + (params.TESTS_LOG_LEVEL == null)
                   echo "addEnvVarsFromParams([]): " + addEnvVarsFromParams([])
-                  withGithubNotify(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: 'tests') {
+
+                  initWorkspace(context: "Static-Check-Unit-Tests-${PHP_VERSION}", tab: "tests") {
                     withEnv(addEnvVarsFromParams([])) {
                       echo "env.ELASTIC_APM_LOG_LEVEL: ${env.ELASTIC_APM_LOG_LEVEL}"
                       echo "env.TESTS_LOG_LEVEL: ${env.TESTS_LOG_LEVEL}"
-                      dir("${BASE_DIR}"){
-                        sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
+
+                      retryWithSleep(retries: 3, seconds: 45, backoff: true) {
+                          sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile prepare", label: 'prepare docker image'
                       }
+
+                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} make -f .ci/Makefile static-check-unit-test", label: 'static-check-unit-test'
                     }
                   }
                 }
                 post {
                   always {
                     junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/*junit.xml")
-                  }
-                }
-              }
-              stage('Build parts for packages') {
-                steps {
-                  withGithubNotify(context: "Generate-For-Package-${PHP_VERSION}") {
-                    dir("${BASE_DIR}"){
-                      sh script: "PHP_VERSION=${PHP_VERSION} DOCKERFILE=${DOCKERFILE} ADD_LIBUNWIND_DEPENDENCY=${params.ADD_LIBUNWIND_DEPENDENCY} make -f .ci/Makefile generate-for-package", label: 'generate-for-package'
-                      stash includes: 'src/ext/modules/*.so', name: "generate-for-package-${PHP_VERSION}-${DOCKERFILE}"
-                    }
                   }
                 }
               }
@@ -374,10 +429,9 @@ pipeline {
 */
 def packageGeneration(def args = [:]) {
     def local = args.get('local', false)
-    args.versions.each { version ->
-      unstash "generate-for-package-${version}-Dockerfile"
-      unstash "generate-for-package-${version}-Dockerfile.alpine"
-    }
+    unstash "built-extensions-linux-x86-64"
+    unstash "built-extensions-linuxmusl-x86-64"
+
     if (local) {
       // VERSION=1.0.0 is needed to override the current version.
       // current version is >1.0.0, and this is the way we can
@@ -387,7 +441,8 @@ def packageGeneration(def args = [:]) {
       sh script: "mv build/packages build/local", label: 'prepare-local-upgrade-agent'
     } else {
       // Archive the so files to be downloaded if possible.
-      archiveArtifacts(allowEmptyArchive: true, artifacts: 'src/ext/modules/*.so')
+      archiveArtifacts(allowEmptyArchive: true, artifacts: 'agent/native/_build/*-release/ext/elastic_apm-*')
+
       sh script: "make -C packaging package", label: 'package'
       sh script: "make -C packaging info", label: 'package info'
       // checksum files are regenerated by the signing component in the internal-ci instance.
@@ -419,8 +474,10 @@ def packageWorkspace(def args = [:], Closure body){
       unstash (args.shouldUseSignedBinaries ? env.SIGNED_ARTIFACTS : 'package')
       // When running in the CI sometimes the docker build might fail for
       // some environmental issues, let's retry
-      retryWithSleep(retries: 3, seconds: 5, backoff: true) {
-        sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging ${args.prepareGoal}", label: "${args.prepareGoal} for ${PHP_VERSION}"
+      retryWithSleep(retries: 3, seconds: 45, backoff: true) {
+        if (args.prepareGoal != null) {
+          sh script: "PHP_VERSION=${PHP_VERSION} make -C packaging ${args.prepareGoal}", label: "${args.prepareGoal} for ${PHP_VERSION}"
+        }
       }
       body()
     }
@@ -546,7 +603,6 @@ def addEnvVarsFromParams(def withEnvList) {
     if (params.TESTS_LOG_LEVEL != null && !params.TESTS_LOG_LEVEL.equals(LOG_LEVEL_NOT_SET)) {
       withEnvList.add('ELASTIC_APM_PHP_TESTS_LOG_LEVEL=' + params.TESTS_LOG_LEVEL)
     }
-    withEnvList.add('ADD_LIBUNWIND_DEPENDENCY=' + params.ADD_LIBUNWIND_DEPENDENCY)
     return withEnvList
 }
 
@@ -574,7 +630,6 @@ def buildLabel(def args = [:]) {
 def lifecycleTesting(def args = [:]) {
   runTestingCommand(
     args + [
-      prepareGoal: "prepare-${args.linuxPackageType}",
       testingCommand: "make -C packaging ${args.linuxPackageType}-lifecycle-testing"
     ]
   )
@@ -583,7 +638,6 @@ def lifecycleTesting(def args = [:]) {
 def lifecycleTestingOnProdServerKind(def args = [:]) {
   runTestingCommand(
     args + [
-      prepareGoal: "prepare-${args.linuxPackageType}-${args.prodServerKind}",
       testingCommand: "make -C packaging ${args.linuxPackageType}-lifecycle-testing-in-${args.prodServerKind}",
     ]
   )
@@ -592,7 +646,6 @@ def lifecycleTestingOnProdServerKind(def args = [:]) {
 def phpUpgradeTesting(def args = [:]) {
   runTestingCommand(
     args + [
-      prepareGoal: "prepare-${args.linuxPackageType}",
       testingCommand: "PHP_VERSION=${args.phpVersion} make -C packaging ${args.linuxPackageType}-php-upgrade-testing"
     ]
   )

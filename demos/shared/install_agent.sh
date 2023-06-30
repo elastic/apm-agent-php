@@ -42,8 +42,8 @@ install_local_package_from_url () {
                 ;;
     esac
 
-    grep PHP_ELASTIC_APM_VERSION "/opt/elastic/apm-agent-php/src/ext/elastic_apm_version.h"
-    grep VERSION "/opt/elastic/apm-agent-php/src/ElasticApm/ElasticApm.php"
+    grep PHP_ELASTIC_APM_VERSION "/opt/elastic/apm-agent-php/agent/native/ext/elastic_apm_version.h"
+    grep VERSION "/opt/elastic/apm-agent-php/agent/php/ElasticApm/ElasticApm.php"
 }
 
 detect_and_install () {

@@ -45,3 +45,6 @@ z_local*
 
 # Temporary files
 _TEMP/
+
+# Native build folder
+agent/native/_build/
