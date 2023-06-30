@@ -157,6 +157,8 @@ jobs:
     needs:
       - build-packages
       - generate-test-packages-matrix
+      - static-checks-unit-tests
+      - phpt-tests
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 20
