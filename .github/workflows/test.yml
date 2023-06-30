@@ -122,6 +122,8 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build
+      - static-checks-unit-tests
+      - phpt-tests
     steps:
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
