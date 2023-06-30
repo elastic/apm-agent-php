@@ -1,41 +1,58 @@
 # Local development
-
-## Build/package
+## Build and package
 
 ### Using the docker approach
 
 If you don't want to install any of the dependencies you might need to compile and install the library then you can use the Dockerfile.
 
 ```bash
-## To prepare the build docker container
+## To compile the library for all supported PHP releases for glibc Linux distributions
+BUILD_ARCHITECTURE=linux-x86-64 make -f .ci/Makefile build
+
+## To compile the library for all supported PHP releases for musl libc Linux distributions
+BUILD_ARCHITECTURE=linuxmusl-x86-64 make -f .ci/Makefile build
+
+## To prepare the docker container for testing
 PHP_VERSION=7.2 make -f .ci/Makefile prepare
 
-## To compile the library
-PHP_VERSION=7.2 make -f .ci/Makefile build
+## To run PHP tests of native extension (phpt)
+BUILD_ARCHITECTURE=linux-x86-64 PHP_VERSION=7.2  make -f .ci/Makefile run-phpt-tests
 
 ## To run the unit test and static check
 PHP_VERSION=7.2 make -f .ci/Makefile static-check-unit-test
 
-## To generate the agent extension with the existing PHP API
-PHP_VERSION=7.2 make -f .ci/Makefile generate-for-package
-
 ## To run the component tests
-PHP_VERSION=7.2 make -f .ci/Makefile component-test
+BUILD_ARCHITECTURE=linux-x86-64 PHP_VERSION=7.2 make -f .ci/Makefile component-test
 
 ## To release given the GITHUB_TOKEN and TAG_NAME, it creates a draft release
 GITHUB_TOKEN=**** TAG_NAME=v1.0.0 make -f .ci/Makefile draft-release
-
-## To generate the agent extension with the existing PHP API for alpine
-PHP_VERSION=7.2 DOCKERFILE=Dockerfile.alpine make -f .ci/Makefile generate-for-package
 
 ## Help goal will provide further details
 make -f .ci/Makefile help
 ```
 
+
 _NOTE_: 
 
 * `PHP_VERSION` can be set to a different PHP version.
-* Alpine specific binaries can be generated if using `DOCKERFILE=Dockerfile.alpine`
+* For testing of Alpine specific binaries you must run "prepare" task with `DOCKERFILE=Dockerfile.alpine` environment variable set to build proper docker image. 
+
+### Local development with direct calls to cmake inside docker container
+\
+If you want to make local development easier, you can call build directly via docker commands.\
+All you need to do is mount the path with the sources to the `/source` directory inside the container.\
+\
+To further speed up build, it is a good idea to mount the local conan cache so that it uses a folder outside the container. The location is arbitrary, but should preferably point outside the source folder. This is optional, if you omit it, conan will place the cache inside the container in the `/home/build/.conan` folder.
+\
+Make sure to always use the latest version of the image you are using for the build. You can find the current version inside the `.ci/Makefile` in `build:` section
+
+```bash
+# this will build agent for linux-x86-64
+docker run -v "/path/to/your/apm-agent-php:/source"  -v "/path/to/your/conan:/home/build/.conan:rw"  -w /source/agent/native elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-linux-x86-64-0.0.2  sh -c  "cmake --preset linux-x86-64-release && cmake --build --preset linux-x86-64-release"
+# this will build agent for linuxmusl-x86-64
+docker run -v "/path/to/your/apm-agent-php:/source"  -v "/path/to/your/conan:/home/build/.conan:rw"  -w /source/agent/native elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-linuxmusl-x86-64-0.0.2  sh -c  "cmake --preset linuxmusl-x86-64-release && cmake --build --preset linuxmusl-x86-64-release"
+
+```
 
 To generate the packages then you can use the `packaging/Dockerfile`, see the below commands:
 
@@ -98,3 +115,59 @@ Jenkins build parameters can be used to run build+test CI pipeline with a custom
 - Go to `Build with Parameters`
 - Select log level for agent and/or tests' infrastructure
 - Click `Build`
+
+
+# Updating docker images used for building and testing
+## Building and updating docker images used to build the agent extension
+
+If you want to update images used to build native extension, you need to go into `agent/native/building/dockerized` folder and modify Dockerfile stored in images folder. In this moment, there are two Dockerfiles:
+`Dockerfile_musl` for Linux x86_64 with musl libc implementation and `Dockerfile_glibc` for all other x86_64 distros with glibc implementation. 
+Then you need to increment image version in `docker-compose.yml`. Remember to update Dockerfiles for all architectures, if needed. To build new images, you just need to call:
+```bash
+docker-compose build
+```
+It will build images for all supported architectures. As a result you should get summary like this:
+```bash
+Successfully tagged elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-linux-x86-64-0.0.1
+Successfully tagged elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-linuxmusl-x86-64-0.0.1
+```
+
+To test freshly built images, you need to udate image version in `build:` task in ```.ci/Makefile``` and run build task described in [Build/package](#build-and-package)
+)
+
+\
+If everything works as you expected, you just need to push new image to dockerhub by calling:
+```bash
+docker push elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-linux-x86-64-0.0.1
+```
+
+## Building and updating docker images used to execute tests
+If you want to update images used for testing, you need to go into `packaging/test` folder and modify Dockerfiles stored in folders:
+|Folder name|Usage|
+|-|-|
+|alpine|Testing of apk packages|
+|centos|Testing of rpm packages|
+|ubuntu|Testing of deb packages|
+|ubuntu/apache|Tesing of deb packages with Apache/mod_php| 
+|ubuntu/fpm|Tesing of deb packages with Apache/php-fpm| 
+
+Then you need to increment image version in `docker-compose.yml`.\
+To build new images, you just need to call:
+```bash
+docker-compose build
+```
+It will build and tag images for all test scenarios. As a result you should get summary like this:
+```bash
+Successfully tagged elasticobservability/apm-agent-php-dev:packages-test-apk-php-7.2-0.0.1
+...
+```
+
+\
+To test freshly built images, you need to udate images version in ```packaging/Makefile```. Note that one particular image can be specified multiple times inside this file. Please check carefully that you have updated all the places where the image has been used
+
+\
+If everything works as you expected, you just need to push new image to dockerhub by calling:
+```bash
+docker push elasticobservability/apm-agent-php-dev:packages-test-apk-php-7.2-0.0.1
+```
+It should be done for all images you modified.

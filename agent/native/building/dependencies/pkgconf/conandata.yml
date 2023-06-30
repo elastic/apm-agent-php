@@ -1,0 +1,8 @@
+version: "1.9.3"
+patches:
+  1.9.3:
+  - patch_file: patches/1.9.3-0003-PKG_CONF_PATH-allow-colon+semicolon-separator.patch
+sources:
+  1.9.3:
+    sha256: e8b637c0dd8ae1decbcc95b24b64795cba81a8e3064fddb4424cacef411e59f9
+    url: https://github.com/pkgconf/pkgconf/archive/refs/tags/pkgconf-1.9.3.tar.gz
