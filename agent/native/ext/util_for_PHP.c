@@ -308,13 +308,19 @@ bool detectOpcacheRestartPending() {
 	zval parameters[1];
 	ZVAL_BOOL(&parameters[0], false);
 
+	int er = EG(error_reporting); // suppress error/warning reporing
+	EG(error_reporting) = 0;
     int result = call_internal_function(NULL, "opcache_get_status", parameters, 1, &rv);
+	EG(error_reporting) = er;
+
     if (result == resultFailure) {
+        ELASTIC_APM_LOG_ERROR("opcache_get_status failure");
         zval_ptr_dtor(&rv);
         return false;
     }
 
     if (Z_TYPE(rv) != IS_ARRAY) {
+        ELASTIC_APM_LOG_WARNING("opcache_get_status failed, rvtype: %d", Z_TYPE(rv));
         zval_ptr_dtor(&rv);
         return false;
     }
