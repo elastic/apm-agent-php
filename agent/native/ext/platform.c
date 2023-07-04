@@ -36,6 +36,8 @@
 #   include <syslog.h>
 #   include <signal.h>
 #   include <errno.h>
+#define __USE_GNU
+#include <dlfcn.h>
 #endif
 
 #if defined( ELASTIC_APM_PLATFORM_HAS_LIBUNWIND )
@@ -378,30 +380,43 @@ void iterateOverCStackTraceLibUnwind( size_t numberOfFramesToSkip, IterateOverCS
     for (;; ++frameIndex)
     {
         // +1 is for this function frame
-        if ( frameIndex >= numberOfFramesToSkip + 1 )
-        {
-            // https://www.nongnu.org/libunwind/man/unw_get_proc_name(3).html
-            int getProcNameRetVal = unw_get_proc_name( &unwindCursor, funcNameBuffer, funcNameBufferSize, &offsetInsideFunc );
+        if ( frameIndex >= numberOfFramesToSkip + 1 ) {
             textOutputStreamRewind( &txtOutStream );
-            switch ( getProcNameRetVal ) // https://www.nongnu.org/libunwind/man/unw_get_proc_name(3).html
-            {
-                case 0: // On successful completion, unw_get_proc_name() returns 0
-                    callback( streamPrintf( &txtOutStream, "%s + 0x%X", funcNameBuffer, (unsigned int)offsetInsideFunc ), callbackCtx );
-                    break;
-                case UNW_EUNSPEC: // An unspecified error occurred.
-                    logErrorCallback( streamPrintf( &txtOutStream, "unw_get_proc_name call failed with return value UNW_EUNSPEC - stopping iteration over call stack" ), callbackCtx );
-                    return;
-                case UNW_ENOINFO: // Libunwind was unable to determine the name of the procedure.
-                    callback( NULL, callbackCtx );
-                    break;
-                case UNW_ENOMEM: // The procedure name is too long to fit in the buffer provided. A truncated version of the name has been returned.
-                    callback( streamPrintf( &txtOutStream, "%s (truncated) + 0x%X", funcNameBuffer, (unsigned int)offsetInsideFunc ), callbackCtx );
-                    break;
-                default:
-                    logErrorCallback( streamPrintf( &txtOutStream, "unw_get_proc_name call failed with an unexpected return value (%d) - stopping iteration over call stack", getProcNameRetVal ), callbackCtx );
-                    return;
+            unw_proc_info_t pi;
+            if (unw_get_proc_info(&unwindCursor, &pi) == 0) {
+                *funcNameBuffer = 0;
+                offsetInsideFunc = 0;
+                int getProcNameRetVal = unw_get_proc_name( &unwindCursor, funcNameBuffer, funcNameBufferSize, &offsetInsideFunc );
+                if (getProcNameRetVal != UNW_ESUCCESS && getProcNameRetVal != -UNW_ENOMEM) {
+                    strcpy(funcNameBuffer, "???");
+                    unw_word_t  pc;
+                    unw_get_reg(&unwindCursor, UNW_REG_IP, &pc);
+                    offsetInsideFunc = pc - pi.start_ip;
+                }
+
+                Dl_info dlInfo;
+                if (dladdr((const void *)pi.gp, &dlInfo)) {
+                    callback( streamPrintf( &txtOutStream, 
+                        "%s(%s+%lx) modbase: %p fstart: %lx fend: %lx fstartrel: %lx rel: %lx\n\t'addr2line  -afCp -e \"%s\" %lx'\n",
+                        dlInfo.dli_fname ? dlInfo.dli_fname : "???",
+                        dlInfo.dli_sname ? dlInfo.dli_sname : funcNameBuffer,
+                        offsetInsideFunc,
+                        dlInfo.dli_fbase,
+                        pi.start_ip,
+                        pi.end_ip,
+                        (void*)pi.start_ip -  dlInfo.dli_fbase,
+                        (void*)pi.start_ip -  dlInfo.dli_fbase + offsetInsideFunc,
+                        dlInfo.dli_fname ? dlInfo.dli_fname : funcNameBuffer,
+                        (void*)pi.start_ip -  dlInfo.dli_fbase + offsetInsideFunc
+                        ), callbackCtx );
+                } else {
+                    callback( streamPrintf( &txtOutStream, "dladdr failed on frame %zu", frameIndex), callbackCtx );
+                }
+            } else {
+                callback( streamPrintf( &txtOutStream, "unw_get_proc_info failed on frame %zu", frameIndex), callbackCtx );
             }
         }
+       
         int unwindStepRetVal = 0;
         ELASTIC_APM_LIBUNWIND_CALL_RETURN_ON_ERROR( unwindStepRetVal = unw_step( &unwindCursor ) );
         if ( unwindStepRetVal == 0 )
