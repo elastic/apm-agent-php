@@ -18,6 +18,7 @@
  */
 
 #include "platform.h"
+#include "elastic_apm_version.h"
 #include <limits.h>
 #include <string.h>
 #include <stdlib.h>
@@ -397,7 +398,7 @@ void iterateOverCStackTraceLibUnwind( size_t numberOfFramesToSkip, IterateOverCS
                 Dl_info dlInfo;
                 if (dladdr((const void *)pi.gp, &dlInfo)) {
                     callback( streamPrintf( &txtOutStream, 
-                        "%s(%s+%lx) modbase: %p fstart: %lx fend: %lx fstartrel: %lx rel: %lx\n\t'addr2line  -afCp -e \"%s\" %lx'\n",
+                        "%s(%s+0x%lx) ModuleBase: %p FuncStart: 0x%lx FuncEnd: 0x%lx FuncStartRelative: 0x%lx FuncOffsetRelative: 0x%lx\n\t'addr2line -afCp -e \"%s\" %lx'\n",
                         dlInfo.dli_fname ? dlInfo.dli_fname : "???",
                         dlInfo.dli_sname ? dlInfo.dli_sname : funcNameBuffer,
                         offsetInsideFunc,
@@ -406,14 +407,14 @@ void iterateOverCStackTraceLibUnwind( size_t numberOfFramesToSkip, IterateOverCS
                         pi.end_ip,
                         (void*)pi.start_ip -  dlInfo.dli_fbase,
                         (void*)pi.start_ip -  dlInfo.dli_fbase + offsetInsideFunc,
-                        dlInfo.dli_fname ? dlInfo.dli_fname : funcNameBuffer,
+                        dlInfo.dli_fname ? dlInfo.dli_fname : "???",
                         (void*)pi.start_ip -  dlInfo.dli_fbase + offsetInsideFunc
                         ), callbackCtx );
                 } else {
-                    callback( streamPrintf( &txtOutStream, "dladdr failed on frame %zu", frameIndex), callbackCtx );
+                    logErrorCallback( streamPrintf( &txtOutStream, "dladdr failed on frame %zu", frameIndex), callbackCtx );
                 }
             } else {
-                callback( streamPrintf( &txtOutStream, "unw_get_proc_info failed on frame %zu", frameIndex), callbackCtx );
+                logErrorCallback( streamPrintf( &txtOutStream, "unw_get_proc_info failed on frame %zu", frameIndex), callbackCtx );
             }
         }
        
@@ -547,7 +548,13 @@ OsSignalHandler g_oldSignalHandler = NULL;
 
 void handleOsSignalLinux( int signalId )
 {
-    ELASTIC_APM_LOG_FROM_CRASH_SIGNAL_HANDLER( "Received signal %d (%s)", signalId, osSignalIdToName( signalId ) );
+#ifdef __ELASTIC_LIBC_MUSL__
+    #define LIBC_IMPL "musl"
+#else
+    #define LIBC_IMPL ""
+#endif
+
+    ELASTIC_APM_LOG_FROM_CRASH_SIGNAL_HANDLER( "Received signal %d (%s). Agent version: " PHP_ELASTIC_APM_VERSION " " LIBC_IMPL, signalId, osSignalIdToName( signalId ) );
     handleOsSignalLinux_writeStackTraceToSyslog();
 
     /* Call the default signal handler to have core dump generated... */
