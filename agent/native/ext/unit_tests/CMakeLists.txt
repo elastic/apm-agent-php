@@ -111,6 +111,8 @@ LIST( APPEND source_files ${src_ext_dir}/time_util.h ${src_ext_dir}/time_util.c 
 LIST( APPEND source_files ${src_ext_dir}/Tracer.h ${src_ext_dir}/Tracer.c )
 LIST( APPEND source_files ${src_ext_dir}/Tracer.h ${src_ext_dir}/util.c )
 
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -pthread -ldl")
+
 IF ( NOT WIN32 )
     ADD_LINK_OPTIONS( -rdynamic )
 ENDIF()

@@ -35,6 +35,13 @@ foreach(_php_version ${_supported_php_versions})
                 "PHP_ATOM_INC"
                 "PHP_ABI=${CMAKE_C_COMPILER_ABI}")
 
+    if(MUSL_BUILD)
+        target_compile_definitions(${_Target}
+                PRIVATE
+                "__ELASTIC_LIBC_MUSL__"
+        )
+    endif()
+
     target_include_directories(${_Target} PUBLIC "${CONAN_INCLUDE_DIRS_PHP-HEADERS-${_php_version}}"
                                                 "${CONAN_INCLUDE_DIRS_PHP-HEADERS-${_php_version}}/ext"
                                                 "${CONAN_INCLUDE_DIRS_PHP-HEADERS-${_php_version}}/main"
@@ -42,7 +49,6 @@ foreach(_php_version ${_supported_php_versions})
                                                 "${CONAN_INCLUDE_DIRS_PHP-HEADERS-${_php_version}}/Zend"
                                                 "${CONAN_INCLUDE_DIRS_LIBCURL}"
                                                 "${CONAN_INCLUDE_DIRS_LIBUNWIND}"
-
                                             )
 
     target_link_libraries(${_Target}
