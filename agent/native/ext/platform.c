@@ -37,8 +37,10 @@
 #   include <syslog.h>
 #   include <signal.h>
 #   include <errno.h>
-#define __USE_GNU
-#include <dlfcn.h>
+#   ifndef __USE_GNU
+#       define __USE_GNU
+#   endif
+#   include <dlfcn.h>
 #endif
 
 #if defined( ELASTIC_APM_PLATFORM_HAS_LIBUNWIND )
