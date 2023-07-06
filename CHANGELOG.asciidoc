@@ -20,6 +20,16 @@ endif::[]
 
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
+[[release-notes-v1.9.1]]
+=== v1.9.1 - 2023/07/06
+[float]
+==== Features
+* Added configuration option: GLOBAL_LABELS {pull}1007[#1007]
+* Introduced new C++ build environment {pull}985[985]
+
+==== Bug fixes
+* Suppress errors and warnings when internally calling opcache_get_status {pull}1013[#1013]
+
 [[release-notes-v1.9.0]]
 === v1.9.0 - 2023/06/22
 [float]
