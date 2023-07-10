@@ -293,6 +293,26 @@ int call_internal_function(zval *object, const char *functionName, zval paramete
 	return result;
 }
 
+bool isScriptRestricedByOpcacheAPI() {
+    bool opcacheEnabled = isPhpRunningAsCliScript() ? INI_BOOL("opcache.enable_cli") : INI_BOOL("opcache.enable");
+    if (!opcacheEnabled) {
+        return false;
+    }
+
+    char *restrict_api = INI_STR("opcache.restrict_api");
+    if (!restrict_api || strlen(restrict_api) == 0) {
+        return false;
+    }
+
+    size_t len = strlen(restrict_api);
+    if (!SG(request_info).path_translated ||
+        strlen(SG(request_info).path_translated) < len ||
+        memcmp(SG(request_info).path_translated, restrict_api, len) != 0) {
+        ELASTIC_APM_LOG_ERROR("Script '%s' is restricted by \"opcache.restrict_api\" configuration directive. Can't perform any opcache API calls.", SG(request_info).path_translated);
+        return true;
+    }
+    return false;
+}
 
 bool detectOpcacheRestartPending() {
     bool opcacheEnabled = isPhpRunningAsCliScript() ? INI_BOOL("opcache.enable_cli") : INI_BOOL("opcache.enable");
