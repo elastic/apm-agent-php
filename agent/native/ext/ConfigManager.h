@@ -122,6 +122,14 @@ enum OptionId
 };
 typedef enum OptionId OptionId;
 
+#ifdef __cplusplus
+inline OptionId &operator++(OptionId &id) {
+        id  = static_cast<OptionId>(static_cast<int>(id) + 1);
+        return id; 
+}
+#endif
+
+
 #define ELASTIC_APM_FOR_EACH_OPTION_ID( optIdVar ) ELASTIC_APM_FOR_EACH_INDEX_EX( OptionId, optIdVar, numberOfOptions )
 
 struct ConfigManager;

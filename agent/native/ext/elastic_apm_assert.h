@@ -154,7 +154,7 @@ bool isValidPtr( const void* ptr )
     ELASTIC_APM_ASSERT \
     ( \
         ((operandType)(lhsOperand)) binaryRelOperator ((operandType)(rhsOperand)) \
-        , #lhsOperand ": %"printfFmtForOperandType ", " #rhsOperand ": %"printfFmtForOperandType \
+        , #lhsOperand ": %" printfFmtForOperandType ", " #rhsOperand ": %" printfFmtForOperandType \
         , ((operandType)(lhsOperand)), ((operandType)(rhsOperand)) \
     ) \
 /**/

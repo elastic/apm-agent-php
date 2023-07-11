@@ -89,6 +89,8 @@ set(dependencies
     "libcurl/8.0.1"
     "cmocka/1.1.5@"
     "libunwind/1.6.2"
+#    "boost/1.82.0"
+    "gtest/1.13.0"
 )
 
 foreach(_php_version ${_supported_php_versions})
@@ -97,6 +99,7 @@ endforeach()
 
 conan_cmake_run(REQUIRES ${dependencies}
                 OPTIONS Pkg/*:shared=False
+#                        boost:header_only=True
                         libcurl:shared=True
                         libcurl:with_libssh2=True
                 BUILD missing
@@ -106,5 +109,7 @@ conan_cmake_run(REQUIRES ${dependencies}
                 RELEASE_PROFILE ${_CONAN_PROFILE}
                 BASIC_SETUP CMAKE_TARGETS UPDATE NO_OUTPUT_DIRS
                 )
+
+add_subdirectory(libcommon)
 
 add_subdirectory(ext)

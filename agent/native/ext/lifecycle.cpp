@@ -74,6 +74,9 @@ String buildSupportabilityInfo( size_t supportInfoBufferSize, char* supportInfoB
 void logSupportabilityInfo( LogLevel logLevel )
 {
     ResultCode resultCode;
+    StringView textRemainder;
+    String supportabilityInfo;
+    const char* textEnd;
     enum { supportInfoBufferSize = 100 * 1000 + 1 };
     char* supportInfoBuffer = NULL;
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
@@ -83,10 +86,10 @@ void logSupportabilityInfo( LogLevel logLevel )
     ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "Current process command line: %s", streamCurrentProcessCommandLine( &txtOutStream, /* maxLength */ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ) );
 
     ELASTIC_APM_PEMALLOC_STRING_IF_FAILED_GOTO( supportInfoBufferSize, supportInfoBuffer );
-    String supportabilityInfo = buildSupportabilityInfo( supportInfoBufferSize, supportInfoBuffer );
+    supportabilityInfo = buildSupportabilityInfo( supportInfoBufferSize, supportInfoBuffer );
 
-    const char* const textEnd = supportabilityInfo + strlen( supportabilityInfo );
-    StringView textRemainder = makeStringViewFromBeginEnd( supportabilityInfo, textEnd );
+    textEnd = supportabilityInfo + strlen( supportabilityInfo );
+    textRemainder = makeStringViewFromBeginEnd( supportabilityInfo, textEnd );
     for ( ;; )
     {
         StringView eolSeq = findEndOfLineSequence( textRemainder );
@@ -509,6 +512,8 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* config = NULL;
 
+    CURLcode curlCode = CURLE_OK;
+
     ELASTIC_APM_CALL_IF_FAILED_GOTO( constructTracer( tracer ) );
 
     if ( ! tracer->isInited )
@@ -537,7 +542,7 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
     registerAtExitLogging();
     registerErrorAndExceptionHooks();
 
-    CURLcode curlCode = curl_global_init( CURL_GLOBAL_ALL );
+    curlCode = curl_global_init( CURL_GLOBAL_ALL );
     if ( curlCode != CURLE_OK )
     {
         resultCode = resultFailure;
@@ -737,6 +742,7 @@ void elasticApmRequestShutdown()
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
+    bool preloadDetected = false;
 
     if ( ! doesCurrentPidMatchPidOnInit( g_pidOnRequestInit, "request" ) )
     {
@@ -757,7 +763,7 @@ void elasticApmRequestShutdown()
         goto finally;
     }
 
-    bool preloadDetected = requestCounter == 1 && detectOpcachePreload();
+    preloadDetected = requestCounter == 1 && detectOpcachePreload();
     if (preloadDetected) {
         ELASTIC_APM_LOG_DEBUG( "opcache.preload request detected on shutdown" );
         resultCode = resultSuccess;
