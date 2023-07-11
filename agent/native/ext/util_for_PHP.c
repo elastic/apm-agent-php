@@ -293,9 +293,12 @@ int call_internal_function(zval *object, const char *functionName, zval paramete
 	return result;
 }
 
+bool isOpcacheEnabled() {
+    return isPhpRunningAsCliScript() ? INI_BOOL("opcache.enable_cli") : INI_BOOL("opcache.enable");
+}
+
 bool isScriptRestricedByOpcacheAPI() {
-    bool opcacheEnabled = isPhpRunningAsCliScript() ? INI_BOOL("opcache.enable_cli") : INI_BOOL("opcache.enable");
-    if (!opcacheEnabled) {
+    if (!isOpcacheEnabled()) {
         return false;
     }
 
@@ -308,15 +311,14 @@ bool isScriptRestricedByOpcacheAPI() {
     if (!SG(request_info).path_translated ||
         strlen(SG(request_info).path_translated) < len ||
         memcmp(SG(request_info).path_translated, restrict_api, len) != 0) {
-        ELASTIC_APM_LOG_ERROR("Script '%s' is restricted by \"opcache.restrict_api\" configuration directive. Can't perform any opcache API calls.", SG(request_info).path_translated);
+        ELASTIC_APM_LOG_DEBUG("Script '%s' is restricted by \"opcache.restrict_api\" configuration directive. Can't perform any opcache API calls.", SG(request_info).path_translated);
         return true;
     }
     return false;
 }
 
 bool detectOpcacheRestartPending() {
-    bool opcacheEnabled = isPhpRunningAsCliScript() ? INI_BOOL("opcache.enable_cli") : INI_BOOL("opcache.enable");
-    if (!opcacheEnabled) {
+    if (!isOpcacheEnabled()) {
         return false;
     }
     if (EG(function_table) && !zend_hash_str_find_ptr(EG(function_table), ZEND_STRL("opcache_get_status"))) {
@@ -340,7 +342,7 @@ bool detectOpcacheRestartPending() {
     }
 
     if (Z_TYPE(rv) != IS_ARRAY) {
-        ELASTIC_APM_LOG_WARNING("opcache_get_status failed, rvtype: %d", Z_TYPE(rv));
+        ELASTIC_APM_LOG_DEBUG("opcache_get_status failed, rvtype: %d", Z_TYPE(rv));
         zval_ptr_dtor(&rv);
         return false;
     }
@@ -350,7 +352,7 @@ bool detectOpcacheRestartPending() {
         zval_ptr_dtor(&rv);
         return true;
     } else if (!restartPending || Z_TYPE_P(restartPending) != IS_FALSE) {
-        ELASTIC_APM_LOG_ERROR("opcache_get_status returned unexpected data ptr: %p t:%d", restartPending, restartPending ? Z_TYPE_P(restartPending) : -1);
+        ELASTIC_APM_LOG_DEBUG("opcache_get_status returned unexpected data ptr: %p t:%d", restartPending, restartPending ? Z_TYPE_P(restartPending) : -1);
     }
 
     zval_ptr_dtor(&rv);
@@ -363,8 +365,7 @@ bool detectOpcachePreload() {
         return false;
     }
 
-    bool opcacheEnabled = isPhpRunningAsCliScript() ? INI_BOOL("opcache.enable_cli") : INI_BOOL("opcache.enable");
-    if (!opcacheEnabled) {
+    if (!isOpcacheEnabled()) {
         return false;
     }
 

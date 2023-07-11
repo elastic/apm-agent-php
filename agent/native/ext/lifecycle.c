@@ -655,7 +655,7 @@ void elasticApmRequestInit()
     }
 
     if (!isScriptRestricedByOpcacheAPI() && detectOpcacheRestartPending()) {
-        ELASTIC_APM_LOG_ERROR("Detected that opcache reset is in a pending state. Instrumentation has been disabled for this request. There may be warnings or errors logged for this request.");
+        ELASTIC_APM_LOG_WARNING("Detected that opcache reset is in a pending state. Instrumentation has been disabled for this request. There may be warnings or errors logged for this request.");
         resultCode = resultSuccess;
         goto finally;
     }
