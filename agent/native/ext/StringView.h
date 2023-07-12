@@ -40,13 +40,13 @@ bool isValidStringView( StringView strView )
 
 #define ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strView ) \
     ELASTIC_APM_ASSERT( isValidStringView( (strView) ) \
-                        , "begin: %p, length: %"PRIu64, (strView).begin, (UInt64)((strView).length) )
+                        , "begin: %p, length: %" PRIu64, (strView).begin, (UInt64)((strView).length) )
 
 static inline
 StringView makeStringView( const char* begin, size_t length )
 {
     ELASTIC_APM_ASSERT( ( length == 0 ) || isValidPtr( begin )
-            , "begin: %p, length: %"PRIu64, begin, (UInt64)length );
+            , "begin: %p, length: %" PRIu64, begin, (UInt64)length );
 
     StringView strView = { .begin = begin, .length = length };
 
@@ -60,7 +60,7 @@ StringView makeStringViewFromBeginEnd( const char* begin, const char* end )
     ELASTIC_APM_ASSERT( end == begin || ( isValidPtr( begin ) && isValidPtr( end ) && begin <= end )
                        , "begin: %p, end: %p", begin, end );
 
-    StringView strView = { .begin = begin, .length = end - begin };
+    StringView strView = { .begin = begin, .length = size_t(end - begin) };
 
     ELASTIC_APM_ASSERT_VALID_STRING_VIEW( strView );
     return strView;

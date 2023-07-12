@@ -341,7 +341,7 @@ String debugDumpAstZvalStreamVal( zend_ast* ast, TextOutputStream* txtOutStream 
         }
 
         case IS_LONG:
-            return streamPrintf( txtOutStream, "type: long, value: %"PRId64, (Int64)(Z_LVAL_P( zVal )) );
+            return streamPrintf( txtOutStream, "type: long, value: %" PRId64, (Int64)(Z_LVAL_P( zVal )) );
 
         case IS_DOUBLE:
             return streamPrintf( txtOutStream, "type: double, value: %f", (double)(Z_DVAL_P( zVal )) );
