@@ -87,6 +87,7 @@ void getArgsFromZendExecuteData( zend_execute_data *execute_data, size_t dstArra
 
 bool isPhpRunningAsCliScript();
 bool detectOpcachePreload();
+bool isScriptRestricedByOpcacheAPI();
 bool detectOpcacheRestartPending();
 void enableAccessToServerGlobal();
 
