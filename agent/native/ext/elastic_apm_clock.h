@@ -54,7 +54,8 @@ typedef struct timezone TimeZone;
 static inline
 bool convertUtcToLocalTimeDefaultImpl( time_t input, struct tm* output, long* secondsAheadUtc )
 {
-    struct tm outputLocal = { 0 };
+    struct tm outputLocal;
+    memset(&outputLocal, 0, sizeof(tm));
     long secondsAheadUtcLocal = 0;
 
     #ifdef PHP_WIN32

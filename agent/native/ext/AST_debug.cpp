@@ -17,6 +17,10 @@
  * under the License.
  */
 
+#include <Zend/zend.h>
+#include <Zend/zend_exceptions.h>
+#include <Zend/zend_ast.h>
+
 #include "AST_debug.h"
 #include "ConfigSnapshot.h"
 #include "log.h"
