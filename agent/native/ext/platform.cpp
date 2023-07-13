@@ -39,8 +39,8 @@
 #   include <errno.h>
 #   ifndef __USE_GNU
 #       define __USE_GNU 1
-#       include <dlfcn.h>
 #   endif
+#   include <dlfcn.h>
 #endif
 
 #if defined( ELASTIC_APM_PLATFORM_HAS_LIBUNWIND )
@@ -150,8 +150,15 @@ String streamErrNo( int errnoValue, TextOutputStream* txtOutStream )
 
     // http://man7.org/linux/man-pages/man3/strerror.3.html
     // strerror_r( int errnum, char *buf, size_t buflen );
-    strerror_r( errnoValue, txtOutStreamStateOnEntryStart.freeSpaceBegin, freeSizePlus );
-
+    //TODO missing error check - it can contain trash from buffer
+    auto errorStr = strerror(errnoValue);
+    auto len = strlen(errorStr);
+    if (len < freeSizePlus) {
+        strcpy(txtOutStreamStateOnEntryStart.freeSpaceBegin, errorStr);
+    } else {
+        strncpy(txtOutStreamStateOnEntryStart.freeSpaceBegin, errorStr, freeSizePlus -1);
+        txtOutStreamStateOnEntryStart.freeSpaceBegin[freeSizePlus -1] = 0;
+    }
     #endif
 
     const size_t numberOfContentChars = strlen( txtOutStreamStateOnEntryStart.freeSpaceBegin );
