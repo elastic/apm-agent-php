@@ -66,7 +66,6 @@ int main( int argc, const char* argv[] )
     failedTestsCount += run_TextOutputStream_tests();
     failedTestsCount += run_platform_tests( argc, argv );
     failedTestsCount += run_DynamicArray_tests();
-    failedTestsCount += run_StringToStringMap_tests();
         #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     failedTestsCount += run_MemoryTracker_tests();
         #endif

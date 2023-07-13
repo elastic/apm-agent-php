@@ -146,17 +146,17 @@ typedef struct UnitsTypeMetaData UnitsTypeMetaData;
 #define ELASTIC_APM_FILL_VALUE_WITH_UNITS_GENERIC_WRAPPER_FUNC_NAME( UnitsType ) \
     ELASTIC_APM_BUILD_NAME_WITH_UNITS_TYPE( fill, UnitsType, GenericWrapper )
 
-#define ELASTIC_APM_DEFINE_FILL_VALUE_WITH_UNITS_GENERIC_WRAPPER_FUNC( UnitsType ) \
+#define ELASTIC_APM_DEFINE_FILL_VALUE_WITH_UNITS_GENERIC_WRAPPER_FUNC( UnitsType, UnitsCastType ) \
     static \
     void ELASTIC_APM_FILL_VALUE_WITH_UNITS_GENERIC_WRAPPER_FUNC_NAME( UnitsType )( Int64 valueInUnits, int units, void* dst ) \
     { \
         ((UnitsType*)dst)->valueInUnits = valueInUnits; \
-        ((UnitsType*)dst)->units = units; \
+        ((UnitsType*)dst)->units = static_cast<UnitsCastType>(units); \
     }
 
 #define ELASTIC_APM_UNITS_META_DATA_GLOBAL_VAR_NAME( unitsPrefix ) ELASTIC_APM_BUILD_NAME_WITH_UNITS_TYPE( g_, unitsPrefix, MetaData )
 
-#define ELASTIC_APM_DEFINE_VALUE_WITH_UNITS_TYPE_META_DATA( UnitsType, unitsPrefix, invalidUnitsAsStringParam, pInvalidValueWithUnitsParam ) \
+#define ELASTIC_APM_DEFINE_VALUE_WITH_UNITS_TYPE_META_DATA( UnitsType, UnitsCastType, unitsPrefix, invalidUnitsAsStringParam, pInvalidValueWithUnitsParam ) \
     ELASTIC_APM_DEFINE_IS_VALID_UNITS_GENERIC_WRAPPER_FUNC( UnitsType ) \
     ELASTIC_APM_DEFINE_INVALID_UNITS( UnitsType, unitsPrefix ); \
     ELASTIC_APM_DEFINE_UNITS_TO_STRING_GENERIC_WRAPPER_FUNC( UnitsType, unitsPrefix ) \
@@ -165,7 +165,7 @@ typedef struct UnitsTypeMetaData UnitsTypeMetaData;
     ELASTIC_APM_DEFINE_PARSE_VALUE_WITH_UNITS_GENERIC_WRAPPER_FUNC( UnitsType ) \
     ELASTIC_APM_DEFINE_ASSIGN_VALUE_WITH_UNITS_GENERIC_WRAPPER_FUNC( UnitsType ) \
     ELASTIC_APM_DEFINE_ALLOC_VALUE_WITH_UNITS_GENERIC_WRAPPER_FUNC( UnitsType ) \
-    ELASTIC_APM_DEFINE_FILL_VALUE_WITH_UNITS_GENERIC_WRAPPER_FUNC( UnitsType ) \
+    ELASTIC_APM_DEFINE_FILL_VALUE_WITH_UNITS_GENERIC_WRAPPER_FUNC( UnitsType, UnitsCastType ) \
     static UnitsTypeMetaData ELASTIC_APM_UNITS_META_DATA_GLOBAL_VAR_NAME( unitsPrefix ) = { \
         .dbgUnitsTypeAsString = ELASTIC_APM_PP_STRINGIZE( UnitsType ) \
         , .numberOfUnits = ELASTIC_APM_NUMBER_OF_UNITS( UnitsType ) \
@@ -278,7 +278,7 @@ void assertEqualValuesWithUnitsGeneric( UnitsTypeMetaData unitsTypeMetaData, Str
                                    , unitsTypeMetaData.unitsToString( unitsTypeMetaData.getUnits( actual ) ), unitsTypeMetaData.getUnits( actual ) );
 
     ELASTIC_APM_CMOCKA_ASSERT_MSG( unitsTypeMetaData.getValueInUnits( expected ) == unitsTypeMetaData.getValueInUnits( actual )
-                                   , "units: %s; inputString: %s; valueInUnits: expected: %"PRId64", actual: %"PRId64
+                                   , "units: %s; inputString: %s; valueInUnits: expected: %" PRId64 ", actual: %" PRId64
                                    , unitsTypeMetaData.dbgUnitsTypeAsString, inputString.begin
                                    , unitsTypeMetaData.getValueInUnits( expected ), unitsTypeMetaData.getValueInUnits( actual ) );
 }
@@ -309,7 +309,7 @@ void impl_test_one_valid_parse( UnitsTypeMetaData unitsTypeMetaData, String whit
 {
     char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
-    String inputString = streamPrintf( &txtOutStream, "%s%"PRId64"%s%s%s", whiteSpace, unitsTypeMetaData.getValueInUnits( expected ), whiteSpace, units, whiteSpace );
+    String inputString = streamPrintf( &txtOutStream, "%s%" PRId64 "%s%s%s", whiteSpace, unitsTypeMetaData.getValueInUnits( expected ), whiteSpace, units, whiteSpace );
     int expectedUnits = unitsTypeMetaData.getUnits( expected );
     int differentUnits = ( expectedUnits + 1 ) % unitsTypeMetaData.numberOfUnits;
     ELASTIC_APM_CMOCKA_ASSERT( unitsTypeMetaData.isValidUnits( differentUnits ) );
@@ -424,9 +424,9 @@ void impl_test_parse( UnitsTypeMetaData unitsTypeMetaData )
 }
 
 static Duration g_invalidDuration = (Duration){ .valueInUnits = INT64_MIN, .units = numberOfDurationUnits };
-ELASTIC_APM_DEFINE_VALUE_WITH_UNITS_TYPE_META_DATA( Duration, duration, ELASTIC_APM_UNKNOWN_DURATION_UNITS_AS_STRING, &g_invalidDuration );
+ELASTIC_APM_DEFINE_VALUE_WITH_UNITS_TYPE_META_DATA( Duration, DurationUnits, duration, ELASTIC_APM_UNKNOWN_DURATION_UNITS_AS_STRING, &g_invalidDuration );
 static Size g_invalidSize = (Size){ .valueInUnits = INT64_MIN, .units = numberOfSizeUnits };
-ELASTIC_APM_DEFINE_VALUE_WITH_UNITS_TYPE_META_DATA( Size, size, ELASTIC_APM_UNKNOWN_SIZE_UNITS_AS_STRING, &g_invalidSize );
+ELASTIC_APM_DEFINE_VALUE_WITH_UNITS_TYPE_META_DATA( Size, SizeUnits, size, ELASTIC_APM_UNKNOWN_SIZE_UNITS_AS_STRING, &g_invalidSize );
 
 static
 void test_isValidDurationUnits( void** testFixtureState )

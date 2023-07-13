@@ -37,7 +37,6 @@ int perTestDefaultSetup( void** testFixtureState )
     setProductionCodeAssertFailed( vElasticApmAssertFailed );
 
     initMockLogCustomSink( getGlobalMockLogCustomSink() );
-    initMockEnvVars();
     initMockPhpIni();
 
     constructTracer( getGlobalTracer() );
@@ -71,7 +70,6 @@ int perTestDefaultTeardown( void** testFixtureState )
     destructTracer( getGlobalTracer() );
 
     uninitMockPhpIni();
-    uninitMockEnvVars();
     uninitMockLogCustomSink( getGlobalMockLogCustomSink() );
 
     return 0;
