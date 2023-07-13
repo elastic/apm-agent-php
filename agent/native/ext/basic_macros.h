@@ -61,9 +61,6 @@
             (indexVar) = ( (indexVar) == 0 ) ? 0 : (indexVar) - 1 \
     )
 
-#define ELASTIC_APM_MIN( a, b ) ( ( (a) < (b) ) ? (a) : (b) )
-#define ELASTIC_APM_MAX( a, b ) ( ( (a) > (b) ) ? (a) : (b) )
-
 #define ELASTIC_APM_ZERO_STRUCT( structPtr ) memset( (structPtr), 0, sizeof( *(structPtr) ) )
 
 

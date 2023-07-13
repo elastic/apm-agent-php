@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <string.h>
 #include "basic_types.h"
 #include "elastic_apm_assert.h"
@@ -105,5 +106,5 @@ StringView stringViewPrefix( StringView inStrVw, size_t maxLength )
 {
     ELASTIC_APM_ASSERT_VALID_STRING_VIEW( inStrVw );
 
-    return makeStringView( inStrVw.begin, ELASTIC_APM_MIN( inStrVw.length, maxLength ) );
+    return makeStringView( inStrVw.begin, std::min( inStrVw.length, maxLength ) );
 }

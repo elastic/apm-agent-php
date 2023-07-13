@@ -23,6 +23,7 @@
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_MEM_TRACKER
 
+#include <algorithm>
 #include <stddef.h>
 #include <string.h> // memcpy
 #include "util.h"
@@ -46,7 +47,7 @@ static const UInt32 prefixMagicExpectedValue = 0xCAFEBABE;
 static const UInt32 suffixMagicExpectedValue = 0x1CEB00DA;
 static const UInt32 invalidMagicValue = 0xDEADBEEF;
 
-enum { maxNumberOfLeakedAllocationsToReport = 10 };
+static constexpr size_t maxNumberOfLeakedAllocationsToReport = 10;
 static const size_t maxNumberOfBytesFromLeakedAllocationToReport = 100;
 
 struct EmbeddedTrackingDataHeader
@@ -228,7 +229,7 @@ void verifyMagic( String desc, UInt32 actual, UInt32 expected )
     if ( actual == expected ) return;
 
     ELASTIC_APM_REPORT_MEMORY_CORRUPTION_AND_ABORT(
-            "Magic %s is different from expected. Actual: 0x%08"PRIX32". Expected: 0x%08"PRIX32".",
+            "Magic %s is different from expected. Actual: 0x%08" PRIX32 ". Expected: 0x%08" PRIX32 ".",
             desc, actual, expected );
 }
 
@@ -274,7 +275,7 @@ void memoryTrackerBeforeFree(
     IntrusiveDoublyLinkedList* allocatedBlocks = isPersistent ? &memTracker->allocatedPersistentBlocks : &memTracker->allocatedRequestScopedBlocks;
 
     ELASTIC_APM_ASSERT( *allocated >= originallyRequestedSize
-            , "Attempting to free more %s memory than allocated. Allocated: %"PRIu64". Attempting to free: %"PRIu64
+            , "Attempting to free more %s memory than allocated. Allocated: %" PRIu64 ". Attempting to free: %" PRIu64 
             , allocType( isPersistent ), *allocated, (UInt64)originallyRequestedSize );
 
     *possibleActuallyRequestedSize = originallyRequestedSize;
@@ -330,11 +331,11 @@ String streamMemBlockContent(
 
     const Byte* memBlock = trackingDataToAllocatedBlock( trackingDataHeader );
     const size_t numberOfItemsToStream =
-            ELASTIC_APM_MIN( trackingDataHeader->originallyRequestedSize, maxNumberOfBytesFromLeakedAllocationToReport );
+            std::min( trackingDataHeader->originallyRequestedSize, maxNumberOfBytesFromLeakedAllocationToReport );
 
     const String itemsName = trackingDataHeader->isString ? "chars" : "bytes, in hex";
     if ( numberOfItemsToStream < trackingDataHeader->originallyRequestedSize )
-        streamPrintf( txtOutStream, "(first %"PRIu64" %s) ", (UInt64)numberOfItemsToStream, itemsName );
+        streamPrintf( txtOutStream, "(first %" PRIu64 " %s) ", (UInt64)numberOfItemsToStream, itemsName );
 
     if ( trackingDataHeader->isString )
         streamMemoryBlockAsString( memBlock, numberOfItemsToStream, txtOutStream );
@@ -378,8 +379,8 @@ void reportAllocation( const IntrusiveDoublyLinkedListNode* intrusiveListNode, s
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
     ELASTIC_APM_FORCE_LOG_CRITICAL(
-            "Allocation #%"PRIu64" (out of %"PRIu64"):"
-            " Source location: %s:%u. Originally requested allocation size: %"PRIu64"."
+            "Allocation #%" PRIu64 " (out of %" PRIu64 "):"
+            " Source location: %s:%u. Originally requested allocation size: %" PRIu64 "."
             " Content: %s.\n"
             "\t+-> Allocation call stack trace:\n%s",
             (UInt64)(allocationIndex + 1), (UInt64)numberOfAllocations,
@@ -404,7 +405,7 @@ void verifyBalanceIsZero( const MemoryTracker* memTracker, String whenDesc, UInt
 
     const IntrusiveDoublyLinkedList* allocatedBlocks = isPersistent ? &memTracker->allocatedPersistentBlocks : &memTracker->allocatedRequestScopedBlocks;
     const size_t numberOfAllocations = calcIntrusiveDoublyLinkedListSize( allocatedBlocks );
-    const size_t numberOfAllocationsToReport = ELASTIC_APM_MIN( numberOfAllocations, maxNumberOfLeakedAllocationsToReport );
+    const size_t numberOfAllocationsToReport = std::min(numberOfAllocations, maxNumberOfLeakedAllocationsToReport);
     const IntrusiveDoublyLinkedListNode* allocationsToReport[ maxNumberOfLeakedAllocationsToReport ];
 
     // Copy allocation nodes we are going to report
@@ -419,11 +420,11 @@ void verifyBalanceIsZero( const MemoryTracker* memTracker, String whenDesc, UInt
     }
 
     ELASTIC_APM_FORCE_LOG_CRITICAL(
-            "Memory leak detected! On %s amount of allocated %s memory should be 0, instead it is %"PRIu64,
+            "Memory leak detected! On %s amount of allocated %s memory should be 0, instead it is %" PRIu64 ,
             whenDesc, allocType( isPersistent ), allocated );
 
     ELASTIC_APM_FORCE_LOG_CRITICAL(
-            "Number of allocations not freed: %"PRIu64 ". Following are the first %"PRIu64 " not freed allocation(s)", (UInt64) numberOfAllocations, (UInt64) numberOfAllocationsToReport );
+            "Number of allocations not freed: %" PRIu64  ". Following are the first %" PRIu64  " not freed allocation(s)", (UInt64) numberOfAllocations, (UInt64) numberOfAllocationsToReport );
 
     ELASTIC_APM_FOR_EACH_INDEX( allocationIndex, numberOfAllocationsToReport)
         reportAllocation( allocationsToReport[ allocationIndex ], allocationIndex, numberOfAllocations );

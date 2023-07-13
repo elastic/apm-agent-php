@@ -75,7 +75,7 @@ struct ParsedOptionValue
     ParsedOptionValue(Size value) : type{parsedOptionValueType_size}, u{value} {
     }
 
-    ParsedOptionValueType type;
+    ParsedOptionValueType type = ParsedOptionValueType::parsedOptionValueType_undefined;
     union u
     {
         u() : boolValue(false) {} // TODO = delete;
@@ -101,22 +101,22 @@ typedef struct ParsedOptionValue ParsedOptionValue;
 
 struct EnumOptionAdditionalMetadata
 {
-    String* names;
-    size_t enumElementsCount;
-    bool isUniquePrefixEnough;
+    String* names = nullptr;
+    size_t enumElementsCount = 0;
+    bool isUniquePrefixEnough = false;
 };
 typedef struct EnumOptionAdditionalMetadata EnumOptionAdditionalMetadata;
 
 struct DurationOptionAdditionalMetadata
 {
-    DurationUnits defaultUnits;
-    bool isNegativeValid;
+    DurationUnits defaultUnits = durationUnits_millisecond;
+    bool isNegativeValid = false;
 };
 typedef struct DurationOptionAdditionalMetadata DurationOptionAdditionalMetadata;
 
 struct SizeOptionAdditionalMetadata
 {
-    SizeUnits defaultUnits;
+    SizeUnits defaultUnits = sizeUnits_byte;
 };
 typedef struct SizeOptionAdditionalMetadata SizeOptionAdditionalMetadata;
 
@@ -138,19 +138,19 @@ typedef ParsedOptionValue (* GetConfigSnapshotFieldFunc )( const OptionMetadata*
 typedef void (* ParsedOptionValueToZvalFunc )( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, zval* return_value );
 struct OptionMetadata
 {
-    String name;
-    StringView iniName;
-    bool isSecret;
-    bool isDynamic;
-    bool isLoggingRelated;
+    String name = nullptr;
+    StringView iniName = {nullptr, 0};
+    bool isSecret = false;
+    bool isDynamic = false;
+    bool isLoggingRelated = false;
     ParsedOptionValue defaultValue;
-    InterpretIniRawValueFunc interpretIniRawValue;
-    ParseRawValueFunc parseRawValue;
-    StreamParsedValueFunc streamParsedValue;
-    SetConfigSnapshotFieldFunc setField;
-    GetConfigSnapshotFieldFunc getField;
-    ParsedOptionValueToZvalFunc parsedValueToZval;
-    OptionAdditionalMetadata additionalData;
+    InterpretIniRawValueFunc interpretIniRawValue = nullptr;
+    ParseRawValueFunc parseRawValue = nullptr;
+    StreamParsedValueFunc streamParsedValue = nullptr;
+    SetConfigSnapshotFieldFunc setField = nullptr;
+    GetConfigSnapshotFieldFunc getField = nullptr;
+    ParsedOptionValueToZvalFunc parsedValueToZval = nullptr;
+    OptionAdditionalMetadata additionalData = {};
 };
 
 struct RawConfigSnapshot
@@ -169,8 +169,8 @@ typedef ResultCode (* GetRawOptionValueFunc )(
         String* interpretedRawValue );
 struct RawConfigSnapshotSource
 {
-    String description;
-    GetRawOptionValueFunc getOptionValue;
+    String description = nullptr;
+    GetRawOptionValueFunc getOptionValue = nullptr;
 };
 
 struct CombinedRawConfigSnapshot
@@ -191,23 +191,38 @@ typedef struct ConfigRawData ConfigRawData;
 struct ConfigMetadata
 {
     OptionMetadata optionsMeta[ numberOfOptions ];
-    String envVarNames[ numberOfOptions ];
+    String envVarNames[ numberOfOptions ] = { nullptr };
     RawConfigSnapshotSource rawCfgSources[ numberOfRawConfigSources ];
+
+    void clear() {
+        *this = ConfigMetadata{};
+    }
 };
 typedef struct ConfigMetadata ConfigMetadata;
 
 struct ConfigManagerCurrentState
 {
-    ConfigRawData* rawData;
-    ConfigSnapshot snapshot;
+    ConfigRawData* rawData = nullptr;
+    ConfigSnapshot snapshot = {};
+
+    void clear() {
+        rawData = nullptr;
+        snapshot = {};
+    }
 };
 typedef struct ConfigManagerCurrentState ConfigManagerCurrentState;
 
 struct ConfigManager
 {
-    bool isLoggingRelatedOnly;
-    ConfigMetadata meta;
-    ConfigManagerCurrentState current;
+    bool isLoggingRelatedOnly = false;
+    ConfigMetadata meta = {};
+    ConfigManagerCurrentState current = {};
+
+    void clear() {
+        isLoggingRelatedOnly = false;
+        meta.clear();
+        current.clear();
+    }
 };
 
 #define ELASTIC_APM_ASSERT_VALID_OPTION_ID( optId ) \
@@ -545,7 +560,8 @@ static OptionMetadata buildStringOptionMetadata(
         .streamParsedValue = &streamParsedString,
         .setField = setFieldFunc,
         .getField = getFieldFunc,
-        .parsedValueToZval = &parsedStringValueToZval
+        .parsedValueToZval = &parsedStringValueToZval,
+        .additionalData = {}
     };
 }
 
@@ -572,7 +588,8 @@ static OptionMetadata buildLoggingRelatedStringOptionMetadata(
                     .streamParsedValue = &streamParsedString,
                     .setField = setFieldFunc,
                     .getField = getFieldFunc,
-                    .parsedValueToZval = &parsedStringValueToZval
+                    .parsedValueToZval = &parsedStringValueToZval,
+                    .additionalData = {}
             };
 }
 
@@ -599,7 +616,8 @@ static OptionMetadata buildBoolOptionMetadata(
         .streamParsedValue = &streamParsedBool,
         .setField = setFieldFunc,
         .getField = getFieldFunc,
-        .parsedValueToZval = &parsedBoolValueToZval
+        .parsedValueToZval = &parsedBoolValueToZval,
+        .additionalData = {}
     };
 }
 
@@ -626,7 +644,8 @@ static OptionMetadata buildOptionalBoolOptionMetadata(
         .streamParsedValue = &streamParsedOptionalBool,
         .setField = setFieldFunc,
         .getField = getFieldFunc,
-        .parsedValueToZval = &parsedOptionalBoolValueToZval
+        .parsedValueToZval = &parsedOptionalBoolValueToZval,
+        .additionalData = {}
     };
 }
 
@@ -1256,7 +1275,7 @@ void parseCombinedRawConfigSnapshot(
         const String interpretedRawValue = combinedRawCfgSnapshot->interpreted[ optId ];
         const String sourceDescription = combinedRawCfgSnapshot->sourceDescriptions[ optId ];
         ParsedOptionValue parsedOptValue;
-        ELASTIC_APM_ZERO_STRUCT( &parsedOptValue );
+        // ELASTIC_APM_ZERO_STRUCT( &parsedOptValue );
 
         if ( cfgManager->isLoggingRelatedOnly && !optMeta->isLoggingRelated )
         {
@@ -1607,7 +1626,6 @@ ResultCode ensureConfigManagerHasLatestConfig( ConfigManager* cfgManager, bool* 
     ResultCode resultCode;
     ConfigRawData* newRawData = NULL;
     ConfigSnapshot newCfgSnapshot;
-    memset(&newCfgSnapshot, 0, sizeof(ConfigSnapshot));
     
     ELASTIC_APM_CALL_IF_FAILED_GOTO( fetchConfigRawData( cfgManager, &newRawData ) );
 
@@ -1643,8 +1661,7 @@ void destructConfigManagerCurrentState( /* in,out */ ConfigManagerCurrentState* 
     ELASTIC_APM_ASSERT_VALID_PTR( cfgManagerCurrent );
 
     deleteConfigRawDataAndSetToNull( /* in,out */ &cfgManagerCurrent->rawData );
-
-    ELASTIC_APM_ZERO_STRUCT( cfgManagerCurrent );
+    cfgManagerCurrent = {};
 }
 
 static
@@ -1669,7 +1686,7 @@ void destructConfigManagerMetadata( ConfigMetadata* cfgManagerMeta )
 
     destructEnvVarNames( /* in,out */ cfgManagerMeta->envVarNames );
 
-    ELASTIC_APM_ZERO_STRUCT( cfgManagerMeta );
+    cfgManagerMeta->clear();
 }
 
 ResultCode constructConfigManagerMetadata( ConfigMetadata* cfgManagerMeta )
@@ -1793,7 +1810,7 @@ void deleteConfigManagerAndSetToNull( ConfigManager** pCfgManager )
     destructConfigManagerCurrentState( /* in,out */ &cfgManager->current );
     destructConfigManagerMetadata( /* in,out */ &cfgManager->meta );
 
-    ELASTIC_APM_ZERO_STRUCT( cfgManager );
+    cfgManager->clear();
 
     ELASTIC_APM_PEFREE_INSTANCE_AND_SET_TO_NULL( ConfigManager, *pCfgManager );
 }
@@ -1806,7 +1823,7 @@ ResultCode newConfigManager( ConfigManager** pNewCfgManager, bool isLoggingRelat
     ConfigManager* cfgManager = NULL;
 
     ELASTIC_APM_PEMALLOC_INSTANCE_IF_FAILED_GOTO( ConfigManager, cfgManager );
-    ELASTIC_APM_ZERO_STRUCT( cfgManager );
+    cfgManager->clear();
 
     cfgManager->isLoggingRelatedOnly = isLoggingRelatedOnly;
     ELASTIC_APM_CALL_IF_FAILED_GOTO( constructConfigManagerMetadata( /* out */ &cfgManager->meta ) );

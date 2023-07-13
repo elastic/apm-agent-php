@@ -37,7 +37,8 @@ void backendCommBackoff_onSuccess( BackendCommBackoff* thisObj )
     ELASTIC_APM_ASSERT_VALID_PTR( thisObj );
 
     thisObj->errorCount = 0;
-    thisObj->waitEndTime = (TimeSpec){ 0 };
+    thisObj->waitEndTime.tv_nsec = 0;
+    thisObj->waitEndTime.tv_sec = 0;
 }
 
 bool backendCommBackoff_getCurrentTime( BackendCommBackoff* thisObj, /* out */ TimeSpec* currentTime )

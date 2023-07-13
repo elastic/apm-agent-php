@@ -73,7 +73,7 @@ String streamStringView( StringView value, TextOutputStream* txtOutStream )
 
     const size_t freeSizeBeforeWrite = textOutputStreamGetFreeSpaceSize( txtOutStream );
 
-    const size_t numberOfCharsToCopy = ELASTIC_APM_MIN( value.length, freeSizeBeforeWrite );
+    const size_t numberOfCharsToCopy = std::min( value.length, freeSizeBeforeWrite );
     if ( numberOfCharsToCopy != 0 )
         memcpy( txtOutStreamStateOnEntryStart.freeSpaceBegin, value.begin, numberOfCharsToCopy * sizeof( char ) );
     textOutputStreamSkipNChars( txtOutStream, numberOfCharsToCopy );

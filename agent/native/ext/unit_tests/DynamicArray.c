@@ -28,7 +28,7 @@ void assertValidDynamicArray( const DynamicArray* dynArr, size_t elementTypeSize
     ELASTIC_APM_ASSERT_VALID_PTR( dynArr );
     ELASTIC_APM_ASSERT( elementTypeSize != 0, "" );
     ELASTIC_APM_ASSERT( ( dynArr->capacity == 0 ) == ( dynArr->elements == NULL )
-            , "dynArr->capacity: %"PRIu64". dynArr->elements: %p", (UInt64)dynArr->capacity, dynArr->elements );
+            , "dynArr->capacity: %" PRIu64 ". dynArr->elements: %p", (UInt64)dynArr->capacity, dynArr->elements );
     ELASTIC_APM_ASSERT_LE_UINT64( dynArr->size, dynArr->capacity );
 }
 

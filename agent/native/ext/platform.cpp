@@ -37,8 +37,10 @@
 #   include <syslog.h>
 #   include <signal.h>
 #   include <errno.h>
-#define __USE_GNU
-#include <dlfcn.h>
+#   ifndef __USE_GNU
+#       define __USE_GNU 1
+#       include <dlfcn.h>
+#   endif
 #endif
 
 #if defined( ELASTIC_APM_PLATFORM_HAS_LIBUNWIND )
@@ -306,7 +308,7 @@ void streamCurrentProcessCommandLineImpl( TextOutputStream* txtOutStream, size_t
 
     if ( numberOfCharsProcessed > maxLength )
     {
-        streamPrintf( txtOutStream, " <skipped remaining %"PRIu64" characters>", (UInt64)( numberOfCharsProcessed - maxLength ) );
+        streamPrintf( txtOutStream, " <skipped remaining %" PRIu64 " characters>", (UInt64)( numberOfCharsProcessed - maxLength ) );
     }
 }
 #endif

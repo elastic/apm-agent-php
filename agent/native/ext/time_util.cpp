@@ -258,10 +258,10 @@ String streamTimeSpecDiff( const TimeSpec* fromTimeSpec, const TimeSpec* toTimeS
 
     if ( diffNanosecondsPart == 0 )
     {
-        return streamPrintf( txtOutStream, "%"PRIu64"s", diffSecondsPart );
+        return streamPrintf( txtOutStream, "%" PRIu64 "s", diffSecondsPart );
     }
 
-    return streamPrintf( txtOutStream, "%s%"PRIu64"s %"PRId64"ns", isDiffNegative ? "-" : "", diffSecondsPart, diffNanosecondsPart );
+    return streamPrintf( txtOutStream, "%s%" PRIu64 "s %"PRId64"ns", isDiffNegative ? "-" : "", diffSecondsPart, diffNanosecondsPart );
 }
 
 int compareAbsTimeSpecs( const TimeSpec* a, const TimeSpec* b )
