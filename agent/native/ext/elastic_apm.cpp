@@ -361,10 +361,12 @@ PHP_FUNCTION( elastic_apm_get_config_option_by_name )
 
     // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
     // which might deadlock in forked child
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
-
     char* optionName = NULL;
     size_t optionNameLength = 0;
+
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
+
+
 
     ZEND_PARSE_PARAMETERS_START(1, 1)
         Z_PARAM_STRING( optionName, optionNameLength )
@@ -413,16 +415,15 @@ PHP_FUNCTION( elastic_apm_intercept_calls_to_internal_method )
 {
     ResultCode resultCode;
     long retVal = -1;
-
-    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
-    // which might deadlock in forked child
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
-
     char* className = NULL;
     size_t classNameLength = 0;
     char* methodName = NULL;
     size_t methodNameLength = 0;
     uint32_t interceptRegistrationId;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
 
     ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 2, /* max_num_args: */ 2 )
     Z_PARAM_STRING( className, classNameLength )
@@ -450,13 +451,13 @@ PHP_FUNCTION( elastic_apm_intercept_calls_to_internal_function )
     ResultCode resultCode;
     long retVal = -1;
 
-    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
-    // which might deadlock in forked child
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
-
     char* functionName = NULL;
     size_t functionNameLength = 0;
     uint32_t interceptRegistrationId;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
 
     ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 1, /* max_num_args: */ 1 )
     Z_PARAM_STRING( functionName, functionNameLength )
@@ -487,14 +488,14 @@ PHP_FUNCTION( elastic_apm_send_to_server )
     ResultCode resultCode;
     bool retVal = false;
 
-    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
-    // which might deadlock in forked child
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
-
     char* userAgentHttpHeader = NULL;
     size_t userAgentHttpHeaderLength = 0;
     char* serializedEvents = NULL;
     size_t serializedEventsLength = 0;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
 
     ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 2, /* max_num_args: */ 2 )
         Z_PARAM_STRING( userAgentHttpHeader, userAgentHttpHeaderLength )
@@ -538,10 +539,6 @@ PHP_FUNCTION( elastic_apm_log )
 {
     ResultCode resultCode;
 
-    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
-    // which might deadlock in forked child
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
-
     zend_long isForced = 0;
     zend_long level = 0;
     char* file = NULL;
@@ -553,6 +550,10 @@ PHP_FUNCTION( elastic_apm_log )
     size_t funcLength = 0;
     char* message = NULL;
     size_t messageLength = 0;
+
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
 
     ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 7, /* max_num_args: */ 7 )
     Z_PARAM_LONG( isForced )
@@ -717,13 +718,7 @@ zend_module_entry elastic_apm_module_entry = {
 /* }}} */
 
 
-// #ifdef COMPILE_DL_ELASTIC_APM
-// #   ifdef ZTS
-// ZEND_TSRMLS_CACHE_DEFINE()
-// #   endif
-// extern "C" ZEND_GET_MODULE(elastic_apm)
-// #endif
-
-extern __attribute__((visibility("default"))) void *get_module(void) {
-    return &elastic_apm_module_entry;
-}
+#   ifdef ZTS
+ZEND_TSRMLS_CACHE_DEFINE()
+#   endif
+extern "C" ZEND_GET_MODULE(elastic_apm)

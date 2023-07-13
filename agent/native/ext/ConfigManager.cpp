@@ -58,9 +58,34 @@ typedef enum ParsedOptionValueType ParsedOptionValueType;
 
 struct ParsedOptionValue
 {
+
+    ParsedOptionValue() { // TODO = delete 
+    }
+
+    ParsedOptionValue(bool value) : type{parsedOptionValueType_bool}, u{value} {
+    }
+    ParsedOptionValue(OptionalBool value) : type{parsedOptionValueType_optionalBool}, u{value} {
+    }
+    ParsedOptionValue(String value) : type{parsedOptionValueType_string}, u{value} {
+    }
+    ParsedOptionValue(int value) : type{parsedOptionValueType_int}, u{value} {
+    }
+    ParsedOptionValue(Duration value) : type{parsedOptionValueType_duration}, u{value} {
+    }
+    ParsedOptionValue(Size value) : type{parsedOptionValueType_size}, u{value} {
+    }
+
     ParsedOptionValueType type;
-    union
+    union u
     {
+        u() : boolValue(false) {} // TODO = delete;
+        u(bool value) : boolValue(value) {}
+        u(OptionalBool value) : optionalBoolValue(value) {}
+        u(String value) : stringValue(value) {}
+        u(int value) : intValue(value) {}
+        u(Duration value) : durationValue(value) {}
+        u(Size value) : sizeValue(value) {}
+
         bool boolValue;
         OptionalBool optionalBoolValue;
         String stringValue;
@@ -514,7 +539,7 @@ static OptionMetadata buildStringOptionMetadata(
         .isSecret = isSecret,
         .isDynamic = isDynamic,
         .isLoggingRelated = false,
-        .defaultValue = { .type = parsedOptionValueType_string, .u.stringValue = defaultValue },
+        .defaultValue = {defaultValue},
         .interpretIniRawValue = &interpretStringIniRawValue,
         .parseRawValue = &parseStringValue,
         .streamParsedValue = &streamParsedString,
@@ -541,7 +566,7 @@ static OptionMetadata buildLoggingRelatedStringOptionMetadata(
                     .isSecret = isSecret,
                     .isDynamic = isDynamic,
                     .isLoggingRelated = true,
-                    .defaultValue = { .type = parsedOptionValueType_string, .u.stringValue = defaultValue },
+                    .defaultValue = { defaultValue },
                     .interpretIniRawValue = &interpretStringIniRawValue,
                     .parseRawValue = &parseStringValue,
                     .streamParsedValue = &streamParsedString,
@@ -568,7 +593,7 @@ static OptionMetadata buildBoolOptionMetadata(
         .isSecret = isSecret,
         .isDynamic = isDynamic,
         .isLoggingRelated = false,
-        .defaultValue = { .type = parsedOptionValueType_bool, .u.boolValue = defaultValue },
+        .defaultValue = { defaultValue },
         .interpretIniRawValue = &interpretBoolIniRawValue,
         .parseRawValue = &parseBoolValue,
         .streamParsedValue = &streamParsedBool,
@@ -595,7 +620,7 @@ static OptionMetadata buildOptionalBoolOptionMetadata(
         .isSecret = isSecret,
         .isDynamic = isDynamic,
         .isLoggingRelated = false,
-        .defaultValue = { .type = parsedOptionValueType_optionalBool, .u.optionalBoolValue = defaultValue },
+        .defaultValue = { defaultValue },
         .interpretIniRawValue = &interpretOptionalBoolIniRawValue,
         .parseRawValue = &parseOptionalBoolValue,
         .streamParsedValue = &streamParsedOptionalBool,
@@ -623,7 +648,7 @@ static OptionMetadata buildDurationOptionMetadata(
         .isSecret = isSecret,
         .isDynamic = isDynamic,
         .isLoggingRelated = false,
-        .defaultValue = { .type = parsedOptionValueType_duration, .u.durationValue = defaultValue },
+        .defaultValue = { defaultValue },
         .interpretIniRawValue = &interpretStringIniRawValue,
         .parseRawValue = &parseDurationValue,
         .streamParsedValue = &streamParsedDuration,
@@ -652,7 +677,7 @@ static OptionMetadata buildSizeOptionMetadata(
         .isSecret = isSecret,
         .isDynamic = isDynamic,
         .isLoggingRelated = false,
-        .defaultValue = { .type = parsedOptionValueType_size, .u.sizeValue = defaultValue },
+        .defaultValue = { defaultValue },
         .interpretIniRawValue = &interpretStringIniRawValue,
         .parseRawValue = &parseSizeValue,
         .streamParsedValue = &streamParsedSize,
@@ -684,7 +709,7 @@ static OptionMetadata buildEnumOptionMetadata(
         .isSecret = isSecret,
         .isDynamic = isDynamic,
         .isLoggingRelated = isLoggingRelated,
-        .defaultValue = { .type = parsedOptionValueType_int, .u.intValue = defaultValue },
+        .defaultValue = { defaultValue },
         .interpretIniRawValue = interpretIniRawValue,
         .parseRawValue = &parseEnumValue,
         .streamParsedValue = streamParsedValue,
@@ -732,7 +757,7 @@ static void initOptionMetadataForId( OptionMetadata* optsMeta
         ELASTIC_APM_ASSERT_VALID_PTR( optMeta ); \
         ELASTIC_APM_ASSERT_VALID_PTR( src ); \
         \
-        return (ParsedOptionValue){ .type = optMeta->defaultValue.type, .u.unionFieldForType = src->fieldName }; \
+        return ParsedOptionValue{ src->fieldName }; \
     }
 
 #define ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( EnumType, fieldName ) \
@@ -753,7 +778,7 @@ static void initOptionMetadataForId( OptionMetadata* optsMeta
         ELASTIC_APM_ASSERT_EQ_UINT64( optMeta->defaultValue.type, parsedOptionValueType_int ); \
         ELASTIC_APM_ASSERT_VALID_PTR( src ); \
         \
-        return (ParsedOptionValue){ .type = optMeta->defaultValue.type, .u.intValue = (int)( src->fieldName ) }; \
+        return ParsedOptionValue{(int)(src->fieldName)}; \
     }
 
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, abortOnMemoryLeak )
@@ -1581,8 +1606,9 @@ ResultCode ensureConfigManagerHasLatestConfig( ConfigManager* cfgManager, bool* 
 
     ResultCode resultCode;
     ConfigRawData* newRawData = NULL;
-    ConfigSnapshot newCfgSnapshot = { 0 };
-
+    ConfigSnapshot newCfgSnapshot;
+    memset(&newCfgSnapshot, 0, sizeof(ConfigSnapshot));
+    
     ELASTIC_APM_CALL_IF_FAILED_GOTO( fetchConfigRawData( cfgManager, &newRawData ) );
 
     if ( cfgManager->current.rawData != NULL &&

@@ -551,17 +551,18 @@ ResultCode ensureDirectoriesExist( StringView fullPath )
     StringBuffer dirFullPath = ELASTIC_APM_EMPTY_STRING_BUFFER;
     size_t dirFullPathLen = 0;
 
-    ELASTIC_APM_MALLOC_STRING_BUFFER_IF_FAILED_GOTO( /* maxLength */ fullPath.length, /* out */ dirFullPath );
-    dirFullPath.begin[ 0 ] = '\0';
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( appendToStringBuffer( /* suffixToAppend */ fullPath, dirFullPath, /* in,out */ &dirFullPathLen ) );
-    ELASTIC_APM_ASSERT_EQ_UINT64( dirFullPathLen, fullPath.length );
-
     char directorySeparator =
 #       ifdef PHP_WIN32
             '\\';
 #       else // #ifdef PHP_WIN32
             '/';
 #       endif // #ifdef PHP_WIN32
+
+    ELASTIC_APM_MALLOC_STRING_BUFFER_IF_FAILED_GOTO( /* maxLength */ fullPath.length, /* out */ dirFullPath );
+    dirFullPath.begin[ 0 ] = '\0';
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( appendToStringBuffer( /* suffixToAppend */ fullPath, dirFullPath, /* in,out */ &dirFullPathLen ) );
+    ELASTIC_APM_ASSERT_EQ_UINT64( dirFullPathLen, fullPath.length );
+
 
     for ( MutableString begin = &( dirFullPath.begin[ 0 ] ), current = begin + 1, end = begin + fullPath.length ; current != end ; )
     {
@@ -631,6 +632,7 @@ void debugDumpAstSubTreeConvertedBackToSource( StringView compiledFileFullPath, 
     int errnoValue = 0;
     StringBuffer convertedBackToSourceFileFullPath = ELASTIC_APM_EMPTY_STRING_BUFFER;
     zend_string* convertedBackToSourceText = NULL;
+    String textAsCString;
 
     StringView convertedBackToSourceFileExtensionSuffix = ELASTIC_APM_STRING_LITERAL_TO_VIEW( ".php" );
     StringView convertedBackToSourceFileFullPathParts[] = {
@@ -651,7 +653,7 @@ void debugDumpAstSubTreeConvertedBackToSource( StringView compiledFileFullPath, 
 
     ELASTIC_APM_LOG_INFO( "Printing AST converted back to source of %s to %s ...", compiledFileFullPath.begin, convertedBackToSourceFileFullPath.begin );
     convertedBackToSourceText = zend_ast_export( /* prefix */ "", ast, /* suffix */ "" );
-    String textAsCString = nullableZStringToString( convertedBackToSourceText );
+    textAsCString = nullableZStringToString( convertedBackToSourceText );
     if ( textAsCString == NULL )
     {
         ELASTIC_APM_LOG_INFO( "Nothing to print for AST of %s converted back to source to %s", compiledFileFullPath.begin, convertedBackToSourceFileFullPath.begin );
@@ -693,13 +695,17 @@ void debugDumpAstSubTreeToFile( StringView compiledFileFullPath, zend_ast* ast, 
     char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
+    DebugDumpAstPrintToFileCtx ctx;
+    DebugDumpAstPrinter printer;
+
+
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "compiledFileFullPath: %s", compiledFileFullPath.begin );
 
     StringView pathPrefix = stringBufferToView( g_astProcessDebugDumpForPathPrefix );
     if ( ! isFileSystemPathPrefix( compiledFileFullPath, pathPrefix ) )
     {
         ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "Skipping this file because it does not have required prefix: %s", pathPrefix.begin );
-        ELASTIC_APM_SET_RESULT_CODE_TO_SUCCESS_AND_GOTO_FINALLY();
+        return;
     }
 
     StringView compiledFileRelativePath = subStringView( compiledFileFullPath, pathPrefix.length );
@@ -723,8 +729,8 @@ void debugDumpAstSubTreeToFile( StringView compiledFileFullPath, zend_ast* ast, 
     }
 
     ELASTIC_APM_LOG_INFO( "Printing AST debug dump of %s to %s ...", compiledFileFullPath.begin, debugDumpFileFullPath.begin );
-    DebugDumpAstPrintToFileCtx ctx = (DebugDumpAstPrintToFileCtx){ .outFile = debugDumpFile };
-    DebugDumpAstPrinter printer = (DebugDumpAstPrinter){ .printLine = &debugDumpAstPrintLineToFile, .ctx = &ctx };
+    ctx = (DebugDumpAstPrintToFileCtx){ .outFile = debugDumpFile };
+    printer = (DebugDumpAstPrinter){ .printLine = &debugDumpAstPrintLineToFile, .ctx = &ctx };
     debugDumpAst( &printer, ast, /* nestingDepth */ 0 );
     ELASTIC_APM_LOG_INFO( "Printed AST debug dump of %s to %s", compiledFileFullPath.begin, debugDumpFileFullPath.begin );
 
@@ -817,7 +823,7 @@ void astProcessDebugDumpOnRequestInit( const ConfigSnapshot* config )
 
     if ( config->astProcessDebugDumpOutDir == NULL )
     {
-        ELASTIC_APM_SET_RESULT_CODE_TO_SUCCESS_AND_GOTO_FINALLY();
+        return;
     }
 
     StringView pathPrefix = config->astProcessDebugDumpForPathPrefix == NULL ? ELASTIC_APM_EMPTY_STRING_VIEW : stringToView( config->astProcessDebugDumpForPathPrefix );

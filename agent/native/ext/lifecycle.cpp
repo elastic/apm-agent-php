@@ -46,7 +46,7 @@
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_LIFECYCLE
 
 static const char JSON_METRICSET[] =
-        "{\"metricset\":{\"samples\":{\"system.cpu.total.norm.pct\":{\"value\":%.2f},\"system.process.cpu.total.norm.pct\":{\"value\":%.2f},\"system.memory.actual.free\":{\"value\":%"PRIu64"},\"system.memory.total\":{\"value\":%"PRIu64"},\"system.process.memory.size\":{\"value\":%"PRIu64"},\"system.process.memory.rss.bytes\":{\"value\":%"PRIu64"}},\"timestamp\":%"PRIu64"}}\n";
+        "{\"metricset\":{\"samples\":{\"system.cpu.total.norm.pct\":{\"value\":%.2f},\"system.process.cpu.total.norm.pct\":{\"value\":%.2f},\"system.memory.actual.free\":{\"value\":%" PRIu64 "},\"system.memory.total\":{\"value\":%" PRIu64 "},\"system.process.memory.size\":{\"value\":%" PRIu64 "},\"system.process.memory.rss.bytes\":{\"value\":%" PRIu64 "}},\"timestamp\":%" PRIu64 "}}\n";
 
 static uint64_t requestCounter = 0;
 
@@ -79,14 +79,18 @@ void logSupportabilityInfo( LogLevel logLevel )
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
+    String supportabilityInfo;
+    StringView textRemainder;
+    const char *textEnd;
+
     ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "Version of agent C part: " PHP_ELASTIC_APM_VERSION );
     ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "Current process command line: %s", streamCurrentProcessCommandLine( &txtOutStream, /* maxLength */ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ) );
 
     ELASTIC_APM_PEMALLOC_STRING_IF_FAILED_GOTO( supportInfoBufferSize, supportInfoBuffer );
-    String supportabilityInfo = buildSupportabilityInfo( supportInfoBufferSize, supportInfoBuffer );
+    supportabilityInfo = buildSupportabilityInfo( supportInfoBufferSize, supportInfoBuffer );
 
-    const char* const textEnd = supportabilityInfo + strlen( supportabilityInfo );
-    StringView textRemainder = makeStringViewFromBeginEnd( supportabilityInfo, textEnd );
+    textEnd = supportabilityInfo + strlen( supportabilityInfo );
+    textRemainder = makeStringViewFromBeginEnd( supportabilityInfo, textEnd );
     for ( ;; )
     {
         StringView eolSeq = findEndOfLineSequence( textRemainder );
@@ -337,7 +341,7 @@ void resetLastPhpErrorData()
 
 void setLastPhpErrorData( int type, const char* fileName, uint32_t lineNumber, const char* message )
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d, fileName: %s, lineNumber: %"PRIu64", message: %s", type, fileName, (UInt64)lineNumber, message );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d, fileName: %s, lineNumber: %" PRIu64 ", message: %s", type, fileName, (UInt64)lineNumber, message );
 
     ResultCode resultCode;
     PhpErrorData tempPhpErrorData;
@@ -508,6 +512,7 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* config = NULL;
+    CURLcode curlCode;
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( constructTracer( tracer ) );
 
@@ -537,7 +542,7 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
     registerAtExitLogging();
     registerErrorAndExceptionHooks();
 
-    CURLcode curlCode = curl_global_init( CURL_GLOBAL_ALL );
+    curlCode = curl_global_init( CURL_GLOBAL_ALL );
     if ( curlCode != CURLE_OK )
     {
         resultCode = resultFailure;
@@ -757,8 +762,7 @@ void elasticApmRequestShutdown()
         goto finally;
     }
 
-    bool preloadDetected = requestCounter == 1 && detectOpcachePreload();
-    if (preloadDetected) {
+    if (requestCounter == 1 && detectOpcachePreload()) {
         ELASTIC_APM_LOG_DEBUG( "opcache.preload request detected on shutdown" );
         resultCode = resultSuccess;
         goto finally;

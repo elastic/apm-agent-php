@@ -58,6 +58,12 @@ ResultCode loadPhpFile( const char* phpFilePath )
     zend_op_array* new_op_array = NULL;
     zval result;
     bool should_dtor_result = false;
+    int php_stream_open_for_zend_ex_retVal = FAILURE;
+    bool hasThrownException = false;
+
+#if PHP_VERSION_ID >= ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version from 8.1.0 */
+    zend_string* phpFilePathAsZendString;
+#endif
 
     size_t phpFilePathLen = strlen( phpFilePath );
     if ( phpFilePathLen == 0 )
@@ -72,12 +78,12 @@ ResultCode loadPhpFile( const char* phpFilePath )
     // the second half of spl_autoload()
 
 #       if PHP_VERSION_ID >= ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version from 8.1.0 */
-    zend_string* phpFilePathAsZendString = zend_string_init( phpFilePath, phpFilePathLen, /* persistent: */ 0 );
+    phpFilePathAsZendString = zend_string_init( phpFilePath, phpFilePathLen, /* persistent: */ 0 );
     zend_stream_init_filename_ex( &file_handle, phpFilePathAsZendString );
     should_destroy_file_handle = true;
 #       endif
 
-    int php_stream_open_for_zend_ex_retVal = php_stream_open_for_zend_ex(
+    php_stream_open_for_zend_ex_retVal = php_stream_open_for_zend_ex(
 #               if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version before 8.1.0 */
             phpFilePath,
 #               endif
@@ -123,7 +129,7 @@ ResultCode loadPhpFile( const char* phpFilePath )
     ZVAL_UNDEF( &result );
     zend_execute( new_op_array, &result );
     should_dtor_result = true;
-    bool hasThrownException = ( EG( exception ) != NULL );
+    hasThrownException = ( EG( exception ) != NULL );
     destroy_op_array( new_op_array );
     efree( new_op_array );
     if ( hasThrownException )
@@ -388,7 +394,7 @@ String streamZVal( const zval* zVal, TextOutputStream* txtOutStream )
         case IS_STRING:
         {
             StringView strVw = zStringToStringView( Z_STR_P( zVal ) );
-            return streamPrintf( txtOutStream, "type: string, value [length: %"PRIu64"]: %.*s", (UInt64)(strVw.length), (int)(strVw.length), strVw.begin );
+            return streamPrintf( txtOutStream, "type: string, value [length: %" PRIu64 "]: %.*s", (UInt64)(strVw.length), (int)(strVw.length), strVw.begin );
         }
 
         case IS_LONG:

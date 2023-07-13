@@ -21,6 +21,7 @@
 
 #include <time.h>
 #include <stdbool.h>
+#include <string.h>
 
 #ifdef PHP_WIN32
 #   ifdef ELASTIC_APM_MOCK_CLOCK

@@ -153,7 +153,7 @@ size_t logResponse( void* data, size_t unusedSizeParam, size_t dataSize, void* u
     ELASTIC_APM_UNUSED( unusedSizeParam );
     ELASTIC_APM_UNUSED( unusedUserDataParam );
 
-    ELASTIC_APM_LOG_DEBUG( "APM Server's response body [length: %"PRIu64"]: %.*s", (UInt64) dataSize, (int) dataSize, (const char*) data );
+    ELASTIC_APM_LOG_DEBUG( "APM Server's response body [length: %" PRIu64 "]: %.*s", (UInt64) dataSize, (int) dataSize, (const char*) data );
     return dataSize;
 }
 
@@ -287,7 +287,7 @@ void curlDebugCallback( CURL* curlHandle, curl_infotype type, char* dataViewBegi
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
-    ELASTIC_APM_LOG_INFO( "type: %s, data [length: %"PRIu64"]: %s", streamCurlInfoType( type, &txtOutStream ), (UInt64)dataViewLength, streamCurlData( dataViewBegin, dataViewLength, &txtOutStream ) );
+    ELASTIC_APM_LOG_INFO( "type: %s, data [length: %" PRIu64 "]: %s", streamCurlInfoType( type, &txtOutStream ), (UInt64)dataViewLength, streamCurlData( dataViewBegin, dataViewLength, &txtOutStream ) );
 }
 
 void enableCurlVerboseMode( CURL* curlHandle )
@@ -433,6 +433,8 @@ ResultCode syncSendEventsToApmServerWithConn( const ConfigSnapshot* config, Conn
     int snprintfRetVal;
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+    long responseCode = 0;
+    bool isFailed = true;
 
     ELASTIC_APM_ASSERT_VALID_PTR( connectionData );
     ELASTIC_APM_ASSERT( connectionData->curlHandle != NULL, "" );
@@ -467,14 +469,13 @@ ResultCode syncSendEventsToApmServerWithConn( const ConfigSnapshot* config, Conn
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
-    long responseCode = 0;
     curl_easy_getinfo( connectionData->curlHandle, CURLINFO_RESPONSE_CODE, &responseCode );
     /**
      *  If the HTTP response status code isn’t 2xx or if a request is prematurely closed (either on the TCP or HTTP level) the request MUST be considered failed.
      *
      * @see https://github.com/elastic/apm/blob/d8cb5607dbfffea819ab5efc9b0743044772fb23/specs/agents/transport.md#transport-errors
      */
-    bool isFailed = ( responseCode / 100 ) != 2;
+    isFailed = ( responseCode / 100 ) != 2;
     ELASTIC_APM_LOG_WITH_LEVEL( isFailed ? logLevel_error : logLevel_debug, "Sent events to APM Server. Response HTTP code: %ld. URL: `%s'.", responseCode, url );
     resultCode = isFailed ? resultFailure : resultSuccess;
     finally:
@@ -498,7 +499,7 @@ ResultCode syncSendEventsToApmServer( const ConfigSnapshot* config, StringView u
             "Sending events to APM Server..."
             "; config: { serverUrl: %s, disableSend: %s, serverTimeout: %s }"
             "; userAgentHttpHeader: `%s'"
-            "; serializedEvents [length: %"PRIu64"]:\n%.*s"
+            "; serializedEvents [length: %" PRIu64 "]:\n%.*s"
             , config->serverUrl
             , boolToString( config->disableSend )
             , streamDuration( config->serverTimeout, &txtOutStream )
@@ -696,9 +697,9 @@ String streamSharedStateSnapshot( const BackgroundBackendCommSharedStateSnapshot
     streamPrintf(
             txtOutStream
             ,"{"
-             "total size of queued events: %"PRIu64
+             "total size of queued events: %" PRIu64 
              ", firstDataToSendNode %s NULL"
-             " (serializedEvents.length: %"PRIu64 ")"
+             " (serializedEvents.length: %" PRIu64  ")"
              ", shouldExit: %s"
              ", shouldExitBy: %s"
              "}"
@@ -817,9 +818,10 @@ ResultCode backgroundBackendCommThreadFunc_removeFirstEventsBatchAndUpdateSnapsh
         , /* out */ BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
 )
 {
+    size_t firstNodeDataSize = 0;
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_PROLOG()
 
-    size_t firstNodeDataSize = removeFirstNodeInDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
+    firstNodeDataSize = removeFirstNodeInDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
     backgroundBackendComm->dataToSendTotalSize -= firstNodeDataSize;
 
     backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot( backgroundBackendComm, /* out */ sharedStateSnapshot );
@@ -872,9 +874,9 @@ ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatch(
 
     ELASTIC_APM_LOG_DEBUG(
             "About to send batch of events"
-            "; batch ID: %"PRIu64
-            "; batch size: %"PRIu64
-            "; total size of queued events: %"PRIu64
+            "; batch ID: %" PRIu64 
+            "; batch size: %" PRIu64 
+            "; total size of queued events: %" PRIu64 
             , (UInt64) sharedStateSnapshot->firstDataToSendNode->id
             , (UInt64) serializedEvents.length
             , (UInt64) sharedStateSnapshot->dataToSendTotalSize );
@@ -890,9 +892,9 @@ ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatch(
     {
         ELASTIC_APM_LOG_ERROR(
                 "Failed to send batch of events - the batch will be dequeued and dropped"
-                "; batch ID: %"PRIu64
-                "; batch size: %"PRIu64
-                "; total size of queued events: %"PRIu64
+                "; batch ID: %" PRIu64 
+                "; batch size: %" PRIu64 
+                "; total size of queued events: %" PRIu64 
                 , (UInt64) sharedStateSnapshot->firstDataToSendNode->id
                 , (UInt64) serializedEvents.length
                 , (UInt64) sharedStateSnapshot->dataToSendTotalSize );
@@ -906,7 +908,7 @@ ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatch(
 
 void backgroundBackendCommThreadFunc_logSharedStateSnapshot( const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot )
 {
-    StringView serializedEvents = { 0 };
+    StringView serializedEvents = { nullptr, 0 };
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
@@ -918,7 +920,7 @@ void backgroundBackendCommThreadFunc_logSharedStateSnapshot( const BackgroundBac
     }
 
     ELASTIC_APM_ASSERT( (sharedStateSnapshot->dataToSendTotalSize == 0) == ( sharedStateSnapshot->firstDataToSendNode == NULL )
-                        , "dataToSendTotalSize: %"PRIu64 ", firstDataToSendNode: %p (serializedEvents.length: %"PRIu64 ")"
+                        , "dataToSendTotalSize: %" PRIu64  ", firstDataToSendNode: %p (serializedEvents.length: %" PRIu64  ")"
                         , (UInt64) sharedStateSnapshot->dataToSendTotalSize
                         , sharedStateSnapshot->firstDataToSendNode
                         , (UInt64) serializedEvents.length );
@@ -1070,7 +1072,7 @@ ResultCode newBackgroundBackendComm( const ConfigSnapshot* config, BackgroundBac
                             , /* thread's dbgDesc */ "Background backend communications" );
     if ( resultCode == resultSuccess )
     {
-        ELASTIC_APM_LOG_DEBUG( "Started thread for background backend communications; thread ID: %"PRIu64, getThreadId( backgroundBackendComm->thread ) );
+        ELASTIC_APM_LOG_DEBUG( "Started thread for background backend communications; thread ID: %" PRIu64 , getThreadId( backgroundBackendComm->thread ) );
     }
 
     resultCode = resultSuccess;
@@ -1170,14 +1172,15 @@ ResultCode enqueueEventsToSendToApmServer( StringView userAgentHttpHeader, Strin
 
     ELASTIC_APM_LOG_DEBUG(
             "Queueing events to send asynchronously..."
-            "; userAgentHttpHeader [length: %"PRIu64"]: `%.*s'"
-            "; serializedEvents [length: %"PRIu64"]:\n%.*s"
+            "; userAgentHttpHeader [length: %" PRIu64 "]: `%.*s'"
+            "; serializedEvents [length: %" PRIu64 "]:\n%.*s"
             , (UInt64) userAgentHttpHeader.length, (int) userAgentHttpHeader.length, userAgentHttpHeader.begin
             , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
     textOutputStreamRewind( &txtOutStream );
 
     ResultCode resultCode;
     bool shouldUnlockMutex = false;
+    UInt64 id;
     BackgroundBackendComm* backgroundBackendComm = g_backgroundBackendComm;
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( lockMutex( backgroundBackendComm->mutex, &shouldUnlockMutex, __FUNCTION__ ) );
@@ -1186,12 +1189,12 @@ ResultCode enqueueEventsToSendToApmServer( StringView userAgentHttpHeader, Strin
     {
         ELASTIC_APM_LOG_ERROR(
                 "Already queued events are above max queue size - dropping these events"
-                "; size of already queued events: %"PRIu64
+                "; size of already queued events: %" PRIu64 
                 , (UInt64) backgroundBackendComm->dataToSendTotalSize );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
-    const UInt64 id = backgroundBackendComm->nextEventsBatchId;
+    id = backgroundBackendComm->nextEventsBatchId;
     ELASTIC_APM_CALL_IF_FAILED_GOTO(
             addCopyToDataToSendQueue( &( backgroundBackendComm->dataToSendQueue )
                                       , id
@@ -1203,9 +1206,9 @@ ResultCode enqueueEventsToSendToApmServer( StringView userAgentHttpHeader, Strin
 
     ELASTIC_APM_LOG_DEBUG(
             "Queued a batch of events"
-            "; batch ID: %"PRIu64
-            "; batch size: %"PRIu64
-            "; total size of queued events: %"PRIu64
+            "; batch ID: %" PRIu64 
+            "; batch size: %" PRIu64 
+            "; total size of queued events: %" PRIu64 
             , (UInt64) id
             , (UInt64) serializedEvents.length
             , (UInt64) backgroundBackendComm->dataToSendTotalSize );
@@ -1219,7 +1222,7 @@ ResultCode enqueueEventsToSendToApmServer( StringView userAgentHttpHeader, Strin
 
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT_MSG(
             "Finished queueing events to send asynchronously"
-            "; serializedEvents [length: %"PRIu64"]:\n%.*s"
+            "; serializedEvents [length: %" PRIu64 "]:\n%.*s"
             , (UInt64) serializedEvents.length, (int) serializedEvents.length, serializedEvents.begin );
 
     return resultCode;
@@ -1237,8 +1240,8 @@ ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView userA
     ELASTIC_APM_LOG_DEBUG(
             "Handling request to send events..."
             "; config: { serverUrl: %s, disableSend: %s, serverTimeout: %s }"
-            "; userAgentHttpHeader [length: %"PRIu64"]: `%.*s'"
-            "; serializedEvents [length: %"PRIu64"]:\n%.*s"
+            "; userAgentHttpHeader [length: %" PRIu64 "]: `%.*s'"
+            "; serializedEvents [length: %" PRIu64 "]:\n%.*s"
             , config->serverUrl
             , boolToString( config->disableSend )
             , streamDuration( config->serverTimeout, &txtOutStream )

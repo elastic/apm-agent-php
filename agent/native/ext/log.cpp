@@ -407,14 +407,14 @@ static void openAndAppendToFile( Logger* logger, String text )
 // OLD TODO: Uncomment: Fix lower level system calls - "open" and "write" to get stronger guarantee
 //#ifdef PHP_WIN32
     FILE* file = fopen( logger->config.file, "a" );
-    if ( file == NULL )
-    {
-        goto failure;
+    if ( file == NULL ) {
+        logger->fileFailed = true;
+        return;
     }
     size_t numberOfElementsWritten = fwrite( text, sizeof( *text ), textLen, file );
-    if ( numberOfElementsWritten != textLen )
-    {
-        goto failure;
+    if ( numberOfElementsWritten != textLen ) {
+        logger->fileFailed = true;
+        return;
     }
 //#else
 //    // Use lower level system calls - "open" and "write" to get stronger guarantee:
@@ -440,7 +440,6 @@ static void openAndAppendToFile( Logger* logger, String text )
 //    }
 //#endif
 
-    finally:
 //#ifdef PHP_WIN32
     if ( file != NULL )
     {
@@ -454,10 +453,6 @@ static void openAndAppendToFile( Logger* logger, String text )
 //#endif
 
     return;
-
-    failure:
-    logger->fileFailed = true;
-    goto finally;
 }
 
 static
@@ -682,7 +677,7 @@ LogLevel findMaxLevel( const LogLevel* levelsArray, size_t levelsArraySize, LogL
 {
     int max = minLevel;
     ELASTIC_APM_FOR_EACH_INDEX( i, levelsArraySize ) if ( levelsArray[ i ] > max ) max = levelsArray[ i ];
-    return max;
+    return static_cast<LogLevel>(max);
 }
 
 LogLevel calcMaxEnabledLogLevel( LogLevel levelPerSinkType[numberOfLogSinkTypes] )
@@ -815,6 +810,8 @@ ResultCode reconfigureLogger( Logger* logger, const LoggerConfig* newConfig, Log
     ResultCode resultCode;
     LoggerConfig derivedNewConfig = *newConfig;
     String filePathCopy = NULL;
+    LoggerConfig oldConfig;
+    LogLevel oldMaxEnabledLevel;
     deriveLoggerConfig( newConfig, generalLevel, &derivedNewConfig );
 
     if ( areEqualLoggerConfigs( &logger->config, &derivedNewConfig ) )
@@ -829,8 +826,8 @@ ResultCode reconfigureLogger( Logger* logger, const LoggerConfig* newConfig, Log
         ELASTIC_APM_PEMALLOC_DUP_STRING_IF_FAILED_GOTO( newConfig->file, /* out */ filePathCopy );
     }
 
-    LoggerConfig oldConfig = logger->config;
-    const LogLevel oldMaxEnabledLevel = logger->maxEnabledLevel;
+    oldConfig = logger->config;
+    oldMaxEnabledLevel = logger->maxEnabledLevel;
     logger->config = derivedNewConfig;
     logger->config.file = filePathCopy;
     filePathCopy = NULL;

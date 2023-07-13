@@ -105,6 +105,7 @@ ResultCode wordPressInstrumentationTransformFile_plugin_php( zend_ast* ast )
 {
     ResultCode resultCode;
     zend_ast_decl** p_wp_filter_build_unique_id_astFuncDecl = NULL;
+    StringView setReadyToWrapFilterCallbacksConstName;
 
     // function _wp_filter_build_unique_id( $hook_name, $callback, $priority )
     p_wp_filter_build_unique_id_astFuncDecl = findChildSlotForStandaloneFunctionAst( ast, g_globalNamespace, g_wp_filter_build_unique_id_funcName, /* minParamsCount */ 3 );
@@ -123,7 +124,7 @@ ResultCode wordPressInstrumentationTransformFile_plugin_php( zend_ast* ast )
     // if _wp_filter_build_unique_id was not instrumented as well.
     // So we record if we instrumented _wp_filter_build_unique_id successfully
     // and PHP part wraps callbacks only if it sees the record that _wp_filter_build_unique_id was instrumented successfully.
-    StringView setReadyToWrapFilterCallbacksConstName = ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_WORDPRESS_DIRECT_CALL_METHOD_SET_READY_TO_WRAP_FILTER_CALLBACKS_CONST_NAME );
+    setReadyToWrapFilterCallbacksConstName = ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_WORDPRESS_DIRECT_CALL_METHOD_SET_READY_TO_WRAP_FILTER_CALLBACKS_CONST_NAME );
     ELASTIC_APM_CALL_IF_FAILED_GOTO( appendDirectCallToInstrumentation( p_wp_filter_build_unique_id_astFuncDecl, setReadyToWrapFilterCallbacksConstName ) );
 
     resultCode = resultSuccess;

@@ -175,7 +175,9 @@ String streamUtcTimeValAsLocal( const TimeVal* utcTimeVal, TextOutputStream* txt
     ELASTIC_APM_ASSERT_VALID_PTR( utcTimeVal );
     ELASTIC_APM_ASSERT_VALID_PTR( txtOutStream );
 
-    struct tm localTime_tm = { 0 };
+    struct tm localTime_tm;
+    memset(&localTime_tm, 0, sizeof(struct tm));
+
     long secondsAheadUtc = 0;
 
     if ( ! convertUtcToLocalTime( utcTimeVal->tv_sec, &localTime_tm, &secondsAheadUtc ) )
@@ -183,8 +185,9 @@ String streamUtcTimeValAsLocal( const TimeVal* utcTimeVal, TextOutputStream* txt
         return "convertUtcToLocalTime() failed";
     }
 
-    LocalTime localTime = { 0 };
-    
+    LocalTime localTime;
+    memset(&localTime, 0, sizeof(LocalTime));
+
     // tm_year is years since 1900
     localTime.years = (UInt16) ( 1900 + localTime_tm.tm_year );
     // tm_mon is months since January - [0, 11]

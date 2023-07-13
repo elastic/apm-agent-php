@@ -241,9 +241,6 @@ ResultCode lockMutexEx( Mutex* mtx, /* out */ bool* shouldUnlock, String dbgDesc
     ELASTIC_APM_ASSERT_VALID_PTR( mtx );
     ELASTIC_APM_ASSERT_VALID_PTR( shouldUnlock );
     ELASTIC_APM_ASSERT( ! *shouldUnlock, "" );
-
-    ResultCode resultCode;
-
     *shouldUnlock = false;
 
     if ( shouldLog )
@@ -251,18 +248,19 @@ ResultCode lockMutexEx( Mutex* mtx, /* out */ bool* shouldUnlock, String dbgDesc
         ELASTIC_APM_LOG_TRACE( "Locking mutex... mutex address: %p, dbg desc: `%s'; call dbg desc: `%s'", mtx, mtx->dbgDesc, dbgDesc );
     }
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( checkIfMutexCreatedByCurrentProcess( mtx, dbgDesc, "lock" ) );
+    if (checkIfMutexCreatedByCurrentProcess( mtx, dbgDesc, "lock" ) != ResultCode::resultSuccess) {
+        return ResultCode::resultFailure;
+    }
 
-    int pthreadResultCode;
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
-    pthreadResultCode = pthread_mutex_lock( &(mtx->mutex) );
+    int pthreadResultCode = pthread_mutex_lock( &(mtx->mutex) );
     if ( pthreadResultCode != 0 )
     {
         ELASTIC_APM_LOG_ERROR( "pthread_mutex_lock failed with error: `%s'; mutex address: %p, dbg desc: `%s'; call dbg desc: `%s'"
                                , streamErrNo( pthreadResultCode, &txtOutStream ), mtx, mtx->dbgDesc, dbgDesc );
-        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+        return ResultCode::resultFailure;
     }
 
     // Don't log for logging mutex to avoid spamming the log
@@ -271,13 +269,8 @@ ResultCode lockMutexEx( Mutex* mtx, /* out */ bool* shouldUnlock, String dbgDesc
         ELASTIC_APM_LOG_TRACE( "Locked mutex. mutex address: %p, dbg desc: `%s'; call dbg desc: `%s'", mtx, mtx->dbgDesc, dbgDesc );
     }
     *shouldUnlock = true;
-    resultCode = resultSuccess;
 
-    finally:
-    return resultCode;
-
-    failure:
-    goto finally;
+    return ResultCode::resultSuccess;
 }
 
 ResultCode lockMutex( Mutex* mtx, /* out */ bool* shouldUnlock, String dbgDesc )
@@ -295,12 +288,8 @@ ResultCode unlockMutexEx( Mutex* mtx, /* in,out */ bool* shouldUnlock, String db
     ELASTIC_APM_ASSERT_VALID_PTR( mtx );
     ELASTIC_APM_ASSERT_VALID_PTR( shouldUnlock );
 
-    ResultCode resultCode;
-
-    if ( ! *shouldUnlock )
-    {
-        resultCode = resultSuccess;
-        goto finally;
+    if ( ! *shouldUnlock ) {
+        return ResultCode::resultSuccess;
     }
 
     if ( shouldLog )
@@ -308,7 +297,9 @@ ResultCode unlockMutexEx( Mutex* mtx, /* in,out */ bool* shouldUnlock, String db
         ELASTIC_APM_LOG_TRACE( "Unlocking mutex... mutex address: %p, dbg desc: `%s'; call dbg desc: `%s'", mtx, mtx->dbgDesc, dbgDesc );
     }
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( checkIfMutexCreatedByCurrentProcess( mtx, dbgDesc, "unlock" ) );
+    if (checkIfMutexCreatedByCurrentProcess( mtx, dbgDesc, "unlock" ) != ResultCode::resultSuccess) {
+        return ResultCode::resultFailure;
+    }
 
     int pthreadResultCode;
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
@@ -319,7 +310,7 @@ ResultCode unlockMutexEx( Mutex* mtx, /* in,out */ bool* shouldUnlock, String db
     {
         ELASTIC_APM_LOG_ERROR( "pthread_mutex_unlock failed with error: `%s'; mutex address: %p, dbg desc: `%s'; call dbg desc: `%s'"
                                , streamErrNo( pthreadResultCode, &txtOutStream ), mtx, mtx->dbgDesc, dbgDesc );
-        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+        return ResultCode::resultFailure;
     }
 
     if ( shouldLog )
@@ -327,13 +318,7 @@ ResultCode unlockMutexEx( Mutex* mtx, /* in,out */ bool* shouldUnlock, String db
         ELASTIC_APM_LOG_TRACE( "Unlocked mutex. mutex address: %p, dbg desc: `%s'; call dbg desc: `%s'", mtx, mtx->dbgDesc, dbgDesc );
     }
     *shouldUnlock = false;
-    resultCode = resultSuccess;
-
-    finally:
-    return resultCode;
-
-    failure:
-    goto finally;
+    return ResultCode::resultSuccess;
 }
 
 ResultCode unlockMutex( Mutex* mtx, /* in,out */ bool* shouldUnlock, String dbgDesc )

@@ -34,10 +34,10 @@
 #define ELASTIC_APM_STATIC_ARRAY_SIZE( array ) ( ( sizeof( (array) ) ) / sizeof( (array)[ 0 ] ) )
 
 #define ELASTIC_APM_FOR_EACH_INDEX_START_END( indexVarType, indexVar, rangeStart, rangeExcludedEnd ) \
-    for ( indexVarType indexVar = rangeStart ; (indexVar) < (rangeExcludedEnd) ; ++indexVar ) // NOLINT(bugprone-macro-parentheses)
+    for ( indexVarType indexVar = rangeStart ; (indexVar) < (rangeExcludedEnd) ; (indexVarType)++indexVar ) // NOLINT(bugprone-macro-parentheses)
 
 #define ELASTIC_APM_FOR_EACH_INDEX_EX( indexVarType, indexVar, rangeSize ) \
-    ELASTIC_APM_FOR_EACH_INDEX_START_END( indexVarType, indexVar, 0, rangeSize )
+    ELASTIC_APM_FOR_EACH_INDEX_START_END( indexVarType, indexVar, static_cast<indexVarType>(0), rangeSize )
 
 #define ELASTIC_APM_FOR_EACH_INDEX( indexVar, rangeSize ) ELASTIC_APM_FOR_EACH_INDEX_EX( size_t, indexVar, rangeSize )
 
@@ -51,7 +51,7 @@
         /* init */ \
         size_t \
             elastic_apm_for_each_backwards_number_of_elements_remaining = (rangeSize), \
-            (indexVar) = (rangeSize) == 0 ? 0 : (rangeSize) - 1; \
+            indexVar = (rangeSize) == 0 ? 0 : (rangeSize) - 1; \
         \
         /* stop condition */ \
         elastic_apm_for_each_backwards_number_of_elements_remaining != 0 ; \

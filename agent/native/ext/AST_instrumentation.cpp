@@ -82,7 +82,7 @@ bool getStringFromAstZVal( zend_ast* astZval, /* out */ StringView* pResult )
 
     zend_string* zString = Z_STR_P( zVal );
     *pResult = zStringToStringView( zString );
-    ELASTIC_APM_LOG_TRACE( "Returning true - with result string [length: %"PRIu64"]: %.*s", (UInt64)(pResult->length), (int)(pResult->length), pResult->begin );
+    ELASTIC_APM_LOG_TRACE( "Returning true - with result string [length: %" PRIu64 "]: %.*s", (UInt64)(pResult->length), (int)(pResult->length), pResult->begin );
     return true;
 }
 
@@ -95,7 +95,7 @@ bool getAstDeclName( zend_ast_decl* astDecl, /* out */ StringView* name )
     }
 
     *name = zStringToStringView( astDecl->name );
-    ELASTIC_APM_LOG_TRACE( "Returning true - name [length: %"PRIu64"]: %.*s", (UInt64)(name->length), (int)(name->length), name->begin );
+    ELASTIC_APM_LOG_TRACE( "Returning true - name [length: %" PRIu64 "]: %.*s", (UInt64)(name->length), (int)(name->length), name->begin );
     return true;
 }
 
@@ -214,6 +214,8 @@ zend_ast* createAstEx( zend_ast_kind kind, zend_ast_attr attr, ZendAstPtrArrayVi
         case 5:
             return zend_ast_create_ex( kind, attr, children.values[ 0 ], children.values[ 1 ], children.values[ 2 ], children.values[ 3 ], children.values[ 4 ] );
         #endif
+        default: // silence compiler warning
+            return nullptr;
     }
 }
 
@@ -592,6 +594,9 @@ ResultCode insertAstForFunctionPreHook( zend_ast_decl* funcAstDecl, ArgCaptureSp
     ELASTIC_APM_ASSERT( funcAstDecl->kind == ZEND_AST_FUNC_DECL || funcAstDecl->kind == ZEND_AST_METHOD, "funcAstDecl->kind: %s", streamZendAstKind( funcAstDecl->kind, &txtOutStream ) );
     textOutputStreamRewind( &txtOutStream );
 
+    zend_ast* originalFuncBodyAst = nullptr;
+    zend_ast* preHookCallAstArgList = nullptr;
+
     StringView dbgFuncName;
     if ( ! getAstDeclName( funcAstDecl, /* out */ &dbgFuncName ) )
     {
@@ -601,7 +606,7 @@ ResultCode insertAstForFunctionPreHook( zend_ast_decl* funcAstDecl, ArgCaptureSp
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "dbgFuncName: %s, compiled_filename: %s", dbgFuncName.begin, dbgCompiledFileName );
     debugDumpAstTreeToLog( (zend_ast*) funcAstDecl, logLevel_debug );
 
-    zend_ast* originalFuncBodyAst = funcAstDecl->child[ g_funcDeclBodyChildIndex ];
+    originalFuncBodyAst = funcAstDecl->child[ g_funcDeclBodyChildIndex ];
     if ( originalFuncBodyAst == NULL )
     {
         ELASTIC_APM_LOG_TRACE( "originalFuncBodyAst == NULL" );
@@ -614,7 +619,6 @@ ResultCode insertAstForFunctionPreHook( zend_ast_decl* funcAstDecl, ArgCaptureSp
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
-    zend_ast* preHookCallAstArgList = NULL;
     ELASTIC_APM_CALL_IF_FAILED_GOTO( createPreHookAstArgListByCaptureSpec( funcAstDecl, argCaptureSpecs, /* out */ &preHookCallAstArgList ) );
 
     funcAstDecl->child[ g_funcDeclBodyChildIndex ] = createAstListWithTwoChildren(
@@ -683,6 +687,9 @@ ResultCode appendDirectCallToInstrumentation( zend_ast_decl** pAstChildSlot, Str
     zend_ast_decl* appendToAstDecl = *pAstChildSlot;
     uint32_t lineNumber = appendToAstDecl->end_lineno;
 
+    zend_ast* appendedCallAstArgList = nullptr;
+    zend_ast* appendedCallAst = nullptr;
+
     ELASTIC_APM_ASSERT( appendToAstDecl->kind == ZEND_AST_FUNC_DECL, "appendToAst->kind: %s", streamZendAstKind( appendToAstDecl->kind, &txtOutStream ) );
     textOutputStreamRewind( &txtOutStream );
 
@@ -696,8 +703,8 @@ ResultCode appendDirectCallToInstrumentation( zend_ast_decl** pAstChildSlot, Str
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "dbgFuncName: %s, compiled_filename: %s", dbgFuncName.begin, dbgCompiledFileName );
     debugDumpAstTreeToLog( (zend_ast*) ( *pAstChildSlot ), logLevel_debug );
 
-    zend_ast* appendedCallAstArgList = createDirectCallAstArgList( lineNumber, constNameForMethodName );
-    zend_ast* appendedCallAst = createAstStandaloneFqFunctionCall( g_elastic_apm_ast_instrumentation_direct_call_funcName, appendedCallAstArgList );
+    appendedCallAstArgList = createDirectCallAstArgList( lineNumber, constNameForMethodName );
+    appendedCallAst = createAstStandaloneFqFunctionCall( g_elastic_apm_ast_instrumentation_direct_call_funcName, appendedCallAstArgList );
 
     *((zend_ast**)pAstChildSlot) = createAstListWithTwoChildren( ZEND_AST_STMT_LIST, (zend_ast*) appendToAstDecl, appendedCallAst );
 
@@ -847,7 +854,7 @@ ResultCode cloneFallbackAst( zend_ast* ast, uint32_t lineNumber, /* out */ zend_
 
     if ( children.count != 0 )
     {
-        clonedChildren = emalloc( sizeof( zend_ast* ) * children.count );
+        clonedChildren = static_cast<zend_ast **>(emalloc(sizeof( zend_ast* ) * children.count));
     }
     ELASTIC_APM_FOR_EACH_INDEX( i, children.count )
     {
@@ -1303,6 +1310,7 @@ ResultCode wrapStandaloneFunctionAstWithPrePostHooks( /* in,out */ zend_ast_decl
     zend_ast_decl* originalFuncAstDecl = *pAstChildSlot; // it's not created by this function, so we should NOT clean it on failure
     StringBuffer wrappedFunctionNewName = ELASTIC_APM_EMPTY_STRING_BUFFER;
     zend_ast_decl* wrapperFuncAst = NULL;
+    zend_ast* newCombinedAst = NULL;
 
     ELASTIC_APM_ASSERT( originalFuncAstDecl->kind == ZEND_AST_FUNC_DECL, "originalFuncAstDecl->kind: %s", streamZendAstKind( originalFuncAstDecl->kind, &txtOutStream ) );
     textOutputStreamRewind( &txtOutStream );
@@ -1318,7 +1326,7 @@ ResultCode wrapStandaloneFunctionAstWithPrePostHooks( /* in,out */ zend_ast_decl
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( createWrappedFunctionNewName( originalFuncName, /* out */ &wrappedFunctionNewName ) );
     ELASTIC_APM_CALL_IF_FAILED_GOTO( createWrapperFunctionAst( originalFuncAstDecl, stringBufferToView( wrappedFunctionNewName ), /* out */ &wrapperFuncAst ) );
-    zend_ast* newCombinedAst = createAstListWithTwoChildren( ZEND_AST_STMT_LIST, (zend_ast*)originalFuncAstDecl, (zend_ast*)wrapperFuncAst );
+    newCombinedAst = createAstListWithTwoChildren( ZEND_AST_STMT_LIST, (zend_ast*)originalFuncAstDecl, (zend_ast*)wrapperFuncAst );
     newCombinedAst->lineno = findAstDeclStartLineNumber( originalFuncAstDecl );
     originalFuncAstDecl->name = createZStringForAst( stringBufferToView( wrappedFunctionNewName ) );
     *((zend_ast**)pAstChildSlot) = newCombinedAst;
@@ -1425,7 +1433,7 @@ bool parseAstNamespace( zend_ast* astNamespace, /* out */ StringView* pName, /* 
 
     *pName = name;
     *pEnclosedScope = enclosedScopeAst;
-    ELASTIC_APM_LOG_TRACE( "Returning true - name [length: %"PRIu64"]: %.*s", (UInt64)(pName->length), (int)(pName->length), pName->begin );
+    ELASTIC_APM_LOG_TRACE( "Returning true - name [length: %" PRIu64 "]: %.*s", (UInt64)(pName->length), (int)(pName->length), pName->begin );
     return true;
 }
 
@@ -1470,7 +1478,7 @@ bool findAstOfKindCheckNode( zend_ast* ast, zend_ast_kind kindToFind, StringView
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "misc-no-recursion"
-zend_ast** findChildSlotAstByKind( zend_ast* ast, zend_ast_kind kindToFind, StringView namespace, StringView name, CheckFindAstReqs checkFindAstReqs, void* checkFindAstReqsCtx )
+zend_ast** findChildSlotAstByKind( zend_ast* ast, zend_ast_kind kindToFind, StringView nameSpace, StringView name, CheckFindAstReqs checkFindAstReqs, void* checkFindAstReqsCtx )
 {
     if ( ! zend_ast_is_list( ast ) )
     {
@@ -1483,7 +1491,7 @@ zend_ast** findChildSlotAstByKind( zend_ast* ast, zend_ast_kind kindToFind, Stri
         zend_ast* child = astAsList->child[ i ];
         if ( zend_ast_is_list( child ) )
         {
-            zend_ast** foundAst = findChildSlotAstByKind( child, kindToFind, namespace, name, checkFindAstReqs, checkFindAstReqsCtx );
+            zend_ast** foundAst = findChildSlotAstByKind( child, kindToFind, nameSpace, name, checkFindAstReqs, checkFindAstReqsCtx );
             if ( foundAst != NULL )
             {
                 return foundAst;
@@ -1500,14 +1508,14 @@ zend_ast** findChildSlotAstByKind( zend_ast* ast, zend_ast_kind kindToFind, Stri
                 continue;
             }
 
-            if ( ! areStringViewsEqual( foundNamespaceName, namespace ) )
+            if ( ! areStringViewsEqual( foundNamespaceName, nameSpace ) )
             {
                 continue;
             }
 
             if ( namespaceEnclosedScope != NULL )
             {
-                zend_ast** foundAst = findChildSlotAstByKind( namespaceEnclosedScope, kindToFind, namespace, name, checkFindAstReqs, checkFindAstReqsCtx );
+                zend_ast** foundAst = findChildSlotAstByKind( namespaceEnclosedScope, kindToFind, nameSpace, name, checkFindAstReqs, checkFindAstReqsCtx );
                 if ( foundAst != NULL )
                 {
                     return foundAst;
@@ -1527,14 +1535,14 @@ zend_ast** findChildSlotAstByKind( zend_ast* ast, zend_ast_kind kindToFind, Stri
 }
 #pragma clang diagnostic pop
 
-zend_ast_decl** findChildSlotForStandaloneFunctionAst( zend_ast* rootAst, StringView namespace, StringView funcName, size_t minParamsCount )
+zend_ast_decl** findChildSlotForStandaloneFunctionAst( zend_ast* rootAst, StringView nameSpace, StringView funcName, size_t minParamsCount )
 {
-    return (zend_ast_decl**) findChildSlotAstByKind( rootAst, ZEND_AST_FUNC_DECL, namespace, funcName, checkFunctionReqs, &minParamsCount );
+    return (zend_ast_decl**) findChildSlotAstByKind( rootAst, ZEND_AST_FUNC_DECL, nameSpace, funcName, checkFunctionReqs, &minParamsCount );
 }
 
-zend_ast_decl* findClassAst( zend_ast* rootAst, StringView namespace, StringView className )
+zend_ast_decl* findClassAst( zend_ast* rootAst, StringView nameSpace, StringView className )
 {
-    zend_ast** result = findChildSlotAstByKind( rootAst, ZEND_AST_CLASS, namespace, className, /* checkFuncDeclReqs */ NULL, /* checkFindAstReqsCtx */ NULL );
+    zend_ast** result = findChildSlotAstByKind( rootAst, ZEND_AST_CLASS, nameSpace, className, /* checkFuncDeclReqs */ NULL, /* checkFindAstReqsCtx */ NULL );
     return (zend_ast_decl*)(*result);
 }
 

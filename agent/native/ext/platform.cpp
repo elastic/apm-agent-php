@@ -405,10 +405,10 @@ void iterateOverCStackTraceLibUnwind( size_t numberOfFramesToSkip, IterateOverCS
                         dlInfo.dli_fbase,
                         pi.start_ip,
                         pi.end_ip,
-                        (void*)pi.start_ip -  dlInfo.dli_fbase,
-                        (void*)pi.start_ip -  dlInfo.dli_fbase + offsetInsideFunc,
+                        pi.start_ip -  reinterpret_cast<unw_word_t>(dlInfo.dli_fbase),
+                        pi.start_ip -  reinterpret_cast<unw_word_t>(dlInfo.dli_fbase) + offsetInsideFunc,
                         dlInfo.dli_fname ? dlInfo.dli_fname : "???",
-                        (void*)pi.start_ip -  dlInfo.dli_fbase + offsetInsideFunc
+                        pi.start_ip -  reinterpret_cast<unw_word_t>(dlInfo.dli_fbase) + offsetInsideFunc
                         ), callbackCtx );
                 } else {
                     logErrorCallback( streamPrintf( &txtOutStream, "dladdr failed on frame %zu", frameIndex), callbackCtx );

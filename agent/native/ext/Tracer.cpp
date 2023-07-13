@@ -56,7 +56,8 @@ static
 ResultCode ensureLoggerHasLatestConfig( Logger* logger, const ConfigSnapshot* config )
 {
     ResultCode resultCode;
-    LoggerConfig loggerConfig = { 0 };
+    LoggerConfig loggerConfig;
+    memset(&loggerConfig, 0, sizeof(LoggerConfig));
 
     loggerConfig.levelPerSinkType[ logSink_stderr ] = config->logLevelStderr;
     loggerConfig.levelPerSinkType[ logSink_file ] = config->logLevelFile;
