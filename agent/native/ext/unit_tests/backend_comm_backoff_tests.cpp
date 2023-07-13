@@ -21,6 +21,7 @@
 #include "cmocka_wrapped_for_unit_tests.h"
 #include "unit_test_util.h"
 #include "mock_assert.h"
+#include <algorithm>
 #include <math.h>
 
 static
@@ -49,7 +50,7 @@ void test_backendCommBackoff_convertRandomUIntToJitter( void** testFixtureState 
     ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 123, backendCommBackoff_convertRandomUIntToJitter( /* randomVal */ RAND_MAX, /* jitterHalfRange */ 123 ) );
     ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( -123, backendCommBackoff_convertRandomUIntToJitter( /* randomVal */ 0, /* jitterHalfRange */ 123 ) );
 
-    enum { randomValStepsCount = 10 };
+    static constexpr int randomValStepsCount = 10;
 
     for ( UInt jitterHalfRange = 1 ; jitterHalfRange < 100 ; jitterHalfRange *= 2 )
     {
@@ -126,7 +127,7 @@ void test_backendCommBackoff_getTimeToWaitInSeconds( void** testFixtureState )
                     expectedJitterScale = 0.1;
                     break;
             }
-            UInt reconnectCount = ELASTIC_APM_MIN( callIndex, 6 );
+            UInt reconnectCount = std::min  ( callIndex, static_cast<UInt>(6) );
             UInt expectedTimeToWaitWithoutJitter = (UInt) pow( reconnectCount, 2 );
             int expectedJitter = 0;
             if ( expectedTimeToWaitWithoutJitter >= 10 )

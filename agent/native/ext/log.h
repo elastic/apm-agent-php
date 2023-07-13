@@ -67,7 +67,7 @@ extern LogLevel defaultLogLevelPerSinkType[ numberOfLogSinkTypes ];
 struct LoggerConfig
 {
     LogLevel levelPerSinkType[ numberOfLogSinkTypes ];
-    String file;
+    String file = nullptr;
 };
 typedef struct LoggerConfig LoggerConfig;
 

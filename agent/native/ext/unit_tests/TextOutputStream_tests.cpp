@@ -236,11 +236,13 @@ void testStreamXyzOverflow( StreamXyzFunc streamXyz )
             ELASTIC_APM_TEXT_OUTPUT_STREAM_RESERVED_SPACE_SIZE;
     const size_t bufferSize = bufferSizeWithoutGuards + eachSideGuardSize * 2;
     char* buffer = NULL;
+    char* bufferBeginWithoutGuards;
+    bool autoTermZeroValues[] = { true, false };
+
     ELASTIC_APM_PEMALLOC_STRING_IF_FAILED_GOTO( bufferSize, buffer );
-    char* bufferBeginWithoutGuards = buffer + eachSideGuardSize;
+    bufferBeginWithoutGuards = buffer + eachSideGuardSize;
     resetBufferGuards( bufferBeginWithoutGuards, bufferSizeWithoutGuards );
 
-    bool autoTermZeroValues[] = { true, false };
     ELASTIC_APM_FOR_EACH_INDEX( autoTermZeroValuesIndex, ELASTIC_APM_STATIC_ARRAY_SIZE( autoTermZeroValues ) )
     {
         testStreamXyzOverflowParameterized(

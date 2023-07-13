@@ -18,7 +18,19 @@ CMAKE_MINIMUM_REQUIRED( VERSION 3.15 )
 #    ENDIF ()
 #ENDIF ()
 
-PROJECT( unit_tests C )
+PROJECT( unit_tests 
+    LANGUAGES C CXX
+)
+
+# Set the defauts for all targets
+set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)   # https://github.com/ComputationalRadiationPhysics/picongpu/issues/2109
+set(CMAKE_DISABLE_SOURCE_CHANGES  ON)
+set(CMAKE_CXX_EXTENSIONS OFF)           # https://cmake.org/cmake/help/latest/prop_tgt/CXX_EXTENSIONS.html#prop_tgt:CXX_EXTENSIONS
+set(CMAKE_CXX_STANDARD_REQUIRED ON)     # https://cmake.org/cmake/help/latest/prop_tgt/CXX_STANDARD_REQUIRED.html#prop_tgt:CXX_STANDARD_REQUIRED
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)       # https://cmake.org/cmake/help/latest/variable/CMAKE_INCLUDE_CURRENT_DIR.html
+
+
 
 # disable warnings - fix tests and remove
 add_compile_options("-Wno-comment")
@@ -30,16 +42,8 @@ add_compile_options("-Wno-type-limits")
 add_compile_options("-Wno-unused-variable")
 add_compile_options("-Wno-unknown-pragmas")
 
-
-SET( CMAKE_C_STANDARD 99 )
-
 SET( CMAKE_COMPILE_WARNING_AS_ERROR ON )
 
-# Always include srcdir and builddir in include path
-# This saves typing ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY} in
-# about every subdir
-# since cmake 2.4.0
-SET( CMAKE_INCLUDE_CURRENT_DIR ON )
 
 # Put the include dirs which are in the source or build tree
 # before all other include dirs, so the headers in the sources

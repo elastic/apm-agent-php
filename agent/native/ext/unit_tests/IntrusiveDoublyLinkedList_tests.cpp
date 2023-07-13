@@ -103,25 +103,25 @@ void various_operations( void** testFixtureState )
     IntrusiveDoublyLinkedList list;
     initIntrusiveDoublyLinkedList( &list );
     assertValidIntrusiveDoublyLinkedList( &list );
-    MyTestStruct myTestStruct1 = { .payload = 1 };
+    MyTestStruct myTestStruct1 = { .payload = 1, .intrusiveNode = {} };
     addToIntrusiveDoublyLinkedListBack( &list, &myTestStruct1.intrusiveNode );
     {
         int expectedElements[] = { 1 };
         verifyListContent( &list, expectedElements, ELASTIC_APM_STATIC_ARRAY_SIZE( expectedElements ) );
     }
-    MyTestStruct myTestStruct2 = { .payload = 2 };
+    MyTestStruct myTestStruct2 = { .payload = 2, .intrusiveNode = {} };
     addToIntrusiveDoublyLinkedListBack( &list, &myTestStruct2.intrusiveNode );
     {
         int expectedElements[] = { 1, 2 };
         verifyListContent( &list, expectedElements, ELASTIC_APM_STATIC_ARRAY_SIZE( expectedElements ) );
     }
-    MyTestStruct myTestStruct3 = { .payload = 3 };
+    MyTestStruct myTestStruct3 = { .payload = 3, .intrusiveNode = {} };
     addToIntrusiveDoublyLinkedListBack( &list, &myTestStruct3.intrusiveNode );
     {
         int expectedElements[] = { 1, 2, 3 };
         verifyListContent( &list, expectedElements, ELASTIC_APM_STATIC_ARRAY_SIZE( expectedElements ) );
     }
-    MyTestStruct myTestStruct4 = { .payload = 4 };
+    MyTestStruct myTestStruct4 = { .payload = 4, .intrusiveNode = {} };
     addToIntrusiveDoublyLinkedListBack( &list, &myTestStruct4.intrusiveNode );
     {
         int expectedElements[] = { 1, 2, 3, 4 };

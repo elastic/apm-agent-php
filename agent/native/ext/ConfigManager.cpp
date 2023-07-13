@@ -193,10 +193,6 @@ struct ConfigMetadata
     OptionMetadata optionsMeta[ numberOfOptions ];
     String envVarNames[ numberOfOptions ] = { nullptr };
     RawConfigSnapshotSource rawCfgSources[ numberOfRawConfigSources ];
-
-    void clear() {
-        *this = ConfigMetadata{};
-    }
 };
 typedef struct ConfigMetadata ConfigMetadata;
 
@@ -204,11 +200,6 @@ struct ConfigManagerCurrentState
 {
     ConfigRawData* rawData = nullptr;
     ConfigSnapshot snapshot = {};
-
-    void clear() {
-        rawData = nullptr;
-        snapshot = {};
-    }
 };
 typedef struct ConfigManagerCurrentState ConfigManagerCurrentState;
 
@@ -217,12 +208,6 @@ struct ConfigManager
     bool isLoggingRelatedOnly = false;
     ConfigMetadata meta = {};
     ConfigManagerCurrentState current = {};
-
-    void clear() {
-        isLoggingRelatedOnly = false;
-        meta.clear();
-        current.clear();
-    }
 };
 
 #define ELASTIC_APM_ASSERT_VALID_OPTION_ID( optId ) \
@@ -1275,7 +1260,7 @@ void parseCombinedRawConfigSnapshot(
         const String interpretedRawValue = combinedRawCfgSnapshot->interpreted[ optId ];
         const String sourceDescription = combinedRawCfgSnapshot->sourceDescriptions[ optId ];
         ParsedOptionValue parsedOptValue;
-        // ELASTIC_APM_ZERO_STRUCT( &parsedOptValue );
+        ELASTIC_APM_ZERO_STRUCT( &parsedOptValue );
 
         if ( cfgManager->isLoggingRelatedOnly && !optMeta->isLoggingRelated )
         {
@@ -1626,6 +1611,7 @@ ResultCode ensureConfigManagerHasLatestConfig( ConfigManager* cfgManager, bool* 
     ResultCode resultCode;
     ConfigRawData* newRawData = NULL;
     ConfigSnapshot newCfgSnapshot;
+    ELASTIC_APM_ZERO_STRUCT(&newCfgSnapshot);
     
     ELASTIC_APM_CALL_IF_FAILED_GOTO( fetchConfigRawData( cfgManager, &newRawData ) );
 
@@ -1661,7 +1647,8 @@ void destructConfigManagerCurrentState( /* in,out */ ConfigManagerCurrentState* 
     ELASTIC_APM_ASSERT_VALID_PTR( cfgManagerCurrent );
 
     deleteConfigRawDataAndSetToNull( /* in,out */ &cfgManagerCurrent->rawData );
-    cfgManagerCurrent = {};
+
+    ELASTIC_APM_ZERO_STRUCT( cfgManagerCurrent );
 }
 
 static
@@ -1686,7 +1673,7 @@ void destructConfigManagerMetadata( ConfigMetadata* cfgManagerMeta )
 
     destructEnvVarNames( /* in,out */ cfgManagerMeta->envVarNames );
 
-    cfgManagerMeta->clear();
+    ELASTIC_APM_ZERO_STRUCT( cfgManagerMeta );
 }
 
 ResultCode constructConfigManagerMetadata( ConfigMetadata* cfgManagerMeta )
@@ -1810,7 +1797,7 @@ void deleteConfigManagerAndSetToNull( ConfigManager** pCfgManager )
     destructConfigManagerCurrentState( /* in,out */ &cfgManager->current );
     destructConfigManagerMetadata( /* in,out */ &cfgManager->meta );
 
-    cfgManager->clear();
+    ELASTIC_APM_ZERO_STRUCT( cfgManager );
 
     ELASTIC_APM_PEFREE_INSTANCE_AND_SET_TO_NULL( ConfigManager, *pCfgManager );
 }
@@ -1823,7 +1810,7 @@ ResultCode newConfigManager( ConfigManager** pNewCfgManager, bool isLoggingRelat
     ConfigManager* cfgManager = NULL;
 
     ELASTIC_APM_PEMALLOC_INSTANCE_IF_FAILED_GOTO( ConfigManager, cfgManager );
-    cfgManager->clear();
+    ELASTIC_APM_ZERO_STRUCT( cfgManager );
 
     cfgManager->isLoggingRelatedOnly = isLoggingRelatedOnly;
     ELASTIC_APM_CALL_IF_FAILED_GOTO( constructConfigManagerMetadata( /* out */ &cfgManager->meta ) );

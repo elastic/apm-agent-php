@@ -287,7 +287,7 @@ void statements_filtered_according_to_current_level( void** testFixtureState )
 
     ELASTIC_APM_FOR_EACH_INDEX( currentLevelIndex, numberOfLogLevels )
     {
-        LogLevel currentLevel = logLevel_off + currentLevelIndex;
+        LogLevel currentLevel = static_cast<LogLevel>(logLevel_off + currentLevelIndex);
 
         setGlobalLoggerLevelForCustomSink( currentLevel );
         clearMockLogCustomSink( getGlobalMockLogCustomSink() );
@@ -307,7 +307,7 @@ void statements_filtered_according_to_current_level( void** testFixtureState )
 
         ELASTIC_APM_FOR_EACH_INDEX( statementLevelDiff, numberOfLogLevels - 1 )
         {
-            const LogLevel statementLevel = logLevel_off + 1 + statementLevelDiff;
+            const LogLevel statementLevel = static_cast<LogLevel>(logLevel_off + 1 + statementLevelDiff);
             ELASTIC_APM_LOG_WITH_LEVEL( statementLevel, "%s", msg );
             statements_filtered_according_to_current_level_helper( currentLevel, statementLevel, msg );
         }

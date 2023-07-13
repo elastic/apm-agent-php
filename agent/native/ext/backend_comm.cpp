@@ -688,7 +688,7 @@ static inline bool isDataToSendQueueEmptyInSnapshot( const BackgroundBackendComm
 
 String streamSharedStateSnapshot( const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot, TextOutputStream* txtOutStream )
 {
-    StringView serializedEvents = { 0 };
+    StringView serializedEvents = { nullptr, 0 };
     if ( ! isDataToSendQueueEmptyInSnapshot( sharedStateSnapshot ) )
     {
         serializedEvents = stringBufferToView( sharedStateSnapshot->firstDataToSendNode->serializedEvents );

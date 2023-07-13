@@ -17,6 +17,7 @@
  * under the License.
  */
 
+#include "cmocka_wrapped_for_unit_tests.h"
 #include "unit_test_util.h"
 #include <string.h>
 #include "ResultCode.h"

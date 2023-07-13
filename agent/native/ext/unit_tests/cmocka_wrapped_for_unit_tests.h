@@ -22,8 +22,18 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <cmocka.h>
+
+#ifdef __cplusplus
+}
+#endif
+
+
 #include "basic_macros.h"
 
-void cm_print_error( const char* format, ...)
-        ELASTIC_APM_PRINTF_ATTRIBUTE( /* fmtPos: */ 1, /* fmtArgsPos: */ 2 );
+#define cm_print_error printf

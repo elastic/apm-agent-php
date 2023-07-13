@@ -169,8 +169,8 @@ ResultCode parseSize( StringView inputString, SizeUnits defaultUnits, /* out */ 
 String streamSize( Size size, TextOutputStream* txtOutStream )
 {
     return isValidSizeUnits( size.units )
-        ? streamPrintf( txtOutStream, "%"PRId64"%s", size.valueInUnits, sizeUnitsToString( size.units ) )
-        : streamPrintf( txtOutStream, "%"PRId64"<invalid units as int: %d>", size.valueInUnits, size.units );
+        ? streamPrintf( txtOutStream, "%" PRId64 "%s", size.valueInUnits, sizeUnitsToString( size.units ) )
+        : streamPrintf( txtOutStream, "%" PRId64 "<invalid units as int: %d>", size.valueInUnits, size.units );
 }
 
 static const Int64 sizeKibiFactor = 1024;

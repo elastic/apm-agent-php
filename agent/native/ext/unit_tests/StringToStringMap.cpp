@@ -137,11 +137,13 @@ void setStringToStringMapEntry( StringToStringMap* map, String key, String value
     findEntry( map, key, &existingEntry, &existingEntryIndex );
     if ( existingEntry == NULL )
     {
+        StringToStringMapEntry entry{ .key = keyDup, .value = valueDup };
+
         ELASTIC_APM_PEMALLOC_DUP_STRING_IF_FAILED_GOTO( key, keyDup );
         ELASTIC_APM_ADD_TO_DYNAMIC_ARRAY_BACK_IF_FAILED_GOTO(
                 StringToStringMapEntry,
                 &map->entries,
-                (&(StringToStringMapEntry){ .key = keyDup, .value = valueDup }) );
+                &entry );
     }
     else
     {

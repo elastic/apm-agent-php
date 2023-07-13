@@ -23,7 +23,7 @@
 
 void setGlobalLoggerLevelForCustomSink( LogLevel levelForCustomSink )
 {
-    LoggerConfig newConfig = { 0 };
+    LoggerConfig newConfig;
     ELASTIC_APM_CMOCKA_CALL_ASSERT_RESULT_SUCCESS( reconfigureLogger( getGlobalLogger(), &newConfig, /* generalLevel: */ logLevel_off ) );
     getGlobalLogger()->maxEnabledLevel = levelForCustomSink;
 }
@@ -36,9 +36,9 @@ typedef struct MockLogCustomSinkStatement MockLogCustomSinkStatement;
 
 struct MockLogCustomSink
 {
-    bool isInited;
-    bool isEnabled;
-    DynamicArray statements;
+    bool isInited = false;
+    bool isEnabled = false;
+    DynamicArray statements = {.capacity = 0, .size = 0, .elements = nullptr};
 };
 
 void assertValidMockLogCustomSink( const MockLogCustomSink* mockLogCustomSink )
@@ -150,12 +150,15 @@ void writeToMockLogCustomSink( String text )
     // When MockLogCustomSink is init-ed but not yet enabled it just discards all log statements it receives.
     if ( ! mockLogCustomSink->isEnabled ) return;
 
+    MockLogCustomSinkStatement statement;
     ELASTIC_APM_EMALLOC_DUP_STRING_IF_FAILED_GOTO( text, textDup );
+
+    statement = { .text = textDup };
 
     ELASTIC_APM_ADD_TO_DYNAMIC_ARRAY_BACK_IF_FAILED_GOTO(
             MockLogCustomSinkStatement,
             &mockLogCustomSink->statements,
-            &((MockLogCustomSinkStatement){ .text = textDup }) );
+            &statement );
 
     resultCode = resultSuccess;
 

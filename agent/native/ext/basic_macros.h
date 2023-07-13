@@ -61,7 +61,7 @@
             (indexVar) = ( (indexVar) == 0 ) ? 0 : (indexVar) - 1 \
     )
 
-#define ELASTIC_APM_ZERO_STRUCT( structPtr ) memset( (structPtr), 0, sizeof( *(structPtr) ) )
+#define ELASTIC_APM_ZERO_STRUCT( structPtr ) memset( static_cast<void*>(structPtr), 0, sizeof( *(structPtr) ) )
 
 
 #if ( ! defined( PHP_WIN32 ) ) || defined( ELASTIC_APM_UNDER_IDE )

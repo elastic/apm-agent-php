@@ -27,7 +27,7 @@ void test_isValidResultCode( void** testFixtureState )
 {
     ELASTIC_APM_UNUSED( testFixtureState );
 
-    ELASTIC_APM_FOR_EACH_INDEX( resultCode, numberOfResultCodes )
+    ELASTIC_APM_FOR_EACH_INDEX_EX(ResultCode, resultCode, numberOfResultCodes )
     {
         ELASTIC_APM_CMOCKA_ASSERT_MSG( isValidResultCode( resultCode ), "resultCode: %d", (int)resultCode );
     }
@@ -38,16 +38,16 @@ void test_resultCodeToString( void** testFixtureState )
 {
     ELASTIC_APM_UNUSED( testFixtureState );
 
-    ELASTIC_APM_FOR_EACH_INDEX( resultCode, numberOfResultCodes )
+    ELASTIC_APM_FOR_EACH_INDEX_EX(ResultCode, resultCode, numberOfResultCodes )
     {
         ELASTIC_APM_CMOCKA_ASSERT_STRING_EQUAL( resultCodeNames[ resultCode ].begin, resultCodeToString( resultCode ), "resultCode: %d", (int)resultCode );
     }
 
     int valuesUnknownResultCodes[] = { -1, INT_MIN, numberOfResultCodes, numberOfResultCodes + 1, numberOfResultCodes + 10, 2 * numberOfResultCodes };
-    ELASTIC_APM_FOR_EACH_INDEX( i, ELASTIC_APM_STATIC_ARRAY_SIZE( valuesUnknownResultCodes ) )
+    ELASTIC_APM_FOR_EACH_INDEX_EX(ResultCode, i, ELASTIC_APM_STATIC_ARRAY_SIZE( valuesUnknownResultCodes ) )
     {
         int value = valuesUnknownResultCodes[ i ];
-        String valueAsResultCodeString = resultCodeToString( value );
+        String valueAsResultCodeString = resultCodeToString( static_cast<ResultCode>(value) );
         ELASTIC_APM_CMOCKA_ASSERT_STRING_EQUAL( ELASTIC_APM_UNKNOWN_RESULT_CODE_AS_STRING, valueAsResultCodeString, "i: %d, value: %d", (int)i, value );
     }
 }

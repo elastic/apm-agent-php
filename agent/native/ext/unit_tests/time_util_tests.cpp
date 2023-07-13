@@ -119,7 +119,7 @@ void impl_test_one_durationToMilliseconds( Duration inputDuration, Int64 expecte
     Int64 actualDurationInMilliseconds = durationToMilliseconds( inputDuration );
     ELASTIC_APM_CMOCKA_ASSERT_MSG(
             actualDurationInMilliseconds == expectedDurationInMilliseconds
-            , "inputDuration: %s, expectedDurationInMilliseconds: %"PRId64", actualDurationInMilliseconds: %"PRId64
+            , "inputDuration: %s, expectedDurationInMilliseconds: %" PRId64 ", actualDurationInMilliseconds: %" PRId64
             , streamDuration( inputDuration, &txtOutStream ), expectedDurationInMilliseconds, actualDurationInMilliseconds );
 }
 
@@ -162,7 +162,7 @@ void impl_test_addDelayToAbsTimeSpec( TimeSpec base, long delayInNanoseconds, Ti
 }
 
 static
-bool time_t_max()
+time_t time_t_max()
 {
     ELASTIC_APM_STATIC_ASSERT( sizeof( time_t ) == 4 || sizeof( time_t ) == 8 );
     return sizeof( time_t ) == 4 ? INT32_MAX : INT64_MAX;

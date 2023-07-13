@@ -39,7 +39,7 @@ void productionCodeAssertFailed(
 
 void setProductionCodeAssertFailed( ProductionCodeAssertFailed prodCodeAssertFailed )
 {
-    ELASTIC_APM_ASSERT_VALID_PTR( prodCodeAssertFailed );
+    ELASTIC_APM_ASSERT_VALID_PTR( (void*)prodCodeAssertFailed );
 
     g_prodCodeAssertFailed = prodCodeAssertFailed;
 }

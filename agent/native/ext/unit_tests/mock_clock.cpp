@@ -84,7 +84,7 @@ int gettimeofday( TimeVal* time_Info, TimeZone* timezone_Info )
 #endif // #ifdef PHP_WIN32
 
 static bool g_isCurrentTimeMocked = false;
-static struct tm g_mockedCurrentTime = { 0 };
+static struct tm g_mockedCurrentTime;
 static long g_mockedCurrentTimeMicroseconds = 0;
 static long g_mockedCurrentTimeSecondsAheadUtc = 0;
 

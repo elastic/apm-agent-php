@@ -109,7 +109,7 @@ static void impl_test_one_valid_parseDecimalInteger( String whiteSpace, Int64 ex
     char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
-    String inputString = streamPrintf( &txtOutStream, "%s%"PRId64"%s", whiteSpace, expected, whiteSpace );
+    String inputString = streamPrintf( &txtOutStream, "%s%" PRId64 "%s", whiteSpace, expected, whiteSpace );
 
     impl_test_one_parseDecimalInteger( inputString, &expected );
 }
@@ -171,14 +171,14 @@ void test_sizeUnitsToString( void** testFixtureState )
 
     ELASTIC_APM_FOR_EACH_INDEX( sizeUnits, numberOfSizeUnits )
     {
-        ELASTIC_APM_CMOCKA_ASSERT_STRING_EQUAL( sizeUnitsNames[ sizeUnits ].begin, sizeUnitsToString( sizeUnits ), "sizeUnits: %d", (int)sizeUnits );
+        ELASTIC_APM_CMOCKA_ASSERT_STRING_EQUAL( sizeUnitsNames[ sizeUnits ].begin, sizeUnitsToString( static_cast<SizeUnits>(sizeUnits) ), "sizeUnits: %d", (int)sizeUnits );
     }
 
     int valuesUnknownSizeUnits[] = { -1, INT_MIN, numberOfSizeUnits, numberOfSizeUnits + 1, numberOfSizeUnits + 10, 2 * numberOfSizeUnits };
     ELASTIC_APM_FOR_EACH_INDEX( i, ELASTIC_APM_STATIC_ARRAY_SIZE( valuesUnknownSizeUnits ) )
     {
         int value = valuesUnknownSizeUnits[ i ];
-        String valueAsSizeUnitsString = sizeUnitsToString( value );
+        String valueAsSizeUnitsString = sizeUnitsToString( static_cast<SizeUnits>(value) );
         ELASTIC_APM_CMOCKA_ASSERT_STRING_EQUAL( ELASTIC_APM_UNKNOWN_SIZE_UNITS_AS_STRING, valueAsSizeUnitsString, "i: %d, value: %d", (int)i, value );
     }
 }
@@ -192,7 +192,7 @@ void impl_test_one_sizeToBytes( Size inputSize, Int64 expectedSizeInBytes )
     Int64 actualSizeInBytes = sizeToBytes( inputSize );
     ELASTIC_APM_CMOCKA_ASSERT_MSG(
             actualSizeInBytes == expectedSizeInBytes
-            , "inputSize: %s, expectedSizeInBytes: %"PRId64", actualSizeInBytes: %"PRId64
+            , "inputSize: %s, expectedSizeInBytes: %" PRId64 ", actualSizeInBytes: %" PRId64
             , streamSize( inputSize, &txtOutStream ), expectedSizeInBytes, actualSizeInBytes );
 }
 

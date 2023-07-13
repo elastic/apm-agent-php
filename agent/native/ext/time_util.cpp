@@ -51,8 +51,8 @@ ResultCode parseDuration( StringView inputString, DurationUnits defaultUnits, /*
 String streamDuration( Duration duration, TextOutputStream* txtOutStream )
 {
     return isValidDurationUnits( duration.units )
-           ? streamPrintf( txtOutStream, "%"PRId64"%s", duration.valueInUnits, durationUnitsToString( duration.units ) )
-           : streamPrintf( txtOutStream, "%"PRId64"<invalid units as int: %d>", duration.valueInUnits, duration.units );
+           ? streamPrintf( txtOutStream, "%" PRId64 "%s", duration.valueInUnits, durationUnitsToString( duration.units ) )
+           : streamPrintf( txtOutStream, "%" PRId64 "<invalid units as int: %d>", duration.valueInUnits, duration.units );
 }
 
 Int64 durationToMilliseconds( Duration duration )
@@ -217,8 +217,8 @@ String streamUtcTimeValAsLocal( const TimeVal* utcTimeVal, TextOutputStream* txt
 
 String streamCurrentLocalTime( TextOutputStream* txtOutStream )
 {
-    TimeVal currentTime_UTC_timeval = { 0 };
-
+    TimeVal currentTime_UTC_timeval;
+    
     if ( getSystemClockCurrentTimeAsUtc( &currentTime_UTC_timeval ) != 0 )
     {
         return "getSystemClockCurrentTimeAsUtc() failed";
@@ -232,7 +232,7 @@ String streamUtcTimeSpecAsLocal( const TimeSpec* utcTimeSpec, TextOutputStream* 
     ELASTIC_APM_ASSERT_VALID_PTR( utcTimeSpec );
     ELASTIC_APM_ASSERT_VALID_PTR( txtOutStream );
 
-    TimeVal utcTimeVal = { 0 };
+    TimeVal utcTimeVal;
     utcTimeVal.tv_sec = utcTimeSpec->tv_sec;
     utcTimeVal.tv_usec = utcTimeSpec->tv_nsec / 1000 /* nanoseconds to microseconds */;
 
@@ -261,7 +261,7 @@ String streamTimeSpecDiff( const TimeSpec* fromTimeSpec, const TimeSpec* toTimeS
         return streamPrintf( txtOutStream, "%" PRIu64 "s", diffSecondsPart );
     }
 
-    return streamPrintf( txtOutStream, "%s%" PRIu64 "s %"PRId64"ns", isDiffNegative ? "-" : "", diffSecondsPart, diffNanosecondsPart );
+    return streamPrintf( txtOutStream, "%s%" PRIu64 "s %" PRId64 "ns", isDiffNegative ? "-" : "", diffSecondsPart, diffNanosecondsPart );
 }
 
 int compareAbsTimeSpecs( const TimeSpec* a, const TimeSpec* b )

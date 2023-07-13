@@ -87,7 +87,7 @@ void test_iterateOverCStackTrace_logError( String errorDesc, void* ctxPVoid )
 {
     TestIterateOverCStackTraceContext* ctx = (TestIterateOverCStackTraceContext*)ctxPVoid;
 
-    fprintf( stderr, "\n" "errorDesc: %s, ctx->nextIterationFrameIndex: %"PRIu64 "\n", errorDesc, (UInt64)(ctx->nextIterationFrameIndex) );
+    fprintf( stderr, "\n" "errorDesc: %s, ctx->nextIterationFrameIndex: %" PRIu64 "\n", errorDesc, (UInt64)(ctx->nextIterationFrameIndex) );
 }
 
 ELASTIC_APM_C_UNIT_TESTS_NOINLINE_VOID_FUNC
@@ -137,7 +137,8 @@ void test_iterateOverCStackTrace( void** testFixtureState )
     ELASTIC_APM_UNUSED( testFixtureState );
 
 #ifdef ELASTIC_APM_CAN_CAPTURE_C_STACK_TRACE
-    TestIterateOverCStackTraceContext ctx = { 0 };
+    TestIterateOverCStackTraceContext ctx;
+    memset(&ctx, 0, sizeof(TestIterateOverCStackTraceContext));
     test_iterateOverCStackTrace_dummy_func_2( &ctx );
 #else
     ELASTIC_APM_CMOCKA_MARK_CURRENT_TEST_AS_SKIPPED();

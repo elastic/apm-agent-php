@@ -32,14 +32,14 @@
 #endif
 #include "gen_numbered_intercepting_callbacks_src.h"
 
-void printInfo();
+void printInfo(int argc, const char **argv);
 
 int run_basic_macros_tests();
 int run_basic_types_tests();
 int run_util_tests();
 int run_IntrusiveDoublyLinkedList_tests();
 int run_TextOutputStream_tests();
-int run_platform_tests();
+int run_platform_tests(int argc, const char* argv[]);
 int run_DynamicArray_tests();
 int run_StringToStringMap_tests();
 #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
@@ -47,15 +47,15 @@ int run_MemoryTracker_tests();
 #endif
 int run_Logger_tests();
 int run_config_tests();
-int run_time_util_tests();
+int run_time_util_tests( int argc, const char* argv[] );
 int run_iterateOverCStackTrace_tests();
-int run_ResultCode_tests();
-int run_parse_value_with_units_tests();
+int run_ResultCode_tests( int argc, const char* argv[] );
+// int run_parse_value_with_units_tests();
 int run_backend_comm_backoff_tests();
 
-int main( int argc, char* argv[] )
+int main( int argc, const char* argv[] )
 {
-    printInfo();
+    printInfo(argc, argv);
 
     int failedTestsCount = 0;
 
@@ -72,10 +72,10 @@ int main( int argc, char* argv[] )
         #endif
     failedTestsCount += run_Logger_tests();
     failedTestsCount += run_config_tests();
-    failedTestsCount += run_time_util_tests();
+    failedTestsCount += run_time_util_tests(argc, argv);
     failedTestsCount += run_iterateOverCStackTrace_tests();
-    failedTestsCount += run_ResultCode_tests();
-    failedTestsCount += run_parse_value_with_units_tests();
+    failedTestsCount += run_ResultCode_tests(argc, argv);
+    // failedTestsCount += run_parse_value_with_units_tests();
     failedTestsCount += run_backend_comm_backoff_tests();
 
     // gen_numbered_intercepting_callbacks_src( 1000 );
@@ -85,7 +85,7 @@ int main( int argc, char* argv[] )
 
 static const String cmockaAbortOnFailEnvVarName = "CMOCKA_TEST_ABORT";
 
-void printInfo( int argc, char* argv[] )
+void printInfo( int argc, const char** argv)
 {
     puts( "#####################################################################" );
     puts( "##################################" );

@@ -52,13 +52,14 @@ struct NumberAndString
 };
 typedef struct NumberAndString NumberAndString;
 
-enum { numberAsStringBufferSize = 100 };
+static constexpr size_t numberAsStringBufferSize = 100;
 
 static
 void addNumberAndStringDynamicArrayBack( DynamicArray* dynArr, UInt number )
 {
     ResultCode resultCode;
     char* numberAsString = NULL;
+    NumberAndString nas;
 
     ELASTIC_APM_EMALLOC_STRING_IF_FAILED_GOTO( numberAsStringBufferSize, numberAsString );
     ELASTIC_APM_CMOCKA_ASSERT(
@@ -68,10 +69,12 @@ void addNumberAndStringDynamicArrayBack( DynamicArray* dynArr, UInt number )
                     "%u",
                     number ) < numberAsStringBufferSize );
 
+    nas = { .number = number, .numberAsString = numberAsString };
+
     ELASTIC_APM_ADD_TO_DYNAMIC_ARRAY_BACK_IF_FAILED_GOTO(
             NumberAndString,
             dynArr,
-            (&(NumberAndString){ .number = number, .numberAsString = numberAsString }) );
+            &nas);
 
     const NumberAndString* addedNumberAndString;
     ELASTIC_APM_GET_DYNAMIC_ARRAY_ELEMENT_AT( NumberAndString, dynArr, ELASTIC_APM_GET_DYNAMIC_ARRAY_SIZE( NumberAndString, dynArr ) - 1, addedNumberAndString );
