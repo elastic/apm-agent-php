@@ -140,12 +140,10 @@ static StringView getMessagePart( StringView logLine )
     return getLogLinePart( 7, logLine );
 }
 
-static
-StringView getGlobalMockLogCustomSinkOnlyStatementText()
-{
-    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( numberOfStatementsInMockLogCustomSink( getGlobalMockLogCustomSink() ), 1 );
-    const String logStatementTextAsString = getStatementInMockLogCustomSinkContent( getGlobalMockLogCustomSink(), 0 );
-    return makeStringViewFromString( logStatementTextAsString );
+static StringView getGlobalMockLogCustomSinkOnlyStatementText() {
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( getGlobalMockLogCustomSink().size(), 1 );
+    auto logStatementTextAsString =  getGlobalMockLogCustomSink().get(0);
+    return makeStringViewFromString( logStatementTextAsString.c_str() );
 }
 
 static
@@ -214,7 +212,7 @@ void typical_statement( void** testFixtureState )
             /* microseconds: */ 987654,
             /* secondsAheadUtc: */ -( 11 * 60 * 60 + 23 * 60 + 30 ) );
 
-    clearMockLogCustomSink( getGlobalMockLogCustomSink() );
+    getGlobalMockLogCustomSink().clear();
     const size_t logStatementLineNumber = __LINE__; ELASTIC_APM_LOG_TRACE( "Message and some context: %d, %s", 122333, "444455555" );
 
     verify_log_output(
@@ -242,7 +240,7 @@ void empty_message( void** testFixtureState )
             /* microseconds: */ 999999,
             /* secondsAheadUtc: */ ( 25 * 60 * 60 + 51 * 60 + 29 ) );
 
-    clearMockLogCustomSink( getGlobalMockLogCustomSink() );
+    getGlobalMockLogCustomSink().clear();
     const size_t logStatementLineNumber = __LINE__; ELASTIC_APM_LOG_DEBUG( "%s", "" );
 
     verify_log_output(
@@ -261,7 +259,7 @@ void statements_filtered_according_to_current_level_helper(
 {
     if ( statementLevel > currentLevel )
     {
-        ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( numberOfStatementsInMockLogCustomSink( getGlobalMockLogCustomSink() ), 0 );
+        ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( getGlobalMockLogCustomSink().size(), 0 );
         return;
     }
 
@@ -275,7 +273,7 @@ void statements_filtered_according_to_current_level_helper(
             getLevelPart( logStatementText ),
             makeStringViewFromString( logLevelToName( statementLevel ) ) );
 
-    clearMockLogCustomSink( getGlobalMockLogCustomSink() );
+    getGlobalMockLogCustomSink().clear();
 }
 
 static
@@ -290,7 +288,7 @@ void statements_filtered_according_to_current_level( void** testFixtureState )
         LogLevel currentLevel = static_cast<LogLevel>(logLevel_off + currentLevelIndex);
 
         setGlobalLoggerLevelForCustomSink( currentLevel );
-        clearMockLogCustomSink( getGlobalMockLogCustomSink() );
+        getGlobalMockLogCustomSink().clear();
 
         ELASTIC_APM_LOG_CRITICAL( "%s", msg );
         statements_filtered_according_to_current_level_helper( currentLevel, logLevel_critical, msg );

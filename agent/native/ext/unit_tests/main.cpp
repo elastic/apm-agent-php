@@ -40,7 +40,6 @@ int run_util_tests();
 int run_IntrusiveDoublyLinkedList_tests();
 int run_TextOutputStream_tests();
 int run_platform_tests(int argc, const char* argv[]);
-int run_DynamicArray_tests();
 int run_StringToStringMap_tests();
 #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
 int run_MemoryTracker_tests();
@@ -65,7 +64,6 @@ int main( int argc, const char* argv[] )
     failedTestsCount += run_IntrusiveDoublyLinkedList_tests();
     failedTestsCount += run_TextOutputStream_tests();
     failedTestsCount += run_platform_tests( argc, argv );
-    failedTestsCount += run_DynamicArray_tests();
         #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     failedTestsCount += run_MemoryTracker_tests();
         #endif

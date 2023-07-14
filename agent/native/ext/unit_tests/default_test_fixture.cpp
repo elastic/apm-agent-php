@@ -36,12 +36,13 @@ int perTestDefaultSetup( void** testFixtureState )
     //
     setProductionCodeAssertFailed( vElasticApmAssertFailed );
 
-    initMockLogCustomSink( getGlobalMockLogCustomSink() );
+    getGlobalMockLogCustomSink() = {};
+
     initMockPhpIni();
 
     constructTracer( getGlobalTracer() );
 
-    enableMockLogCustomSink( getGlobalMockLogCustomSink() );
+    getGlobalMockLogCustomSink().enable();
 
     ELASTIC_APM_CMOCKA_CALL_ASSERT_RESULT_SUCCESS( ensureAllComponentsHaveLatestConfig( getGlobalTracer() ) );
 
@@ -65,12 +66,12 @@ int perTestDefaultTeardown( void** testFixtureState )
 
     revertToRealCurrentTime();
 
-    disableMockLogCustomSink( getGlobalMockLogCustomSink() );
+    getGlobalMockLogCustomSink().disable();
+    getGlobalMockLogCustomSink().clear();
 
     destructTracer( getGlobalTracer() );
 
     uninitMockPhpIni();
-    uninitMockLogCustomSink( getGlobalMockLogCustomSink() );
 
     return 0;
 }
