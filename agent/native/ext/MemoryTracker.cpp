@@ -453,11 +453,11 @@ void destructMemoryTracker( MemoryTracker* memTracker )
 {
     if ( isMemoryTrackingEnabled( memTracker ) )
     {
-        // verifyBalanceIsZero(
-        //         memTracker,
-        //         "module shutdown",
-        //         memTracker->allocatedPersistent,
-        //         /* isPersistent */ true );
+        verifyBalanceIsZero(
+                memTracker,
+                "module shutdown",
+                memTracker->allocatedPersistent,
+                /* isPersistent */ true );
     }
 
     memTracker->level = memoryTrackingLevel_off;
