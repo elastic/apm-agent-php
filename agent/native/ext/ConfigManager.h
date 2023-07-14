@@ -124,8 +124,8 @@ typedef enum OptionId OptionId;
 
 #ifdef __cplusplus
 inline OptionId &operator++(OptionId &id) {
-        id  = static_cast<OptionId>(static_cast<int>(id) + 1);
-        return id; 
+    id  = static_cast<OptionId>(static_cast<int>(id) + 1);
+    return id; 
 }
 #endif
 

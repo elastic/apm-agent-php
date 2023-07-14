@@ -37,7 +37,7 @@
     for ( indexVarType indexVar = rangeStart ; (indexVar) < (rangeExcludedEnd) ; (indexVarType)++indexVar ) // NOLINT(bugprone-macro-parentheses)
 
 #define ELASTIC_APM_FOR_EACH_INDEX_EX( indexVarType, indexVar, rangeSize ) \
-    ELASTIC_APM_FOR_EACH_INDEX_START_END( indexVarType, indexVar, (indexVarType)(0), rangeSize )
+    ELASTIC_APM_FOR_EACH_INDEX_START_END( indexVarType, indexVar, static_cast<indexVarType>(0), rangeSize )
 
 #define ELASTIC_APM_FOR_EACH_INDEX( indexVar, rangeSize ) ELASTIC_APM_FOR_EACH_INDEX_EX( size_t, indexVar, rangeSize )
 
@@ -51,7 +51,7 @@
         /* init */ \
         size_t \
             elastic_apm_for_each_backwards_number_of_elements_remaining = (rangeSize), \
-            (indexVar) = (rangeSize) == 0 ? 0 : (rangeSize) - 1; \
+            indexVar = (rangeSize) == 0 ? 0 : (rangeSize) - 1; \
         \
         /* stop condition */ \
         elastic_apm_for_each_backwards_number_of_elements_remaining != 0 ; \
@@ -61,10 +61,7 @@
             (indexVar) = ( (indexVar) == 0 ) ? 0 : (indexVar) - 1 \
     )
 
-#define ELASTIC_APM_MIN( a, b ) ( ( (a) < (b) ) ? (a) : (b) )
-#define ELASTIC_APM_MAX( a, b ) ( ( (a) > (b) ) ? (a) : (b) )
-
-#define ELASTIC_APM_ZERO_STRUCT( structPtr ) memset( (structPtr), 0, sizeof( *(structPtr) ) )
+#define ELASTIC_APM_ZERO_STRUCT( structPtr ) memset( static_cast<void*>(structPtr), 0, sizeof( *(structPtr) ) )
 
 
 #if ( ! defined( PHP_WIN32 ) ) || defined( ELASTIC_APM_UNDER_IDE )
@@ -100,7 +97,6 @@
 #   define ELASTIC_APM_PP_VARIADIC_ARGS_COUNT( ... ) ELASTIC_APM_PP_VARIADIC_ARGS_COUNT_HELPER( 0, ## __VA_ARGS__, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 )
 
 #endif
-
 //
 // ELASTIC_APM_PP_VARIADIC_ARGS_COUNT
 //

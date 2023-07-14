@@ -37,7 +37,7 @@ static inline String optionalBoolToString( OptionalBool optionalBoolValue )
 
 static inline OptionalBool makeNotSetOptionalBool()
 {
-    return (OptionalBool){ .isSet = false };
+    return (OptionalBool){ .isSet = false, .value = false };
 }
 
 static inline OptionalBool makeSetOptionalBool( bool value )

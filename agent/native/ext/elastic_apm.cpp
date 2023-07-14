@@ -358,12 +358,12 @@ PHP_FUNCTION( elastic_apm_get_config_option_by_name )
 {
     ZVAL_NULL( return_value );
 
+    if (elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) != ResultCode::resultSuccess) {
+        return;
+    }
+
     // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
     // which might deadlock in forked child
-    if (elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) != resultSuccess) {
-        return;
-    };
-
     char* optionName = NULL;
     size_t optionNameLength = 0;
 
@@ -419,6 +419,7 @@ PHP_FUNCTION( elastic_apm_intercept_calls_to_internal_method )
     char* methodName = NULL;
     size_t methodNameLength = 0;
     uint32_t interceptRegistrationId;
+
 
     ZEND_PARSE_PARAMETERS_START( /* min_num_args: */ 2, /* max_num_args: */ 2 )
     Z_PARAM_STRING( className, classNameLength )
@@ -697,13 +698,7 @@ zend_module_entry elastic_apm_module_entry = {
 /* }}} */
 
 
-// #ifdef COMPILE_DL_ELASTIC_APM
-// #   ifdef ZTS
-// ZEND_TSRMLS_CACHE_DEFINE()
-// #   endif
-// extern "C" ZEND_GET_MODULE(elastic_apm)
-// #endif
-
-extern __attribute__((visibility("default"))) void *get_module(void) {
-    return &elastic_apm_module_entry;
-}
+#   ifdef ZTS
+ZEND_TSRMLS_CACHE_DEFINE()
+#   endif
+extern "C" ZEND_GET_MODULE(elastic_apm)

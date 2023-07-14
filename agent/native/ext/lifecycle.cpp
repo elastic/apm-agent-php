@@ -46,7 +46,7 @@
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_LIFECYCLE
 
 static const char JSON_METRICSET[] =
-        "{\"metricset\":{\"samples\":{\"system.cpu.total.norm.pct\":{\"value\":%.2f},\"system.process.cpu.total.norm.pct\":{\"value\":%.2f},\"system.memory.actual.free\":{\"value\":%"PRIu64"},\"system.memory.total\":{\"value\":%"PRIu64"},\"system.process.memory.size\":{\"value\":%"PRIu64"},\"system.process.memory.rss.bytes\":{\"value\":%"PRIu64"}},\"timestamp\":%"PRIu64"}}\n";
+        "{\"metricset\":{\"samples\":{\"system.cpu.total.norm.pct\":{\"value\":%.2f},\"system.process.cpu.total.norm.pct\":{\"value\":%.2f},\"system.memory.actual.free\":{\"value\":%" PRIu64 "},\"system.memory.total\":{\"value\":%" PRIu64 "},\"system.process.memory.size\":{\"value\":%" PRIu64 "},\"system.process.memory.rss.bytes\":{\"value\":%" PRIu64 "}},\"timestamp\":%" PRIu64 "}}\n";
 
 static uint64_t requestCounter = 0;
 
@@ -340,7 +340,7 @@ void resetLastPhpErrorData()
 
 void setLastPhpErrorData( int type, const char* fileName, uint32_t lineNumber, const char* message )
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d, fileName: %s, lineNumber: %"PRIu64", message: %s", type, fileName, (UInt64)lineNumber, message );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d, fileName: %s, lineNumber: %" PRIu64 ", message: %s", type, fileName, (UInt64)lineNumber, message );
 
     ResultCode resultCode;
     PhpErrorData tempPhpErrorData;
@@ -511,7 +511,6 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* config = NULL;
-
     CURLcode curlCode = CURLE_OK;
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( constructTracer( tracer ) );
@@ -659,8 +658,8 @@ void elasticApmRequestInit()
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
-    if (detectOpcacheRestartPending()) {
-        ELASTIC_APM_LOG_ERROR("Detected that opcache reset is in a pending state. Instrumentation has been disabled for this request. There may be warnings or errors logged for this request.");
+    if (!isScriptRestricedByOpcacheAPI() && detectOpcacheRestartPending()) {
+        ELASTIC_APM_LOG_WARNING("Detected that opcache reset is in a pending state. Instrumentation has been disabled for this request. There may be warnings or errors logged for this request.");
         resultCode = resultSuccess;
         goto finally;
     }
@@ -763,8 +762,7 @@ void elasticApmRequestShutdown()
         goto finally;
     }
 
-    preloadDetected = requestCounter == 1 && detectOpcachePreload();
-    if (preloadDetected) {
+    if (requestCounter == 1 && detectOpcachePreload()) {
         ELASTIC_APM_LOG_DEBUG( "opcache.preload request detected on shutdown" );
         resultCode = resultSuccess;
         goto finally;

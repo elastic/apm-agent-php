@@ -92,7 +92,7 @@ void elasticApmCmockaAssertStringContainsIgnoreCase( String haystack, String nee
         if ( (actual) != (expected) ) \
             ELASTIC_APM_CMOCKA_ASSERT_FAILED( __FILE__,  __LINE__, \
                 "%s != %s: " \
-                "%"PRId64" != %"PRId64, \
+                "%" PRId64 " != %" PRId64, \
                 (#actual), (#expected), \
                 (Int64)(actual), (Int64)(expected) ); \
     } while ( 0 )
@@ -102,7 +102,7 @@ void elasticApmCmockaAssertStringContainsIgnoreCase( String haystack, String nee
         if ( (actual) >= (expected) ) \
             ELASTIC_APM_CMOCKA_ASSERT_FAILED( __FILE__,  __LINE__, \
                 "%s >= %s: " \
-                "%"PRId64" >= %"PRId64, \
+                "%" PRId64 " >= %" PRId64, \
                 (#actual), (#expected), \
                 (Int64)(actual), (Int64)(expected) ); \
     } while ( 0 )
@@ -112,7 +112,7 @@ void elasticApmCmockaAssertStringContainsIgnoreCase( String haystack, String nee
         if ( (actual) > (expected) ) \
             ELASTIC_APM_CMOCKA_ASSERT_FAILED( __FILE__,  __LINE__, \
                 "%s >= %s: " \
-                "%"PRId64" >= %"PRId64, \
+                "%" PRId64 " >= %" PRId64, \
                 (#actual), (#expected), \
                 (Int64)(actual), (Int64)(expected) ); \
     } while ( 0 )
@@ -122,7 +122,7 @@ void elasticApmCmockaAssertStringContainsIgnoreCase( String haystack, String nee
         if ( (actual) < (expected) ) \
             ELASTIC_APM_CMOCKA_ASSERT_FAILED( __FILE__,  __LINE__, \
                 "%s < %s: " \
-                "%"PRId64" >= %"PRId64, \
+                "%" PRId64 " >= %" PRId64, \
                 (#actual), (#expected), \
                 (Int64)(actual), (Int64)(expected) ); \
     } while ( 0 )
@@ -170,13 +170,13 @@ void elasticApmCmockaAssertStringContainsIgnoreCase( String haystack, String nee
     } while ( 0 )
 
 #define ELASTIC_APM_CMOCKA_UNIT_TEST_EX( func, setupFunc, teardownFunc, initialState ) \
-    ( struct CMUnitTest ) \
+    CMUnitTest  \
     { \
-        .test_func = &(func), \
         .name = extractLastPartOfFilePathString( __FILE__  ": " ELASTIC_APM_PP_STRINGIZE( func ) ), \
-        .initial_state = (initialState), \
-        .setup_func = (setupFunc), \
-        .teardown_func = (teardownFunc) \
+        .test_func = &(func), \
+        .setup_func = setupFunc, \
+        .teardown_func = teardownFunc, \
+        .initial_state = initialState \
     }
 
 #define ELASTIC_APM_CMOCKA_UNIT_TEST_WITH_INITIAL_STATE( func, initialState ) \
