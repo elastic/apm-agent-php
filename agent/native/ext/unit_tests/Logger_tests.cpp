@@ -142,7 +142,7 @@ static StringView getMessagePart( StringView logLine )
 
 static StringView getGlobalMockLogCustomSinkOnlyStatementText() {
     ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( getGlobalMockLogCustomSink().size(), 1 );
-    auto logStatementTextAsString =  getGlobalMockLogCustomSink().get(0);
+    auto &logStatementTextAsString =  getGlobalMockLogCustomSink().get(0);
     return makeStringViewFromString( logStatementTextAsString.c_str() );
 }
 
