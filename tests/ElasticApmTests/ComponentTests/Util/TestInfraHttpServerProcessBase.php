@@ -138,7 +138,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     /**
      * @param ServerRequestInterface $request
      *
-     * @return null|ResponseInterface|Promise
+     * @return null|ResponseInterface|Promise<ResponseInterface>
      */
     abstract protected function processRequest(ServerRequestInterface $request);
 
@@ -181,7 +181,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
                 /**
                  * @param ServerRequestInterface $request
                  *
-                 * @return ResponseInterface|Promise
+                 * @return ResponseInterface|Promise<ResponseInterface>
                  */
                 function (ServerRequestInterface $request) {
                     return $this->processRequestWrapper($request);
@@ -218,7 +218,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     /**
      * @param ServerRequestInterface $request
      *
-     * @return ResponseInterface|Promise
+     * @return ResponseInterface|Promise<ResponseInterface>
      */
     private function processRequestWrapper(ServerRequestInterface $request)
     {
@@ -262,7 +262,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
     /**
      * @param ServerRequestInterface $request
      *
-     * @return ResponseInterface|Promise
+     * @return ResponseInterface|Promise<ResponseInterface>
      */
     private function processRequestWrapperImpl(ServerRequestInterface $request)
     {
