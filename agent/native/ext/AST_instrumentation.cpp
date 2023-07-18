@@ -17,6 +17,10 @@
  * under the License.
  */
 
+extern "C" {
+#include <Zend/zend_ast.h>
+}
+
 #include "AST_instrumentation.h"
 #include "ConfigSnapshot.h"
 #include "ConfigManager.h"

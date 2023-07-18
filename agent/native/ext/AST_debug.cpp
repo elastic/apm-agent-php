@@ -17,6 +17,11 @@
  * under the License.
  */
 
+
+extern "C" {
+#include <Zend/zend_ast.h>
+}
+
 #include <Zend/zend.h>
 #include <Zend/zend_exceptions.h>
 #include <Zend/zend_ast.h>
