@@ -1,7 +1,7 @@
 
 
 # Constrol switches
-set(_ELASTIC_FAIL_ON_ERROR false)
+set(_ELASTIC_FAIL_ON_ERROR true)
 set(_ELASTIC_WARN_ON_UNINITIALIZED true)
 
 
@@ -67,6 +67,12 @@ add_compile_options(
                     "-Wall"
                     "-Wextra"
                     "-Wno-unused-parameter" # annoying when using PHP delivered macros
+                    "-Wno-ignored-qualifiers" #TODO php headers issues, should be removed and patched in conan package
+                    "-Wno-unknown-pragmas" #clion, windows pragmas
+                    "-Wno-unused-local-typedefs"
+                    "-Wno-enum-compare" #TODO refactor code and remove
+                    "-Wno-write-strings"
+
 )
 
 if(NOT _ELASTIC_WARN_ON_UNINITIALIZED)
@@ -83,4 +89,4 @@ add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-Wnon-virtual-dtor>")
 add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-fdiagnostics-show-template-tree>") # print template mismatch as tree - much more user friendly 
 
 # C only switches
-add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-Wstrict-prototypes>")
+add_compile_options("$<$<COMPILE_LANGUAGE:C>:-Wstrict-prototypes>")

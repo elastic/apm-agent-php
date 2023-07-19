@@ -456,8 +456,11 @@ ResultCode safeStringCopy( StringView src, char* dstBuf, size_t dstBufCapacity )
     // Copies at most count characters of the character array pointed to by src (including the terminating null character,
     // but not any of the characters that follow the null character) to character array pointed to by dest.
     // If count is reached before the entire array src was copied, the resulting character array is not null-terminated.
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
     strncpy( /* dest */ dstBuf, /* src */ src.begin, /* count */ src.length );
+#pragma GCC diagnostic pop
+
     dstBuf[ src.length ] = '\0';
 #endif // #ifdef PHP_WIN32
 
@@ -481,7 +484,7 @@ ResultCode appendToString( StringView suffixToAppend, size_t bufCapacity, /* in 
 
     ELASTIC_APM_ASSERT_VALID_PTR( bufBegin );
     ELASTIC_APM_ASSERT_VALID_PTR( bufContentLen );
-    ELASTIC_APM_ASSERT( *bufContentLen < bufCapacity, "*bufContentLen: %"PRIu64", bufCapacity: %"PRIu64, (UInt64)(*bufContentLen), (UInt64)bufCapacity );
+    ELASTIC_APM_ASSERT( *bufContentLen < bufCapacity, "*bufContentLen: %" PRIu64 ", bufCapacity: %" PRIu64, (UInt64)(*bufContentLen), (UInt64)bufCapacity );
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( safeStringCopy( /* src */ suffixToAppend, /* dstBuf */ bufBegin + *bufContentLen, bufCapacity - *bufContentLen ) );
 

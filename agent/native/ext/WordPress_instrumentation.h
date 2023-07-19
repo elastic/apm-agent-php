@@ -19,7 +19,9 @@
 
 #pragma once
 
-#include <zend_ast.h>
+extern "C" {
+#include <Zend/zend_ast.h>
+}
 #include "StringView.h"
 
 void wordPressInstrumentationOnRequestInit();

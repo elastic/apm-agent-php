@@ -18,7 +18,19 @@ CMAKE_MINIMUM_REQUIRED( VERSION 3.15 )
 #    ENDIF ()
 #ENDIF ()
 
-PROJECT( unit_tests C )
+PROJECT( unit_tests 
+    LANGUAGES C CXX
+)
+
+# Set the defauts for all targets
+set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)   # https://github.com/ComputationalRadiationPhysics/picongpu/issues/2109
+set(CMAKE_DISABLE_SOURCE_CHANGES  ON)
+set(CMAKE_CXX_EXTENSIONS OFF)           # https://cmake.org/cmake/help/latest/prop_tgt/CXX_EXTENSIONS.html#prop_tgt:CXX_EXTENSIONS
+set(CMAKE_CXX_STANDARD_REQUIRED ON)     # https://cmake.org/cmake/help/latest/prop_tgt/CXX_STANDARD_REQUIRED.html#prop_tgt:CXX_STANDARD_REQUIRED
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)       # https://cmake.org/cmake/help/latest/variable/CMAKE_INCLUDE_CURRENT_DIR.html
+
+
 
 # disable warnings - fix tests and remove
 add_compile_options("-Wno-comment")
@@ -30,16 +42,8 @@ add_compile_options("-Wno-type-limits")
 add_compile_options("-Wno-unused-variable")
 add_compile_options("-Wno-unknown-pragmas")
 
-
-SET( CMAKE_C_STANDARD 99 )
-
 SET( CMAKE_COMPILE_WARNING_AS_ERROR ON )
 
-# Always include srcdir and builddir in include path
-# This saves typing ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY} in
-# about every subdir
-# since cmake 2.4.0
-SET( CMAKE_INCLUDE_CURRENT_DIR ON )
 
 # Put the include dirs which are in the source or build tree
 # before all other include dirs, so the headers in the sources
@@ -92,24 +96,24 @@ INCLUDE_DIRECTORIES( . )
 INCLUDE_DIRECTORIES( ${src_ext_dir} )
 INCLUDE_DIRECTORIES( ${CMOCKA_INCLUDE_DIR} )
 
-FILE( GLOB unit_tests_source_files *.c *.h )
+FILE( GLOB unit_tests_source_files *.cpp *.h )
 LIST( APPEND source_files ${unit_tests_source_files} )
 
 LIST( APPEND source_files ${src_ext_dir}/TextOutputStream.h )
 
-LIST( APPEND source_files ${src_ext_dir}/backend_comm_backoff.h ${src_ext_dir}/backend_comm_backoff.c )
-LIST( APPEND source_files ${src_ext_dir}/ConfigManager.h ${src_ext_dir}/ConfigManager.c )
-LIST( APPEND source_files ${src_ext_dir}/elastic_apm_assert.h ${src_ext_dir}/elastic_apm_assert.c )
-LIST( APPEND source_files ${src_ext_dir}/internal_checks.h ${src_ext_dir}/internal_checks.c )
-LIST( APPEND source_files ${src_ext_dir}/log.h ${src_ext_dir}/log.c )
-LIST( APPEND source_files ${src_ext_dir}/MemoryTracker.h ${src_ext_dir}/MemoryTracker.c )
-LIST( APPEND source_files ${src_ext_dir}/platform.h ${src_ext_dir}/platform.c )
-LIST( APPEND source_files ${src_ext_dir}/platform_threads.h ${src_ext_dir}/platform_threads_linux.c )
-LIST( APPEND source_files ${src_ext_dir}/ResultCode.h ${src_ext_dir}/ResultCode.c )
-LIST( APPEND source_files ${src_ext_dir}/TextOutputStream.h ${src_ext_dir}/TextOutputStream.c )
-LIST( APPEND source_files ${src_ext_dir}/time_util.h ${src_ext_dir}/time_util.c )
-LIST( APPEND source_files ${src_ext_dir}/Tracer.h ${src_ext_dir}/Tracer.c )
-LIST( APPEND source_files ${src_ext_dir}/Tracer.h ${src_ext_dir}/util.c )
+LIST( APPEND source_files ${src_ext_dir}/backend_comm_backoff.h ${src_ext_dir}/backend_comm_backoff.cpp )
+LIST( APPEND source_files ${src_ext_dir}/ConfigManager.h ${src_ext_dir}/ConfigManager.cpp )
+LIST( APPEND source_files ${src_ext_dir}/elastic_apm_assert.h ${src_ext_dir}/elastic_apm_assert.cpp )
+LIST( APPEND source_files ${src_ext_dir}/internal_checks.h ${src_ext_dir}/internal_checks.cpp )
+LIST( APPEND source_files ${src_ext_dir}/log.h ${src_ext_dir}/log.cpp )
+LIST( APPEND source_files ${src_ext_dir}/MemoryTracker.h ${src_ext_dir}/MemoryTracker.cpp )
+LIST( APPEND source_files ${src_ext_dir}/platform.h ${src_ext_dir}/platform.cpp )
+LIST( APPEND source_files ${src_ext_dir}/platform_threads.h ${src_ext_dir}/platform_threads_linux.cpp )
+LIST( APPEND source_files ${src_ext_dir}/ResultCode.h ${src_ext_dir}/ResultCode.cpp )
+LIST( APPEND source_files ${src_ext_dir}/TextOutputStream.h ${src_ext_dir}/TextOutputStream.cpp )
+LIST( APPEND source_files ${src_ext_dir}/time_util.h ${src_ext_dir}/time_util.cpp )
+LIST( APPEND source_files ${src_ext_dir}/Tracer.h ${src_ext_dir}/Tracer.cpp )
+LIST( APPEND source_files ${src_ext_dir}/Tracer.h ${src_ext_dir}/util.cpp )
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -pthread -ldl")
 
