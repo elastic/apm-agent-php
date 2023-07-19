@@ -663,7 +663,7 @@ static OptionMetadata buildDurationOptionMetadata(
     };
 }
 
-static OptionMetadata buildSizeOptionMetadata(
+[[maybe_unused]] static OptionMetadata buildSizeOptionMetadata(
         String name
         , StringView iniName
         , bool isSecret

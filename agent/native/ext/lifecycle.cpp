@@ -343,7 +343,7 @@ void setLastPhpErrorData( int type, const char* fileName, uint32_t lineNumber, c
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d, fileName: %s, lineNumber: %" PRIu64 ", message: %s", type, fileName, (UInt64)lineNumber, message );
 
-    ResultCode resultCode;
+    [[maybe_unused]] ResultCode resultCode;
     PhpErrorData tempPhpErrorData;
     zeroLastPhpErrorData( &tempPhpErrorData );
 
@@ -412,8 +412,6 @@ void elasticApmZendErrorCallbackImpl( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE(
 
     resultCode = resultSuccess;
 
-    finally:
-
 #       if ELASTIC_APM_IS_ZEND_ERROR_CALLBACK_MSG_VA_LIST == 0
     if ( locallyFormattedMessage != NULL )
     {
@@ -426,9 +424,6 @@ void elasticApmZendErrorCallbackImpl( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE(
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
     return;
-
-    failure:
-    goto finally;
 }
 
 void elasticApmZendErrorCallback( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE() )
@@ -715,25 +710,25 @@ void elasticApmRequestInit()
     goto finally;
 }
 
-static
-void appendMetrics( const SystemMetricsReading* startSystemMetricsReading, const TimePoint* currentTime, TextOutputStream* serializedEventsTxtOutStream )
-{
-    SystemMetricsReading endSystemMetricsReading;
-    readSystemMetrics( &endSystemMetricsReading );
-    SystemMetrics system_metrics;
-    getSystemMetrics( startSystemMetricsReading, &endSystemMetricsReading, &system_metrics );
+// static
+// void appendMetrics( const SystemMetricsReading* startSystemMetricsReading, const TimePoint* currentTime, TextOutputStream* serializedEventsTxtOutStream )
+// {
+//     SystemMetricsReading endSystemMetricsReading;
+//     readSystemMetrics( &endSystemMetricsReading );
+//     SystemMetrics system_metrics;
+//     getSystemMetrics( startSystemMetricsReading, &endSystemMetricsReading, &system_metrics );
 
-    streamPrintf(
-            serializedEventsTxtOutStream
-            , JSON_METRICSET
-            , system_metrics.machineCpu // system.cpu.total.norm.pct
-            , system_metrics.processCpu // system.process.cpu.total.norm.pct
-            , system_metrics.machineMemoryFree  // system.memory.actual.free
-            , system_metrics.machineMemoryTotal // system.memory.total
-            , system_metrics.processMemorySize  // system.process.memory.size
-            , system_metrics.processMemoryRss   // system.process.memory.rss.bytes
-            , timePointToEpochMicroseconds( currentTime ) );
-}
+//     streamPrintf(
+//             serializedEventsTxtOutStream
+//             , JSON_METRICSET
+//             , system_metrics.machineCpu // system.cpu.total.norm.pct
+//             , system_metrics.processCpu // system.process.cpu.total.norm.pct
+//             , system_metrics.machineMemoryFree  // system.memory.actual.free
+//             , system_metrics.machineMemoryTotal // system.memory.total
+//             , system_metrics.processMemorySize  // system.process.memory.size
+//             , system_metrics.processMemoryRss   // system.process.memory.rss.bytes
+//             , timePointToEpochMicroseconds( currentTime ) );
+// }
 
 void elasticApmRequestShutdown()
 {

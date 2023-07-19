@@ -456,8 +456,11 @@ ResultCode safeStringCopy( StringView src, char* dstBuf, size_t dstBufCapacity )
     // Copies at most count characters of the character array pointed to by src (including the terminating null character,
     // but not any of the characters that follow the null character) to character array pointed to by dest.
     // If count is reached before the entire array src was copied, the resulting character array is not null-terminated.
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
     strncpy( /* dest */ dstBuf, /* src */ src.begin, /* count */ src.length );
+#pragma GCC diagnostic pop
+
     dstBuf[ src.length ] = '\0';
 #endif // #ifdef PHP_WIN32
 

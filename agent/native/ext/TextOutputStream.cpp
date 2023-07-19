@@ -102,7 +102,7 @@ String streamVPrintf( TextOutputStream* txtOutStream, String printfFmt, va_list 
     // snprintf: when returned value is non-negative and less than buffer-size
     // then the string has been completely written
     // otherwise it means buffer overflowed
-    const bool isOverflowed = ( snprintfRetVal > freeSpaceSize );
+    const bool isOverflowed = ( static_cast<size_t>(snprintfRetVal) > freeSpaceSize );
     // snprintf always writes terminating '\0'
     // but return value is number of chars written not counting the terminating '\0'
     textOutputStreamSkipNChars( txtOutStream, isOverflowed ? freeSpaceSize : snprintfRetVal );

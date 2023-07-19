@@ -57,7 +57,7 @@ static void readCpuFromProcStat( const char* procStatFilePath, CpuMetricsReading
      *      system: processes executing in kernel mode
      *      idle: twiddling thumbs
      */
-    int n = fscanf(proc_stat_file, "cpu %llu %llu %llu %llu", &result->user, &result->nice, &result->system, &result->idle);
+    [[maybe_unused]] auto n = fscanf(proc_stat_file, "cpu %llu %llu %llu %llu", &result->user, &result->nice, &result->system, &result->idle);
     fclose(proc_stat_file);
 }
 
