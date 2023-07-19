@@ -23,8 +23,13 @@
 #include "basic_macros.h"
 #include "StringView.h"
 
+//TODO bugprone-macro-parentheses - use std::span or any other container
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "bugprone-macro-parentheses"
+
 
 #define ELASTIC_APM_DECLARE_ARRAY_VIEW( ValueType, ArrayViewType ) \
     struct ArrayViewType \
@@ -35,6 +40,9 @@
     typedef struct ArrayViewType ArrayViewType
 
 #pragma clang diagnostic pop
+
+#pragma GCC diagnostic pop
+
 
 ELASTIC_APM_DECLARE_ARRAY_VIEW( bool, BoolArrayView );
 ELASTIC_APM_DECLARE_ARRAY_VIEW( int, IntArrayView );

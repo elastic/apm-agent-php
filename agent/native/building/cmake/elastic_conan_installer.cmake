@@ -86,6 +86,11 @@ if(_VENV_CREATED)
     )
 
     execute_process(
+        COMMAND ${python_pip} install -U "pyyaml==3.11"
+        COMMAND_ERROR_IS_FATAL ANY
+    )
+
+    execute_process(
         COMMAND ${python_pip} install -U conan==1.60.0
         COMMAND_ERROR_IS_FATAL ANY
     )
