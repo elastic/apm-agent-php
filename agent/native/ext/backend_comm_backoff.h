@@ -47,6 +47,6 @@ UInt backendCommBackoff_defaultGenerateRandomUInt( void* ctx );
         .generateRandomUInt = &backendCommBackoff_defaultGenerateRandomUInt, \
         .generateRandomUIntCtx = NULL, \
         .errorCount = 0, \
-        .waitEndTime = { 0 } \
+        .waitEndTime = { .tv_sec = 0, .tv_nsec = 0 } \
     }) \
     /**/

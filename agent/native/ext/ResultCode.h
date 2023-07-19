@@ -37,6 +37,13 @@ enum ResultCode
 };
 typedef enum ResultCode ResultCode;
 
+#ifdef __cplusplus
+inline ResultCode &operator++(ResultCode &code) {
+        code  = static_cast<ResultCode>(static_cast<int>(code) + 1);
+        return code;
+}
+#endif
+
 extern StringView resultCodeNames[ numberOfResultCodes ];
 
 static inline

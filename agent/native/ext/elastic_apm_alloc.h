@@ -101,9 +101,6 @@ void ELASTIC_APM_PEFREE_FUNC ( void* allocatedBlock, bool isPersistent );
     ELASTIC_APM_PHP_ALLOC_IF_FAILED_DO_EX( type, isString, requestedSize, isPersistent, outPtr, /* doOnFailure: */ goto failure )
 
 
-//#define ELASTIC_APM_EMALLOC_INSTANCE_IF_FAILED_GOTO( type, outPtr ) \
-//    ELASTIC_APM_PHP_ALLOC_IF_FAILED_GOTO_EX( type, /* isString: */ false, sizeof( type ), /* isPersistent: */ false, outPtr )
-
 #define ELASTIC_APM_PEMALLOC_INSTANCE_IF_FAILED_GOTO( type, outPtr ) \
     ELASTIC_APM_PHP_ALLOC_IF_FAILED_GOTO_EX( type, /* isString: */ false, sizeof( type ), /* isPersistent: */ true,  outPtr )
 
@@ -221,8 +218,6 @@ void poisonMemoryRange( Byte* rangeBegin, size_t rangeSize )
     } while ( 0 )
 
 
-//#define ELASTIC_APM_EFREE_INSTANCE_AND_SET_TO_NULL( type, ptr ) \
-//    ELASTIC_APM_PHP_FREE_AND_SET_TO_NULL( type, sizeof( type ), /* isPersistent */ false, ptr )
 
 #define ELASTIC_APM_PEFREE_INSTANCE_AND_SET_TO_NULL( type, ptr ) \
     ELASTIC_APM_PHP_FREE_AND_SET_TO_NULL( type, sizeof( type ), /* isPersistent */ true, ptr )

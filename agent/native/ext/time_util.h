@@ -83,8 +83,8 @@ extern StringView durationUnitsNames[ numberOfDurationUnits ];
 
 struct Duration
 {
-    Int64 valueInUnits;
-    DurationUnits units;
+    Int64 valueInUnits = 0;
+    DurationUnits units = DurationUnits::durationUnits_millisecond;
 };
 typedef struct Duration Duration;
 

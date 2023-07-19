@@ -154,7 +154,7 @@ bool isValidPtr( const void* ptr )
     ELASTIC_APM_ASSERT \
     ( \
         ((operandType)(lhsOperand)) binaryRelOperator ((operandType)(rhsOperand)) \
-        , #lhsOperand ": %"printfFmtForOperandType ", " #rhsOperand ": %"printfFmtForOperandType \
+        , #lhsOperand ": %" printfFmtForOperandType ", " #rhsOperand ": %" printfFmtForOperandType \
         , ((operandType)(lhsOperand)), ((operandType)(rhsOperand)) \
     ) \
 /**/
@@ -190,13 +190,13 @@ bool isValidPtr( const void* ptr )
 
 #define ELASTIC_APM_ASSERT_IN_INCLUSIVE_RANGE_UINT64( rangeBegin, x, rangeEnd ) \
     ELASTIC_APM_ASSERT( ELASTIC_APM_IS_IN_INCLUSIVE_RANGE( rangeBegin, x, rangeEnd ) \
-        , #rangeBegin": %"PRIu64", " #x ": %"PRIu64", " #rangeEnd ": %"PRIu64 \
+        , #rangeBegin ": %" PRIu64 ", " #x ": %" PRIu64 ", " #rangeEnd ": %" PRIu64 \
         , (UInt64)(rangeBegin), (UInt64)(x), (UInt64)(rangeEnd) ) \
 /**/
 
 #define ELASTIC_APM_ASSERT_IN_END_EXCLUDED_RANGE_UINT64( rangeBeginIncluded, x, rangeEndExcluded ) \
     ELASTIC_APM_ASSERT( ELASTIC_APM_IS_IN_END_EXCLUDED_RANGE( rangeBeginIncluded, x, rangeEndExcluded ) \
-        , #rangeBeginIncluded": %"PRIu64", " #x ": %"PRIu64", " #rangeEndExcluded ": %"PRIu64 \
+        , #rangeBeginIncluded ": %" PRIu64 ", " #x ": %" PRIu64 ", " #rangeEndExcluded ": %" PRIu64 \
         , (UInt64)(rangeBeginIncluded), (UInt64)(x), (UInt64)(rangeEndExcluded) ) \
 /**/
 

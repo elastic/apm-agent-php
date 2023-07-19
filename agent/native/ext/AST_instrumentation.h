@@ -41,8 +41,8 @@ void astInstrumentationOnModuleShutdown();
 void astInstrumentationOnRequestInit( const ConfigSnapshot* config );
 void astInstrumentationOnRequestShutdown();
 
-zend_ast_decl** findChildSlotForStandaloneFunctionAst( zend_ast* rootAst, StringView namespace, StringView funcName, size_t minParamsCount );
-zend_ast_decl* findClassAst( zend_ast* rootAst, StringView namespace, StringView className );
+zend_ast_decl** findChildSlotForStandaloneFunctionAst( zend_ast* rootAst, StringView nameSpace, StringView funcName, size_t minParamsCount );
+zend_ast_decl* findClassAst( zend_ast* rootAst, StringView nameSpace, StringView className );
 zend_ast_decl** findChildSlotForMethodAst( zend_ast_decl* astClass, StringView methodName, size_t minParamsCount );
 
 ResultCode insertAstForFunctionPreHook( zend_ast_decl* funcAstDecl, ArgCaptureSpecArrayView argCaptureSpecs );

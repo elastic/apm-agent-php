@@ -17,23 +17,14 @@
  * under the License.
  */
 
-#pragma once
-
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include <cmocka.h>
-
-#ifdef __cplusplus
+/**
+ * mockGetEnv is used in "ConfigManager.c"
+ * via ELASTIC_APM_GETENV_FUNC defined in unit tests' CMakeLists.txt
+ *
+ * mockGetEnv returns `char*` and not `const char*` on purpose
+ * because real <stdlib.h> defines getenv as it's done below
+ */
+char* mockGetEnv( const char* name )
+{
+    return nullptr;
 }
-#endif
-
-
-#include "basic_macros.h"
-
-#define cm_print_error printf

@@ -22,8 +22,8 @@
 #include <stdbool.h>
 #include "log.h"
 #include "basic_types.h"
-#include "DynamicArray.h"
-
+#include <string>
+#include <vector>
 void setGlobalLoggerLevelForCustomSink( LogLevel levelForCustomSink );
 
 /// Use two phase approach (i.e., init+enable vs just init)
@@ -31,17 +31,48 @@ void setGlobalLoggerLevelForCustomSink( LogLevel levelForCustomSink );
 /// When MockLogCustomSink is init-ed but not yet enabled it just discards all log statements it receives.
 /// Thus it doesn't allocate any memory which would otherwise been tracked incorrectly by MemoryTracker
 /// because MockLogCustomSink is init-ed before MemoryTracker
-struct MockLogCustomSink;
-typedef struct MockLogCustomSink MockLogCustomSink;
 
-MockLogCustomSink* getGlobalMockLogCustomSink();
+class MockLogCustomSink {
+public:
+    void enable() {
+        isEnabled = true;
+    }
 
-void initMockLogCustomSink( MockLogCustomSink* mockLogCustomSink );
-void enableMockLogCustomSink( MockLogCustomSink* mockLogCustomSink );
-void disableMockLogCustomSink( MockLogCustomSink* mockLogCustomSink );
-void uninitMockLogCustomSink( MockLogCustomSink* mockLogCustomSink );
-size_t numberOfStatementsInMockLogCustomSink( const MockLogCustomSink* mockLogCustomSink );
-String getStatementInMockLogCustomSinkContent( const MockLogCustomSink* mockLogCustomSink, size_t index );
-void clearMockLogCustomSink( MockLogCustomSink* mockLogCustomSink );
+    void disable() {
+        isEnabled = false;
+    }
+
+    void reset() {
+        isEnabled = false;
+        statements.clear();
+    }
+
+    bool enabled() const {
+        return isEnabled;
+    }
+
+    size_t size() const {
+        return statements.size();
+    }
+
+    void clear() {
+        statements.clear();
+    }
+
+    const std::string &get(size_t index) const {
+        return statements[index];
+    }
+
+    void push_back(std::string text) {
+
+        statements.emplace_back(std::move(text));
+    }
+
+private:
+    bool isEnabled = false;
+    std::vector<std::string> statements;
+};
+
+MockLogCustomSink &getGlobalMockLogCustomSink();
 
 #define ELASTIC_APM_LOG_CATEGORY_C_EXT_UNIT_TESTS "C-Ext Unit tests"

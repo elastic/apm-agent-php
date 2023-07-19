@@ -51,6 +51,14 @@ enum LogSinkType
 };
 typedef enum LogSinkType LogSinkType;
 
+#ifdef __cplusplus
+inline LogSinkType &operator++(LogSinkType &type) {
+        type  = static_cast<LogSinkType>(static_cast<int>(type) + 1);
+        return type;
+}
+#endif
+
+
 extern String logSinkTypeName[ numberOfLogSinkTypes ];
 extern LogLevel defaultLogLevelPerSinkType[ numberOfLogSinkTypes ];
 
@@ -59,7 +67,7 @@ extern LogLevel defaultLogLevelPerSinkType[ numberOfLogSinkTypes ];
 struct LoggerConfig
 {
     LogLevel levelPerSinkType[ numberOfLogSinkTypes ];
-    String file;
+    String file = nullptr;
 };
 typedef struct LoggerConfig LoggerConfig;
 

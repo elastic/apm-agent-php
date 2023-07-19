@@ -481,7 +481,7 @@ ResultCode appendToString( StringView suffixToAppend, size_t bufCapacity, /* in 
 
     ELASTIC_APM_ASSERT_VALID_PTR( bufBegin );
     ELASTIC_APM_ASSERT_VALID_PTR( bufContentLen );
-    ELASTIC_APM_ASSERT( *bufContentLen < bufCapacity, "*bufContentLen: %"PRIu64", bufCapacity: %"PRIu64, (UInt64)(*bufContentLen), (UInt64)bufCapacity );
+    ELASTIC_APM_ASSERT( *bufContentLen < bufCapacity, "*bufContentLen: %" PRIu64 ", bufCapacity: %" PRIu64, (UInt64)(*bufContentLen), (UInt64)bufCapacity );
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( safeStringCopy( /* src */ suffixToAppend, /* dstBuf */ bufBegin + *bufContentLen, bufCapacity - *bufContentLen ) );
 

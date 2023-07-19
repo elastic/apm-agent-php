@@ -21,6 +21,7 @@
 
 #include <time.h>
 #include <stdbool.h>
+#include <string.h>
 
 #ifdef PHP_WIN32
 #   ifdef ELASTIC_APM_MOCK_CLOCK
@@ -54,7 +55,8 @@ typedef struct timezone TimeZone;
 static inline
 bool convertUtcToLocalTimeDefaultImpl( time_t input, struct tm* output, long* secondsAheadUtc )
 {
-    struct tm outputLocal = { 0 };
+    struct tm outputLocal;
+    memset(&outputLocal, 0, sizeof(tm));
     long secondsAheadUtcLocal = 0;
 
     #ifdef PHP_WIN32

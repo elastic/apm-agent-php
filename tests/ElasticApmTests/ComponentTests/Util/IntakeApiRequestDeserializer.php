@@ -77,14 +77,12 @@ final class IntakeApiRequestDeserializer implements LoggableInterface
         $dbgCtx->pushSubScope();
         foreach (TextUtilForTests::iterateLines($this->intakeApiRequest->body, /* keepEndOfLine */ false) as $bodyLine) {
             $dbgCtx->add(['bodyLine' => $bodyLine]);
+            // There should be only one empty line (at the end)
+            TestCaseBase::assertFalse($encounteredEmptyLine);
             if (TextUtil::isEmptyString($bodyLine)) {
-                // There should be only one empty line (at the end)
-                TestCaseBase::assertFalse($encounteredEmptyLine);
                 $encounteredEmptyLine = true;
                 continue;
             }
-            // empty line can only be the last one
-            TestCaseBase::assertFalse($encounteredEmptyLine);
 
             ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Processing a line from intake API request', ['bodyLine' => $bodyLine]);
 
