@@ -62,7 +62,7 @@ ResultCode loadPhpFile( const char* phpFilePath )
     bool hasThrownException = false;
 
 #if PHP_VERSION_ID >= ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 1, 0 ) /* if PHP version from 8.1.0 */
-    zend_string* phpFilePathAsZendString;
+    zend_string* phpFilePathAsZendString = nullptr;
 #endif
 
     size_t phpFilePathLen = strlen( phpFilePath );

@@ -694,7 +694,7 @@ String streamSharedStateSnapshot( const BackgroundBackendCommSharedStateSnapshot
         serializedEvents = stringBufferToView( sharedStateSnapshot->firstDataToSendNode->serializedEvents );
     }
 
-    streamPrintf(
+    return streamPrintf(
             txtOutStream
             ,"{"
              "total size of queued events: %" PRIu64 

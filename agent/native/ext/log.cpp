@@ -362,8 +362,6 @@ int logLevelToSyslog( LogLevel level )
 
 void writeToSyslog( Logger* logger, LogLevel level, StringView commonPrefix, String msgFmt, va_list msgArgs )
 {
-    char sinkSpecificPrefixBuffer[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
-
     String fullText = concatPrefixAndMsg(
             logger
             , /* sinkSpecificPrefix: */ ELASTIC_APM_STRING_LITERAL_TO_VIEW( ELASTIC_APM_LOG_LINE_PREFIX_TRACER_PART )

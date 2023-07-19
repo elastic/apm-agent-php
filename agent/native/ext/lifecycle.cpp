@@ -74,13 +74,14 @@ String buildSupportabilityInfo( size_t supportInfoBufferSize, char* supportInfoB
 void logSupportabilityInfo( LogLevel logLevel )
 {
     ResultCode resultCode;
-    StringView textRemainder;
-    String supportabilityInfo;
-    const char* textEnd;
     enum { supportInfoBufferSize = 100 * 1000 + 1 };
     char* supportInfoBuffer = NULL;
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
+
+    String supportabilityInfo;
+    StringView textRemainder;
+    const char *textEnd;
 
     ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "Version of agent C part: " PHP_ELASTIC_APM_VERSION );
     ELASTIC_APM_LOG_WITH_LEVEL( logLevel, "Current process command line: %s", streamCurrentProcessCommandLine( &txtOutStream, /* maxLength */ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ) );
@@ -342,7 +343,7 @@ void setLastPhpErrorData( int type, const char* fileName, uint32_t lineNumber, c
 {
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "type: %d, fileName: %s, lineNumber: %" PRIu64 ", message: %s", type, fileName, (UInt64)lineNumber, message );
 
-    ResultCode resultCode;
+    [[maybe_unused]] ResultCode resultCode;
     PhpErrorData tempPhpErrorData;
     zeroLastPhpErrorData( &tempPhpErrorData );
 
@@ -411,8 +412,6 @@ void elasticApmZendErrorCallbackImpl( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE(
 
     resultCode = resultSuccess;
 
-    finally:
-
 #       if ELASTIC_APM_IS_ZEND_ERROR_CALLBACK_MSG_VA_LIST == 0
     if ( locallyFormattedMessage != NULL )
     {
@@ -425,9 +424,6 @@ void elasticApmZendErrorCallbackImpl( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE(
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
     return;
-
-    failure:
-    goto finally;
 }
 
 void elasticApmZendErrorCallback( ELASTIC_APM_ZEND_ERROR_CALLBACK_SIGNATURE() )
@@ -511,7 +507,7 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* config = NULL;
-    CURLcode curlCode = CURLE_OK;
+    CURLcode curlCode;
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( constructTracer( tracer ) );
 
@@ -714,25 +710,25 @@ void elasticApmRequestInit()
     goto finally;
 }
 
-static
-void appendMetrics( const SystemMetricsReading* startSystemMetricsReading, const TimePoint* currentTime, TextOutputStream* serializedEventsTxtOutStream )
-{
-    SystemMetricsReading endSystemMetricsReading;
-    readSystemMetrics( &endSystemMetricsReading );
-    SystemMetrics system_metrics;
-    getSystemMetrics( startSystemMetricsReading, &endSystemMetricsReading, &system_metrics );
+// static
+// void appendMetrics( const SystemMetricsReading* startSystemMetricsReading, const TimePoint* currentTime, TextOutputStream* serializedEventsTxtOutStream )
+// {
+//     SystemMetricsReading endSystemMetricsReading;
+//     readSystemMetrics( &endSystemMetricsReading );
+//     SystemMetrics system_metrics;
+//     getSystemMetrics( startSystemMetricsReading, &endSystemMetricsReading, &system_metrics );
 
-    streamPrintf(
-            serializedEventsTxtOutStream
-            , JSON_METRICSET
-            , system_metrics.machineCpu // system.cpu.total.norm.pct
-            , system_metrics.processCpu // system.process.cpu.total.norm.pct
-            , system_metrics.machineMemoryFree  // system.memory.actual.free
-            , system_metrics.machineMemoryTotal // system.memory.total
-            , system_metrics.processMemorySize  // system.process.memory.size
-            , system_metrics.processMemoryRss   // system.process.memory.rss.bytes
-            , timePointToEpochMicroseconds( currentTime ) );
-}
+//     streamPrintf(
+//             serializedEventsTxtOutStream
+//             , JSON_METRICSET
+//             , system_metrics.machineCpu // system.cpu.total.norm.pct
+//             , system_metrics.processCpu // system.process.cpu.total.norm.pct
+//             , system_metrics.machineMemoryFree  // system.memory.actual.free
+//             , system_metrics.machineMemoryTotal // system.memory.total
+//             , system_metrics.processMemorySize  // system.process.memory.size
+//             , system_metrics.processMemoryRss   // system.process.memory.rss.bytes
+//             , timePointToEpochMicroseconds( currentTime ) );
+// }
 
 void elasticApmRequestShutdown()
 {
@@ -741,7 +737,6 @@ void elasticApmRequestShutdown()
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
-    bool preloadDetected = false;
 
     if ( ! doesCurrentPidMatchPidOnInit( g_pidOnRequestInit, "request" ) )
     {

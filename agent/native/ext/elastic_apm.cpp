@@ -257,7 +257,7 @@ static PHP_GINIT_FUNCTION(elastic_apm)
     ELASTIC_APM_LOG_DIRECT_DEBUG( "%s: GINIT called; parent PID: %d", __FUNCTION__, (int)getParentProcessId() );
 
 
-    memset(&elastic_apm_globals->globalTracer, 0, sizeof(Tracer));
+    // memset(&elastic_apm_globals->globalTracer, 0, sizeof(Tracer));
     elastic_apm_globals->globals = nullptr;
 
 }
