@@ -33,6 +33,7 @@
 #include "elastic_apm_assert.h"
 #include "elastic_apm_alloc.h"
 #include "tracer_PHP_part.h"
+#include "PhpBridge.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_EXT_INFRA
 
@@ -255,16 +256,36 @@ void unregisterElasticApmIniEntries( int type, int module_number, IniEntriesRegi
 static PHP_GINIT_FUNCTION(elastic_apm)
 {
     ELASTIC_APM_LOG_DIRECT_DEBUG( "%s: GINIT called; parent PID: %d", __FUNCTION__, (int)getParentProcessId() );
-
-
     // memset(&elastic_apm_globals->globalTracer, 0, sizeof(Tracer));
     elastic_apm_globals->globals = nullptr;
 
+    //TODO move initialization to builder
+
+    auto phpBridge = std::make_unique<elasticapm::php::PhpBridge>();
+
+    auto inferredSpans = std::make_shared<elasticapm::php::InferredSpans>([interruptFlag = reinterpret_cast<void *>(&EG(vm_interrupt))]() {
+#if PHP_VERSION_ID >= 80200
+        zend_atomic_bool_store_ex(reinterpret_cast<zend_atomic_bool *>(interruptFlag), true);
+#else
+        *static_cast<zend_bool *>(interruptFlag) = 1;
+#endif
+    }, [&bridge = *phpBridge](elasticapm::php::InferredSpans::time_point_t, elasticapm::php::InferredSpans::time_point_t) {
+        bridge.callInferredSpans();
+    });
+
+    auto tickGenerator = std::make_unique<elasticapm::php::TickGenerator>();
+    tickGenerator->addPeriodicTask([inferredSpans](elasticapm::php::TickGenerator::time_point_t now) {
+        inferredSpans->tryRequestInterrupt(now);
+    });
+
+    elastic_apm_globals->globals = new elasticapm::php::AgentGlobals(std::move(phpBridge), std::move(tickGenerator), inferredSpans);
 }
 
-static PHP_GSHUTDOWN_FUNCTION(elastic_apm)
-{
+static PHP_GSHUTDOWN_FUNCTION(elastic_apm) {
     ELASTIC_APM_LOG_DIRECT_DEBUG( "%s: GSHUTDOWN called; parent PID: %d", __FUNCTION__, (int)getParentProcessId() );
+    if (elastic_apm_globals->globals) {
+        delete elastic_apm_globals->globals;
+    }
 }
 
 PHP_MINIT_FUNCTION(elastic_apm)

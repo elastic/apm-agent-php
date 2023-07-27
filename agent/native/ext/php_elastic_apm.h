@@ -47,7 +47,7 @@ ZEND_EXTERN_MODULE_GLOBALS(elastic_apm)
 #ifdef ZTS
 #define ELASTICAPM_G(member) ZEND_MODULE_GLOBALS_ACCESSOR(elastic_apm, member)
 #else
-#define ELASTICAPM_G(member) (elastic_apm.member)
+#define ELASTICAPM_G(member) (elastic_apm_globals.member)
 #endif
 
 

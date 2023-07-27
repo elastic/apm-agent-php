@@ -111,5 +111,6 @@ conan_cmake_run(REQUIRES ${dependencies}
                 )
 
 add_subdirectory(libcommon)
+add_subdirectory(libphpbridge)
 
 add_subdirectory(ext)

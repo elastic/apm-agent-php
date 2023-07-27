@@ -42,6 +42,8 @@
 #include "tracer_PHP_part.h"
 #include "backend_comm.h"
 #include "AST_instrumentation.h"
+#include "Hooking.h"
+#include "CommonUtils.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_LIFECYCLE
 
@@ -504,6 +506,8 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
 
     registerOsSignalHandler();
 
+    elasticapm::php::Hooking::getInstance().fetchOriginalHooks();
+
     ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* config = NULL;
@@ -548,6 +552,8 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
 
     astInstrumentationOnModuleInit( config );
 
+    elasticapm::php::Hooking::getInstance().replaceHooks();
+
     resultCode = resultSuccess;
     finally:
 
@@ -577,6 +583,7 @@ void elasticApmModuleShutdown( int moduleType, int moduleNumber )
         goto finally;
     }
 
+    elasticapm::php::Hooking::getInstance().restoreOriginalHooks();
     astInstrumentationOnModuleShutdown();
 
     unregisterErrorAndExceptionHooks();
@@ -590,6 +597,8 @@ void elasticApmModuleShutdown( int moduleType, int moduleNumber )
     }
 
     unregisterElasticApmIniEntries( moduleType, moduleNumber, &tracer->iniEntriesRegistrationState );
+
+
 
     resultCode = resultSuccess;
 
@@ -683,10 +692,6 @@ void elasticApmRequestInit()
         }
     }
 
-    if ( config->profilingInferredSpansEnabled ) {
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( replaceSleepWithResumingAfterSignalImpl() );
-    }
-
     if (!config->captureErrors) {
         ELASTIC_APM_LOG_DEBUG( "capture_errors (captureErrors) configuration option is set to false which means errors will NOT be captured" );
     }
@@ -697,6 +702,13 @@ void elasticApmRequestInit()
     }
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( tracerPhpPartOnRequestInit( config, &requestInitStartTime ) );
+
+    if (config->profilingInferredSpansEnabled) {
+        auto interval = elasticapm::utils::convertDurationWithUnit(config->profilingInferredSpansSamplingInterval ? config->profilingInferredSpansSamplingInterval : "20ms");
+        ELASTICAPM_G(globals)->inferredSpans_->setInterval(interval);
+        ELASTICAPM_G(globals)->tickGenerator_->setInterval(interval);
+        ELASTICAPM_G(globals)->tickGenerator_->resumeCounting();
+    }
 
     resultCode = resultSuccess;
 
@@ -763,6 +775,8 @@ void elasticApmRequestShutdown()
         goto finally;
     }
 	
+    ELASTICAPM_G(globals)->tickGenerator_->pauseCounting();
+
     tracerPhpPartOnRequestShutdown();
 
     if ( config->astProcessEnabled )

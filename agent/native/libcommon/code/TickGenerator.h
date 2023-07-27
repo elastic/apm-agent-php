@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ForkableInterface.h"
+
 #include <atomic>
 #include <condition_variable>
 #include <functional>
@@ -9,16 +11,8 @@
 
 namespace elasticapm::php {
 
-class Forkable {
-public:
-    virtual ~Forkable() {
-    }
 
-    virtual void prefork() = 0;
-    virtual void postfork([[maybe_unused]] bool child) = 0;
-};
-
-class TickGenerator : public Forkable {
+class TickGenerator : public ForkableInterface {
 private:
     auto getThread() {
         return [this](std::stop_token stoken) { work(stoken); };
@@ -47,9 +41,9 @@ public:
         }
 
         while(!stoken.stop_requested()) {
-
             {
                 std::unique_lock<std::mutex> lock(mutex_);
+
                 pauseCondition_.wait(lock, [this, &stoken]() {
                     if (stoken.stop_requested()) {
                         return true;
@@ -71,7 +65,7 @@ public:
                     lock.lock();
                 }
             }
-    		std::this_thread::sleep_for(sleepInterval_);
+            std::this_thread::sleep_for(sleepInterval_);
         }
     }
 

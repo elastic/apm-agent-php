@@ -5,7 +5,6 @@
 #include <gmock/gmock.h>
 #include <pthread.h>
 
-
 using namespace std::chrono_literals;
 
 namespace elasticapm::php {
@@ -76,10 +75,13 @@ TEST_F(TickGeneratorTest, resumeAfterFork) {
 
     ASSERT_GE(counterBeforeFork, 4); // should be 5 in ideal world
 
-    fork();
+    auto pid = fork();
     std::this_thread::sleep_for(200ms);
 
     ASSERT_GE(counter.load(), 13); // should be 15 in ideal world
+    if (pid == 0) {
+        exit(0);
+    }
 }
 
 }
