@@ -11,7 +11,7 @@ namespace elasticapm::php {
 class PhpBridge : public PhpBridgeInterface{
 public:
 
-    bool callInferredSpans() final;
+    bool callInferredSpans(std::chrono::milliseconds duration) final;
 
 protected:
     zend_class_entry *findClassEntry(std::string_view className) const;

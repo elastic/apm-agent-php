@@ -704,7 +704,15 @@ void elasticApmRequestInit()
     ELASTIC_APM_CALL_IF_FAILED_GOTO( tracerPhpPartOnRequestInit( config, &requestInitStartTime ) );
 
     if (config->profilingInferredSpansEnabled) {
-        auto interval = elasticapm::utils::convertDurationWithUnit(config->profilingInferredSpansSamplingInterval ? config->profilingInferredSpansSamplingInterval : "20ms");
+        std::chrono::milliseconds interval{20}; //TODO how to get default
+        try {
+            if (config->profilingInferredSpansSamplingInterval) {
+                interval = elasticapm::utils::convertDurationWithUnit(config->profilingInferredSpansSamplingInterval);
+            }
+        } catch (std::invalid_argument const &e) {
+            ELASTIC_APM_LOG_ERROR( "profilingInferredSpansSamplingInterval '%s': '%s'", e.what(), config->profilingInferredSpansSamplingInterval);
+        }
+
         ELASTICAPM_G(globals)->inferredSpans_->setInterval(interval);
         ELASTICAPM_G(globals)->tickGenerator_->setInterval(interval);
         ELASTICAPM_G(globals)->tickGenerator_->resumeCounting();

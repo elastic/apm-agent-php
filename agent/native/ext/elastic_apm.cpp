@@ -34,6 +34,7 @@
 #include "elastic_apm_alloc.h"
 #include "tracer_PHP_part.h"
 #include "PhpBridge.h"
+#include "CommonUtils.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_EXT_INFRA
 
@@ -269,16 +270,26 @@ static PHP_GINIT_FUNCTION(elastic_apm)
 #else
         *static_cast<zend_bool *>(interruptFlag) = 1;
 #endif
-    }, [&bridge = *phpBridge](elasticapm::php::InferredSpans::time_point_t, elasticapm::php::InferredSpans::time_point_t) {
-        bridge.callInferredSpans();
+    }, [&bridge = *phpBridge](elasticapm::php::InferredSpans::time_point_t requestTime, elasticapm::php::InferredSpans::time_point_t now) {
+        bridge.callInferredSpans(now - requestTime);
     });
 
-    auto tickGenerator = std::make_unique<elasticapm::php::TickGenerator>();
+    auto tickGenerator = std::make_unique<elasticapm::php::TickGenerator>([]() {
+        // block signals for this thread to be handled by main Apache/PHP thread
+        // list of signals from Apaches mpm handlers
+        elasticapm::utils::blockSignal(SIGTERM);
+        elasticapm::utils::blockSignal(SIGHUP);
+        elasticapm::utils::blockSignal(SIGINT);
+        elasticapm::utils::blockSignal(SIGWINCH);
+        elasticapm::utils::blockSignal(SIGUSR1);
+        elasticapm::utils::blockSignal(SIGPROF); // php timeout signal
+    });
+
     tickGenerator->addPeriodicTask([inferredSpans](elasticapm::php::TickGenerator::time_point_t now) {
         inferredSpans->tryRequestInterrupt(now);
     });
 
-    elastic_apm_globals->globals = new elasticapm::php::AgentGlobals(std::move(phpBridge), std::move(tickGenerator), inferredSpans);
+    elastic_apm_globals->globals = new(std::nothrow) elasticapm::php::AgentGlobals(std::move(phpBridge), std::move(tickGenerator), inferredSpans);
 }
 
 static PHP_GSHUTDOWN_FUNCTION(elastic_apm) {

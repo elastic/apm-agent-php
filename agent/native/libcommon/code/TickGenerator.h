@@ -25,8 +25,7 @@ public:
     using task_t = std::function<void(time_point_t)>;
     using worker_init_t = std::function<void()>;
 
-    TickGenerator() :
-     thread_(getThread()) {
+    TickGenerator(worker_init_t workerInit = {}) : workerInit_(std::move(workerInit)),  thread_(getThread()) {
     }
 
     ~TickGenerator() {
@@ -44,18 +43,21 @@ public:
             {
                 std::unique_lock<std::mutex> lock(mutex_);
 
-                pauseCondition_.wait(lock, [this, &stoken]() {
-                    if (stoken.stop_requested()) {
-                        return true;
-                    }
-                    return static_cast<bool>(counting_);
-                });
+                if (!counting_.load()) {
+                    pauseCondition_.wait(lock, [this, &stoken]() {
+                        if (stoken.stop_requested()) {
+                            return true;
+                        }
+                        return static_cast<bool>(counting_);
+                    });
+                }
             }
 
             if (stoken.stop_requested()) {
                 break;
             }
 
+            std::this_thread::sleep_for(sleepInterval_);
             {
                 std::unique_lock<std::mutex> lock(mutex_);
                 for (auto const &task : periodicTasks_) {
@@ -65,7 +67,6 @@ public:
                     lock.lock();
                 }
             }
-            std::this_thread::sleep_for(sleepInterval_);
         }
     }
 
@@ -80,13 +81,17 @@ public:
     }
 
     void resumeCounting() {
+        {
         std::lock_guard<std::mutex> lock(mutex_);
         counting_ = true;
+        }
         pauseCondition_.notify_all();
     }
     void pauseCounting() {
+        {
        	std::lock_guard<std::mutex> lock(mutex_);
         counting_ = false;
+        }
         pauseCondition_.notify_all();
     }
 
@@ -105,10 +110,7 @@ private:
 
    void shutdown() {
         thread_.request_stop();
-        {
-        std::lock_guard<std::mutex> lock(mutex_);
-        pauseCondition_.notify_all();
-        }
+        pauseCondition_.notify_one();
    }
 
 private:

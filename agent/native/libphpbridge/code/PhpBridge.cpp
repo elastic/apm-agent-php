@@ -5,6 +5,7 @@
 #include <Zend/zend_API.h>
 #include <Zend/zend_alloc.h>
 #include <Zend/zend_globals.h>
+#include <Zend/zend_types.h>
 
 
 namespace elasticapm::php {
@@ -66,7 +67,7 @@ bool isObjectOfClass(zval *object, std::string_view className) {
 
 }
 
-bool PhpBridge::callInferredSpans() {
+bool PhpBridge::callInferredSpans(std::chrono::milliseconds duration) {
     auto phpPartFacadeClass = findClassEntry("elastic\\apm\\impl\\autoinstrument\\phppartfacade"sv);
     if (!phpPartFacadeClass) {
         return false;
@@ -93,7 +94,10 @@ bool PhpBridge::callInferredSpans() {
     }
 
     AutoZval rv;
-    return callMethod(inferredSpansManager, "handleAutomaticCapturing"sv, nullptr, 0, rv.get());
+    AutoZval params;
+    ZVAL_LONG(&params[0], duration.count());
+
+    return callMethod(inferredSpansManager, "handleAutomaticCapturing"sv, params.data(), params.size(), rv.get());
 }
 
 

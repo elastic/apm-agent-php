@@ -60,7 +60,7 @@ private:
 
 
     std::atomic_bool interruptedRequested_;
-    std::chrono::milliseconds samplingInterval_ = std::chrono::milliseconds(100);
+    std::chrono::milliseconds samplingInterval_ = std::chrono::milliseconds(20);
     time_point_t lastInterruptRequestTick_{};
     std::mutex mutex_;
     interruptFunc_t interrupt_;
