@@ -82,40 +82,23 @@ final class StackTraceUtil
     }
 
     /**
-     * @param iterable<array<string, mixed>> $inputFrames
+     * @param iterable<array<string, mixed>> $phpFormatFrames
      * @param ?positive-int                  $maxNumberOfFrames
      *
      * @return StackTraceFrame[]
      */
-    public function convertPhpToApmFormat(iterable $inputFrames, ?int $maxNumberOfFrames): array
+    public function convertPhpToApmFormat(iterable $phpFormatFrames, ?int $maxNumberOfFrames): array
     {
-        /** @var StackTraceFrame[] $outputFrames */
-        $outputFrames = [];
-        $this->excludeCodeToHide(
-            $inputFrames,
-            /**
-             * @param array<string, mixed>  $inputFrameWithLocationData
-             * @param ?array<string, mixed> $inputFrameWithNonLocationData
-             */
-            function (array $inputFrameWithLocationData, ?array $inputFrameWithNonLocationData) use ($maxNumberOfFrames, &$outputFrames): bool {
-                $outputFrameFunc = null;
-                if ($inputFrameWithNonLocationData !== null) {
-                    $outputFrameFunc = StackTraceUtil::buildApmFormatFunctionForClassMethod(
-                        $this->getNullableStringValue(StackTraceUtil::CLASS_KEY, $inputFrameWithNonLocationData),
-                        $this->isStaticMethodInPhpFormat($inputFrameWithNonLocationData),
-                        $this->getNullableStringValue(StackTraceUtil::FUNCTION_KEY, $inputFrameWithNonLocationData)
-                    );
-                }
-
-                $file = $this->getNullableStringValue(StackTraceUtil::FILE_KEY, $inputFrameWithLocationData);
-                $line = $this->getNullableIntValue(StackTraceUtil::LINE_KEY, $inputFrameWithLocationData);
-                $outputFrame = new StackTraceFrame($file ?? StackTraceUtil::FILE_NAME_NOT_AVAILABLE_SUBSTITUTE, $line ?? StackTraceUtil::LINE_NUMBER_NOT_AVAILABLE_SUBSTITUTE);
-                $outputFrame->function = $outputFrameFunc;
-                return self::addToOutputFrames($outputFrame, $maxNumberOfFrames, /* ref */ $outputFrames);
-            }
+        $allClassicFormatFrames = $this->convertPhpToClassicFormat(
+            null /* <- prevPhpFormatFrame */,
+            $phpFormatFrames,
+            $maxNumberOfFrames,
+            false /* keepElasticApmFrames */,
+            false /* $includeArgs */,
+            false /* $includeThisObj */
         );
 
-        return $outputFrames;
+        return self::convertClassicToApmFormat($allClassicFormatFrames, $maxNumberOfFrames);
     }
 
     /**
@@ -145,72 +128,127 @@ final class StackTraceUtil
     public function captureInClassicFormat(int $offset = 0, ?int $maxNumberOfFrames = null, bool $keepElasticApmFrames = true, bool $includeArgs = false, bool $includeThisObj = false): array
     {
         $options = ($includeArgs ? 0 : DEBUG_BACKTRACE_IGNORE_ARGS) | ($includeThisObj ? DEBUG_BACKTRACE_PROVIDE_OBJECT : 0);
-        // If there is non-null $maxNumberOfFrames we need to capture one more frame in PHP format
-        $phpFormatFrames = debug_backtrace($options, /* limit */ $maxNumberOfFrames === null ? 0 : ($offset + $maxNumberOfFrames + 1));
-        $phpFormatFrames = IterableUtil::arraySuffix($phpFormatFrames, $offset);
+        return $this->convertCaptureToClassicFormat(
+            // If there is non-null $maxNumberOfFrames we need to capture one more frame in PHP format
+            debug_backtrace($options, /* limit */ $maxNumberOfFrames === null ? 0 : ($offset + $maxNumberOfFrames + 1)),
+            // $offset + 1 to exclude the frame for the current method (captureInClassicFormat) call
+            $offset + 1,
+            $maxNumberOfFrames,
+            $keepElasticApmFrames,
+            $includeArgs,
+            $includeThisObj
+        );
+    }
 
-        /** @var ClassicFormatStackTraceFrame[] $outputFrames */
-        $outputFrames = [];
-        $isTopFrame = true;
-        /** @var ?array<string, mixed> $bufferedBeforeTopFrame */
-        $bufferedBeforeTopFrame = null;
-        /** @var ?array<string, mixed> $prevFrame */
-        $prevFrame = null;
-        $hasExitedLoopEarly = false;
-        if ($keepElasticApmFrames) {
-            foreach ($phpFormatFrames as $currentFrame) {
-                if ($prevFrame === null) {
-                    $prevFrame = $currentFrame;
-                    continue;
-                }
-                if (!$this->captureInClassicFormatConsume($maxNumberOfFrames, $includeArgs, $includeThisObj, $prevFrame, $currentFrame, $bufferedBeforeTopFrame, $isTopFrame, $outputFrames)) {
-                    $hasExitedLoopEarly = true;
-                    break;
-                }
-                $prevFrame = $currentFrame;
+    /**
+     * @param array<array<mixed>> $phpFormatFrames
+     * @param int                 $offset
+     * @param ?positive-int       $maxNumberOfFrames
+     * @param bool                $keepElasticApmFrames
+     * @param bool                $includeArgs
+     * @param bool                $includeThisObj
+     *
+     * @return ClassicFormatStackTraceFrame[]
+     *
+     * @phpstan-param 0|positive-int $offset
+     */
+    public function convertCaptureToClassicFormat(array $phpFormatFrames, int $offset, ?int $maxNumberOfFrames, bool $keepElasticApmFrames, bool $includeArgs, bool $includeThisObj): array
+    {
+        if ($offset >= count($phpFormatFrames)) {
+            return [];
+        }
+
+        return $this->convertPhpToClassicFormat(
+            $offset === 0 ? null : $phpFormatFrames[$offset - 1] /* <- prevPhpFormatFrame */,
+            $offset === 0 ? $phpFormatFrames : IterableUtil::arraySuffix($phpFormatFrames, $offset),
+            $maxNumberOfFrames,
+            $keepElasticApmFrames,
+            $includeArgs,
+            $includeThisObj
+        );
+    }
+
+    /**
+     * @param ?array<mixed>          $prevPhpFormatFrame
+     * @param iterable<array<mixed>> $phpFormatFrames
+     * @param ?positive-int          $maxNumberOfFrames
+     * @param bool                   $keepElasticApmFrames
+     * @param bool                   $includeArgs
+     * @param bool                   $includeThisObj
+     *
+     * @return ClassicFormatStackTraceFrame[]
+     */
+    public function convertPhpToClassicFormat(
+        ?array $prevPhpFormatFrame,
+        iterable $phpFormatFrames,
+        ?int $maxNumberOfFrames,
+        bool $keepElasticApmFrames,
+        bool $includeArgs,
+        bool $includeThisObj
+    ): array {
+        $allClassicFormatFrames = [];
+        $prevInFrame = $prevPhpFormatFrame;
+        foreach ($phpFormatFrames as $currentInFrame) {
+            $outFrame = new ClassicFormatStackTraceFrame();
+            $isOutFrameEmpty = true;
+            if ($prevInFrame !== null && $this->hasLocationPropertiesInPhpFormat($prevInFrame)) {
+                $this->copyLocationPropertiesFromPhpToClassicFormat($prevInFrame, $outFrame);
+                $isOutFrameEmpty = false;
             }
-        } else {
-            $this->excludeCodeToHide(
-                $phpFormatFrames,
-                /**
-                 * @param array<string, mixed>  $inputFrameWithLocationData
-                 * @param ?array<string, mixed> $inputFrameWithNonLocationData
-                 *
-                 * @return bool
-                 */
-                function (
-                    array $inputFrameWithLocationData,
-                    ?array $inputFrameWithNonLocationData
-                ) use (
-                    $maxNumberOfFrames,
-                    $includeArgs,
-                    $includeThisObj,
-                    &$prevFrame,
-                    &$hasExitedLoopEarly,
-                    &$bufferedBeforeTopFrame,
-                    &$isTopFrame,
-                    &$outputFrames
-                ): bool {
-                    $currentFrame = $this->mergePhpFrames($inputFrameWithLocationData, $inputFrameWithNonLocationData, $includeArgs, $includeThisObj);
-                    if ($prevFrame === null) {
-                        $prevFrame = $currentFrame;
-                        return true;
-                    }
-                    if (!$this->captureInClassicFormatConsume($maxNumberOfFrames, $includeArgs, $includeThisObj, $prevFrame, $currentFrame, $bufferedBeforeTopFrame, $isTopFrame, $outputFrames)) {
-                        $hasExitedLoopEarly = true;
-                        return false;
-                    }
-                    $prevFrame = $currentFrame;
-                    return true;
+            if ($this->hasNonLocationPropertiesInPhpFormat($currentInFrame)) {
+                $this->copyNonLocationPropertiesFromPhpToClassicFormat($currentInFrame, $includeArgs, $includeThisObj, $outFrame);
+                $isOutFrameEmpty = false;
+            }
+            if (!$isOutFrameEmpty) {
+                $allClassicFormatFrames[] = $outFrame;
+            }
+            $prevInFrame = $currentInFrame;
+        }
+
+        if ($prevInFrame !== null && $this->hasLocationPropertiesInPhpFormat($prevInFrame)) {
+            $outFrame = new ClassicFormatStackTraceFrame();
+            $this->copyLocationPropertiesFromPhpToClassicFormat($prevInFrame, $outFrame);
+            $allClassicFormatFrames[] = $outFrame;
+        }
+
+        return $keepElasticApmFrames
+            ? ($maxNumberOfFrames === null ? $allClassicFormatFrames : array_slice($allClassicFormatFrames, /* offset */ 0, $maxNumberOfFrames))
+            : $this->excludeCodeToHide($allClassicFormatFrames, $maxNumberOfFrames);
+    }
+
+
+    /**
+     * @param ClassicFormatStackTraceFrame[] $inFrames
+     * @param ?positive-int                  $maxNumberOfFrames
+     *
+     * @return ClassicFormatStackTraceFrame[]
+     */
+    private function excludeCodeToHide(array $inFrames, ?int $maxNumberOfFrames): array
+    {
+        $outFrames = [];
+        /** @var ?int $bufferedFromIndex */
+        $bufferedFromIndex = null;
+        foreach (RangeUtil::generateUpTo(count($inFrames)) as $currentInFrameIndex) {
+            $currentInFrame = $inFrames[$currentInFrameIndex];
+            if (self::isTrampolineCall($currentInFrame)) {
+                if ($bufferedFromIndex === null) {
+                    $bufferedFromIndex = $currentInFrameIndex;
                 }
-            );
+                continue;
+            }
+
+            if ($this->isCallToCodeToHide($currentInFrame)) {
+                $bufferedFromIndex = null;
+                continue;
+            }
+
+            for ($index = $bufferedFromIndex ?? $currentInFrameIndex; $index <= $currentInFrameIndex; ++$index) {
+                self::addToOutputFrames($inFrames[$index], $maxNumberOfFrames, /* ref */ $outFrames);
+            }
+            $bufferedFromIndex = null;
         }
 
-        if (!$hasExitedLoopEarly && $prevFrame !== null) {
-            $this->captureInClassicFormatConsume($maxNumberOfFrames, $includeArgs, $includeThisObj, $prevFrame, /* nextInputFrame */ null, $bufferedBeforeTopFrame, $isTopFrame, $outputFrames);
-        }
-
-        return $outputFrames;
+        return $outFrames;
     }
 
     public static function buildApmFormatFunctionForClassMethod(?string $classicName, ?bool $isStaticMethod, ?string $methodName): ?string
@@ -227,131 +265,15 @@ final class StackTraceUtil
         return $classicName . $classMethodSep . $methodName;
     }
 
-    /**
-     * @param array<string, mixed> $inputFrame
-     *
-     * @return bool
-     */
-    private function isTrampolineCall(array $inputFrame): bool
+    private static function isTrampolineCall(ClassicFormatStackTraceFrame $frame): bool
     {
-        $func = $this->getNullableStringValue(StackTraceUtil::FUNCTION_KEY, $inputFrame);
-        if ($func !== 'call_user_func' && $func !== 'call_user_func_array') {
-            return false;
-        }
-
-        $class = $this->getNullableStringValue(StackTraceUtil::CLASS_KEY, $inputFrame);
-        if ($class !== null) {
-            return false;
-        }
-
-        $funcType = $this->getNullableStringValue(StackTraceUtil::TYPE_KEY, $inputFrame);
-        if ($funcType !== null) {
-            return false;
-        }
-
-        return true;
+        return $frame->class === null && $frame->isStaticMethod === null && ($frame->function === 'call_user_func' || $frame->function === 'call_user_func_array');
     }
 
-    /**
-     * @param array<string, mixed> $inputFrame
-     *
-     * @return bool
-     */
-    private function isCallToCodeToHide(array $inputFrame): bool
+    private function isCallToCodeToHide(ClassicFormatStackTraceFrame $frame): bool
     {
-        $class = $this->getNullableStringValue(StackTraceUtil::CLASS_KEY, $inputFrame);
-        if ($class !== null && TextUtil::isPrefixOf($this->namePrefixForFramesToHide, $class)) {
-            return true;
-        }
-
-        $func = $this->getNullableStringValue(StackTraceUtil::FUNCTION_KEY, $inputFrame);
-        if ($func !== null && TextUtil::isPrefixOf($this->namePrefixForFramesToHide, $func)) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * @param array<string, mixed>                                        $inputFrameWithLocationData
-     * @param ?array<string, mixed>                                       $higherInputFrameWithNonLocationData
-     * @param callable(array<string, mixed>, ?array<string, mixed>): bool $consumeCallback
-     *
-     * @return bool
-     */
-    private function excludeCodeToHideProcessBufferedFrame(array $inputFrameWithLocationData, ?array $higherInputFrameWithNonLocationData, callable $consumeCallback): bool
-    {
-        $func = null;
-        $frameWithNonLocationData = $this->isCallToCodeToHide($inputFrameWithLocationData) ? $higherInputFrameWithNonLocationData : $inputFrameWithLocationData;
-        if ($frameWithNonLocationData !== null) {
-            $func = $this->getNullableStringValue(StackTraceUtil::FUNCTION_KEY, $frameWithNonLocationData);
-        }
-
-        if ($this->getNullableStringValue(StackTraceUtil::FILE_KEY, $inputFrameWithLocationData) == null && $func === null) {
-            return true;
-        }
-
-        return $consumeCallback($inputFrameWithLocationData, $frameWithNonLocationData);
-    }
-
-    /**
-     * @param array<string, mixed>[]                                      $bufferedInFrames
-     * @param ?array<string, mixed>                                       $higherInputFrameWithNonLocationData
-     * @param callable(array<string, mixed>, ?array<string, mixed>): bool $consumeCallback
-     *
-     * @return bool
-     */
-    private function excludeCodeToHideProcessBufferedFrames(array $bufferedInFrames, ?array $higherInputFrameWithNonLocationData, callable $consumeCallback): bool
-    {
-        if (!$this->excludeCodeToHideProcessBufferedFrame($bufferedInFrames[0], $higherInputFrameWithNonLocationData, $consumeCallback)) {
-            return false;
-        }
-        foreach (RangeUtil::generateFromToIncluding(1, count($bufferedInFrames) - 1) as $bufferedInFramesIndex) {
-            if (!$this->excludeCodeToHideProcessBufferedFrame($bufferedInFrames[$bufferedInFramesIndex], /* higherInputFrameWithNonLocationData */ null, $consumeCallback)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * @param iterable<array<string, mixed>>                              $inputFrames
-     * @param callable(array<string, mixed>, ?array<string, mixed>): bool $consumeCallback
-     */
-    private function excludeCodeToHide(iterable $inputFrames, callable $consumeCallback): void
-    {
-        /** @var array<string, mixed>[] $bufferedInFrames */
-        $bufferedInFrames = [];
-        /** @var ?array<string, mixed> $higherInFrameWithNonLocationData */
-        $higherInFrameWithNonLocationData = null;
-        foreach ($inputFrames as $currentInFrame) {
-            if (ArrayUtil::isEmpty($bufferedInFrames)) {
-                $bufferedInFrames[] = $currentInFrame;
-                continue;
-            }
-
-            if ($this->isTrampolineCall($currentInFrame)) {
-                $bufferedInFrames[] = $currentInFrame;
-                continue;
-            }
-
-            if ($this->isCallToCodeToHide($currentInFrame)) {
-                if (!$this->isCallToCodeToHide($bufferedInFrames[0])) {
-                    $higherInFrameWithNonLocationData = $bufferedInFrames[0];
-                }
-            } else {
-                if (!$this->excludeCodeToHideProcessBufferedFrames($bufferedInFrames, $higherInFrameWithNonLocationData, $consumeCallback)) {
-                    return;
-                }
-                $higherInFrameWithNonLocationData = null;
-            }
-
-            $bufferedInFrames = [$currentInFrame];
-        }
-
-        if (!ArrayUtil::isEmpty($bufferedInFrames)) {
-            $this->excludeCodeToHideProcessBufferedFrames($bufferedInFrames, $higherInFrameWithNonLocationData, $consumeCallback);
-        }
+        return ($frame->class !== null && TextUtil::isPrefixOf($this->namePrefixForFramesToHide, $frame->class))
+               || ($frame->function !== null && TextUtil::isPrefixOf($this->namePrefixForFramesToHide, $frame->function));
     }
 
     /**
@@ -475,6 +397,19 @@ final class StackTraceUtil
     }
 
     /**
+     * @param array<string, mixed> $frame
+     */
+    private function hasLocationPropertiesInPhpFormat(array $frame): bool
+    {
+        return $this->getNullableStringValue(StackTraceUtil::FILE_KEY, $frame) !== null;
+    }
+
+    private static function hasLocationPropertiesInClassicFormat(ClassicFormatStackTraceFrame $frame): bool
+    {
+        return $frame->file !== null;
+    }
+
+    /**
      * @param array<string, mixed>         $srcFrame
      * @param ClassicFormatStackTraceFrame $dstFrame
      */
@@ -501,89 +436,6 @@ final class StackTraceUtil
         if ($includeArgs) {
             $dstFrame->args = $this->getNullableArrayValue(StackTraceUtil::ARGS_KEY, $srcFrame);
         }
-    }
-
-    /**
-     * @param array<string, mixed>  $frameWithLocationData
-     * @param ?array<string, mixed> $frameWithNonLocationData
-     *
-     * @return array<string, mixed>
-     */
-    private function mergePhpFrames(array $frameWithLocationData, ?array $frameWithNonLocationData, bool $includeArgs, bool $includeThisObj): array
-    {
-        $result = [];
-        foreach ([StackTraceUtil::FILE_KEY, StackTraceUtil::LINE_KEY] as $key) {
-            if (array_key_exists($key, $frameWithLocationData)) {
-                $result[$key] = $frameWithLocationData[$key];
-            }
-        }
-
-        if ($frameWithNonLocationData !== null) {
-            $keys = [StackTraceUtil::CLASS_KEY, StackTraceUtil::FUNCTION_KEY, StackTraceUtil::TYPE_KEY];
-            if ($includeThisObj) {
-                $keys[] = StackTraceUtil::THIS_OBJECT_KEY;
-            }
-            if ($includeArgs) {
-                $keys[] = StackTraceUtil::ARGS_KEY;
-            }
-            foreach ($keys as $key) {
-                if (array_key_exists($key, $frameWithNonLocationData)) {
-                    $result[$key] = $frameWithNonLocationData[$key];
-                } else {
-                    unset($frameWithNonLocationData[$key]);
-                }
-            }
-        }
-        return $result;
-    }
-
-    /**
-     * @param ?int                            $maxNumberOfFrames
-     * @param bool                            $includeArgs
-     * @param bool                            $includeThisObj
-     * @param array<string, mixed>            $currentInputFrame
-     * @param ?array<string, mixed>           $nextInputFrame
-     * @param ?array<string, mixed>          &$bufferedBeforeTopFrame
-     * @param bool                           &$isTopFrame
-     * @param ClassicFormatStackTraceFrame[] &$outputFrames
-     *
-     * @return bool
-     *
-     * @phpstan-param null|positive-int $maxNumberOfFrames
-     */
-    private function captureInClassicFormatConsume(
-        ?int $maxNumberOfFrames,
-        bool $includeArgs,
-        bool $includeThisObj,
-        array $currentInputFrame,
-        ?array $nextInputFrame,
-        ?array &$bufferedBeforeTopFrame,
-        bool &$isTopFrame,
-        array &$outputFrames
-    ): bool {
-        if ($isTopFrame) {
-            if ($bufferedBeforeTopFrame === null) {
-                $bufferedBeforeTopFrame = $currentInputFrame;
-                return true;
-            }
-
-            $isTopFrame = false;
-            if ($this->hasNonLocationPropertiesInPhpFormat($currentInputFrame)) {
-                $outputFrame = new ClassicFormatStackTraceFrame();
-                $this->copyNonLocationPropertiesFromPhpToClassicFormat($currentInputFrame, $includeArgs, $includeThisObj, $outputFrame);
-                $this->copyLocationPropertiesFromPhpToClassicFormat($bufferedBeforeTopFrame, $outputFrame);
-                if (!self::addToOutputFrames($outputFrame, $maxNumberOfFrames, /* ref */ $outputFrames)) {
-                    return false;
-                }
-            }
-        }
-
-        $outputFrame = new ClassicFormatStackTraceFrame();
-        $this->copyLocationPropertiesFromPhpToClassicFormat($currentInputFrame, $outputFrame);
-        if ($nextInputFrame !== null) {
-            $this->copyNonLocationPropertiesFromPhpToClassicFormat($nextInputFrame, $includeArgs, $includeThisObj, $outputFrame);
-        }
-        return self::addToOutputFrames($outputFrame, $maxNumberOfFrames, /* ref */ $outputFrames);
     }
 
     /**
@@ -615,6 +467,41 @@ final class StackTraceUtil
         return $this->convertPhpToApmFormat(IterableUtil::prepend($frameForThrowLocation, $throwable->getTrace()), $maxNumberOfFrames);
     }
 
+    // TODO: Sergey Kleyman: REMOVE:
+    // /**
+    //  * @param iterable<ClassicFormatStackTraceFrame> $inFrames
+    //  * @param ?positive-int                          $maxNumberOfFrames
+    //  *
+    //  * @return StackTraceFrame[]
+    //  */
+    // private static function convertClassicToApmFormat(iterable $inFrames, ?int $maxNumberOfFrames): array
+    // {
+    //     /** @var StackTraceFrame[] $outFrames */
+    //     $outFrames = [];
+    //
+    //     /** @var ?ClassicFormatStackTraceFrame $prevInFrame */
+    //     $prevInFrame = null;
+    //     foreach ($inFrames as $currentInFrame) {
+    //         if ($currentInFrame->file === null) {
+    //             $isOutFrameEmpty = true;
+    //             $outFrame = new StackTraceFrame(self::FILE_NAME_NOT_AVAILABLE_SUBSTITUTE, self::LINE_NUMBER_NOT_AVAILABLE_SUBSTITUTE);
+    //         } else {
+    //             $isOutFrameEmpty = false;
+    //             $outFrame = new StackTraceFrame($currentInFrame->file, $currentInFrame->line ?? self::LINE_NUMBER_NOT_AVAILABLE_SUBSTITUTE);
+    //         }
+    //         if ($prevInFrame !== null && $prevInFrame->function !== null) {
+    //             $isOutFrameEmpty = false;
+    //             $outFrame->function = self::buildApmFormatFunctionForClassMethod($prevInFrame->class, $prevInFrame->isStaticMethod, $prevInFrame->function);
+    //         }
+    //         if (!$isOutFrameEmpty && !self::addToOutputFrames($outFrame, $maxNumberOfFrames, /* ref */ $outFrames)) {
+    //             break;
+    //         }
+    //         $prevInFrame = $currentInFrame;
+    //     }
+    //
+    //     return $outFrames;
+    // }
+
     /**
      * @param iterable<ClassicFormatStackTraceFrame> $inputFrames
      * @param ?positive-int                          $maxNumberOfFrames
@@ -629,8 +516,8 @@ final class StackTraceUtil
         $exitedEarly = false;
         foreach ($inputFrames as $currentInputFrame) {
             if ($prevInputFrame === null) {
-                if ($currentInputFrame->file !== null) {
-                    $outputFrame = new StackTraceFrame($currentInputFrame->file, $currentInputFrame->line ?? self::LINE_NUMBER_NOT_AVAILABLE_SUBSTITUTE);
+                if (self::hasLocationPropertiesInClassicFormat($currentInputFrame)) {
+                    $outputFrame = new StackTraceFrame($currentInputFrame->file ?? self::FILE_NAME_NOT_AVAILABLE_SUBSTITUTE, $currentInputFrame->line ?? self::LINE_NUMBER_NOT_AVAILABLE_SUBSTITUTE);
                     if (!self::addToOutputFrames($outputFrame, $maxNumberOfFrames, /* ref */ $outputFrames)) {
                         $exitedEarly = true;
                         break;

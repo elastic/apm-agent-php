@@ -39,6 +39,8 @@ use ElasticApmTests\Util\StackTraceExpectations;
 use ElasticApmTests\Util\StackTraceFrameExpectations;
 use ElasticApmTests\Util\TestCaseBase;
 
+use function count;
+
 class StackTraceUtilTest extends TestCaseBase
 {
     private const NUMBER_OF_STACK_FRAMES_TO_SKIP_KEY = 'number_of_stack_frames_to_skip';
@@ -66,6 +68,8 @@ class StackTraceUtilTest extends TestCaseBase
 
     public function testClosureExpections(): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+
         $closureFrameExpections = StackTraceFrameExpectations::fromLocationOnly(__FILE__, /* temp dummy lineNumber */ 0);
         /**
          * @return StackTraceFrame[]
@@ -76,6 +80,7 @@ class StackTraceUtilTest extends TestCaseBase
         };
         $thisFuncFrameExpections = StackTraceFrameExpectations::fromClosure(__FILE__, __LINE__ + 1, __NAMESPACE__, __CLASS__, /* isStatic */ false);
         $actualStackTrace = $closure();
+        $dbgCtx->add(compact('actualStackTrace'));
         self::assertCountAtLeast(3, $actualStackTrace);
         $closureFrameExpections->assertMatches($actualStackTrace[0]);
         self::assertNull($actualStackTrace[0]->function);
@@ -1207,5 +1212,132 @@ class StackTraceUtilTest extends TestCaseBase
         self::assertSame(1, StackTraceUtil::convertLimitConfigToMaxNumberOfFrames(1));
         self::assertSame(2, StackTraceUtil::convertLimitConfigToMaxNumberOfFrames(2));
         self::assertSame(5, StackTraceUtil::convertLimitConfigToMaxNumberOfFrames(5));
+    }
+
+    private static function assertSameClassicFormatStackTraceFrames(ClassicFormatStackTraceFrame $expected, ClassicFormatStackTraceFrame $actual): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        self::assertCount(count(get_object_vars($expected)), get_object_vars($actual));
+
+        $dbgCtx->pushSubScope();
+        foreach (get_object_vars($expected) as $propName => $expectedPropVal) {
+            $dbgCtx->clearCurrentSubScope(compact('propName', 'expectedPropVal'));
+            self::assertSame($expectedPropVal, $actual->{$propName});
+        }
+        $dbgCtx->popSubScope();
+    }
+
+    /**
+     * @param ClassicFormatStackTraceFrame[] $expected
+     * @param ClassicFormatStackTraceFrame[] $actual
+     *
+     * @return void
+     */
+    private static function assertSameClassicFormatStackTraces(array $expected, array $actual): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        $dbgCtx->add(compact('expected', 'actual'));
+        self::assertCount(count($expected), $actual);
+
+        $dbgCtx->pushSubScope();
+        foreach (RangeUtil::generateUpTo(count($expected)) as $frameIndex) {
+            $dbgCtx->clearCurrentSubScope(compact('frameIndex'));
+            self::assertSameClassicFormatStackTraceFrames($expected[$frameIndex], $actual[$frameIndex]);
+        }
+        $dbgCtx->popSubScope();
+    }
+
+    /**
+     * @dataProvider boolDataProvider
+     */
+    public function testConvertCaptureToClassicFormatSleepExample(bool $addDummyLocationToSleepFunc): void
+    {
+        $input = [
+            [
+                'file'     => '/my_work/apm-agent-php/agent/php/ElasticApm/Impl/Util/StackTraceUtil.php',
+                'line'     => 131,
+                'function' => 'captureInClassicFormat',
+                'class'    => 'Elastic\Apm\Impl\Util\StackTraceUtil',
+                'type'     => '->',
+            ],
+            [
+                'file'     => '/my_work/apm-agent-php/agent/php/ElasticApm/Impl/InferredSpansBuilder.php',
+                'line'     => 98,
+                'function' => 'captureInClassicFormatExcludeElasticApm',
+                'class'    => 'Elastic\Apm\Impl\Util\StackTraceUtil',
+                'type'     => '->',
+            ],
+            [
+                'file'     => '/my_work/apm-agent-php/agent/php/ElasticApm/Impl/InferredSpansManager.php',
+                'line'     => 196,
+                'function' => 'captureStackTrace',
+                'class'    => 'Elastic\Apm\Impl\InferredSpansBuilder',
+                'type'     => '->',
+            ],
+            [
+                'function' => 'handleAutomaticCapturing',
+                'class'    => 'Elastic\Apm\Impl\InferredSpansManager',
+                'type'     => '->',
+            ],
+            [
+                'file'     => '/var/www/html/sleep.php',
+                'line'     => 6,
+                'function' => 'sleep',
+            ],
+            [
+                'file'     => '/var/www/html/sleep.php',
+                'line'     => 10,
+                'function' => 'coolsleep',
+            ],
+        ];
+        /** @var ClassicFormatStackTraceFrame[] $expectedOutput */
+        $expectedOutput = [
+            new ClassicFormatStackTraceFrame(
+                null /* <- file */,
+                null /* <- line */,
+                null /* <- class */,
+                null /* <- isStaticMethod */,
+                'sleep' /* <- function */
+            ),
+            new ClassicFormatStackTraceFrame(
+                '/var/www/html/sleep.php' /* <- file */,
+                6 /* <- line */,
+                null /* <- class */,
+                null /* <- isStaticMethod */,
+                'coolsleep' /* <- function */
+            ),
+            new ClassicFormatStackTraceFrame(
+                '/var/www/html/sleep.php' /* <- file */,
+                10 /* <- line */
+            ),
+        ];
+
+        if ($addDummyLocationToSleepFunc) {
+            $inputFrame =& $input[3];
+            self::assertSame('handleAutomaticCapturing', $inputFrame['function']);
+            self::assertArrayNotHasKey('file', $inputFrame);
+            self::assertArrayNotHasKey('line', $inputFrame);
+            $inputFrame['file'] = 'dummy_file_for_internal_func_sleep.php';
+            $inputFrame['line'] = 543;
+            $expectedOutputFrame =& $expectedOutput[0];
+            self::assertSame('sleep', $expectedOutputFrame->function);
+            self::assertNull($expectedOutputFrame->file);
+            self::assertNull($expectedOutputFrame->line);
+            $expectedOutputFrame->file = 'dummy_file_for_internal_func_sleep.php';
+            $expectedOutputFrame->line = 543;
+        }
+
+        $actualOutput = self::stackTraceUtil()->convertCaptureToClassicFormat(
+            $input,
+            3 /* <- offset */,
+            null /* <- maxNumberOfFrames */,
+            false /* <- keepElasticApmFrames */,
+            false /* <- includeArgs */,
+            false /* <- includeThisObj */
+        );
+
+        self::assertSameClassicFormatStackTraces($expectedOutput, $actualOutput);
     }
 }
