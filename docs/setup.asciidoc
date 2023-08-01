@@ -60,6 +60,7 @@ apk add --allow-untrusted <package-file>.apk
 ==== Build from source
 
 If you can’t find your distribution, you can install the agent by building it from the source.
+The following instructions will build the APM agent using the same docker environment that Elastic uses to build our official packages.
 
 NOTE: The agent is currently only available for Linux operating system.
 
@@ -68,24 +69,32 @@ NOTE: The agent is currently only available for Linux operating system.
 
 [source,bash]
 ----
-cd src/ext
-phpize
-CFLAGS="-std=gnu99" ./configure --enable-elastic_apm
-make clean
-make
-sudo make install
+cd apm-agent-php
+# for linux glibc - libc distributions (Ubuntu, Redhat, etc)
+export BUILD_ARCHITECTURE=linux-x86-64
+# for linux with musl - libc distributions (Alpine)
+export BUILD_ARCHITECTURE=linuxmusl-x86-64
+
+# build extensions
+make -f .ci/Makefile build
+
+# run extension tests
+PHP_CONFIG=php-config PHP_VERSION=`$PHP_CONFIG --version | cut -d'.' -f 1,2` make -f .ci/Makefile run-phpt-tests
+
+# install 
+PHP_CONFIG=php-config sudo cp agent/native/_build/${BUILD_ARCHITECTURE}-release/ext/elastic_apm-`$PHP_CONFIG --phpapi`.so `$PHP_CONFIG --extension-dir`
 ----
 
 Enable the extension by adding the following to your `php.ini` file:
 
-[source,php]
+[source,ini]
 ----
 extension=elastic_apm.so
-elastic_apm.bootstrap_php_part_file=<repo root>/src/bootstrap_php_part.php
+elastic_apm.bootstrap_php_part_file=<repo root>/agent/php/bootstrap_php_part.php
 ----
 
-To work, the agent needs both the built `elastic_apm.so`
+To work, the agent needs both the built `elastic_apm-*.so`
 and the downloaded source files.
-So if you would like to build `elastic_apm.so` on one machine and
+So if you would like to build `elastic_apm-*.so` on one machine and
 then deploy it on a different machine, you will need to copy both
-the built `elastic_apm.so` and the downloaded source files.
+the built `elastic_apm-*.so` and the downloaded source files.
