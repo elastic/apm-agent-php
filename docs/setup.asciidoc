@@ -60,7 +60,7 @@ apk add --allow-untrusted <package-file>.apk
 ==== Build from source
 
 If you can’t find your distribution, you can install the agent by building it from the source.
-Following instructions will build agent using the same docker environment we're using to build official packages.
+The following instructions will build the APM agent using the same docker environment that Elastic uses to build our official packages.
 
 NOTE: The agent is currently only available for Linux operating system.
 
