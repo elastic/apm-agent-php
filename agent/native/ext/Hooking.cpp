@@ -10,9 +10,6 @@
 namespace elasticapm::php {
 
 static void elastic_execute_internal(INTERNAL_FUNCTION_PARAMETERS) {
-    if (ELASTICAPM_G(globals)->inferredSpans_->wasInterruptRequestedAndReset()) {
-        ELASTICAPM_G(globals)->inferredSpans_->getBacktrace();
-    }
 
     zend_try {
         if (Hooking::getInstance().getOriginalExecuteInternal()) {
@@ -23,6 +20,8 @@ static void elastic_execute_internal(INTERNAL_FUNCTION_PARAMETERS) {
     } zend_catch {
         ELASTIC_APM_LOG_DIRECT_DEBUG("%s: original call error; parent PID: %d", __FUNCTION__, (int)getParentProcessId());
     } zend_end_try();
+
+    ELASTICAPM_G(globals)->inferredSpans_->attachBacktraceIfInterrupted();
 }
 
 
@@ -36,9 +35,7 @@ static void elastic_interrupt_function(zend_execute_data *execute_data) {
     EG(vm_interrupt) = 0;
 #endif
 
-    if (ELASTICAPM_G(globals)->inferredSpans_->wasInterruptRequestedAndReset()) {
-        ELASTICAPM_G(globals)->inferredSpans_->getBacktrace();
-    }
+    ELASTICAPM_G(globals)->inferredSpans_->attachBacktraceIfInterrupted();
 
     zend_try {
         if (Hooking::getInstance().getOriginalZendInterruptFunction()) {
