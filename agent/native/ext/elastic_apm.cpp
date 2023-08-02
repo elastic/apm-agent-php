@@ -260,9 +260,7 @@ static PHP_GINIT_FUNCTION(elastic_apm)
     // memset(&elastic_apm_globals->globalTracer, 0, sizeof(Tracer));
     elastic_apm_globals->globals = nullptr;
 
-    //TODO move initialization to builder
-
-    auto phpBridge = std::make_unique<elasticapm::php::PhpBridge>();
+    auto phpBridge = std::make_shared<elasticapm::php::PhpBridge>();
 
     auto inferredSpans = std::make_shared<elasticapm::php::InferredSpans>([interruptFlag = reinterpret_cast<void *>(&EG(vm_interrupt))]() {
 #if PHP_VERSION_ID >= 80200
@@ -270,26 +268,11 @@ static PHP_GINIT_FUNCTION(elastic_apm)
 #else
         *static_cast<zend_bool *>(interruptFlag) = 1;
 #endif
-    }, [&bridge = *phpBridge](elasticapm::php::InferredSpans::time_point_t requestTime, elasticapm::php::InferredSpans::time_point_t now) {
-        bridge.callInferredSpans(now - requestTime);
+    }, [phpBridge](elasticapm::php::InferredSpans::time_point_t requestTime, elasticapm::php::InferredSpans::time_point_t now) {
+        phpBridge->callInferredSpans(now - requestTime);
     });
 
-    auto tickGenerator = std::make_unique<elasticapm::php::TickGenerator>([]() {
-        // block signals for this thread to be handled by main Apache/PHP thread
-        // list of signals from Apaches mpm handlers
-        elasticapm::utils::blockSignal(SIGTERM);
-        elasticapm::utils::blockSignal(SIGHUP);
-        elasticapm::utils::blockSignal(SIGINT);
-        elasticapm::utils::blockSignal(SIGWINCH);
-        elasticapm::utils::blockSignal(SIGUSR1);
-        elasticapm::utils::blockSignal(SIGPROF); // php timeout signal
-    });
-
-    tickGenerator->addPeriodicTask([inferredSpans](elasticapm::php::TickGenerator::time_point_t now) {
-        inferredSpans->tryRequestInterrupt(now);
-    });
-
-    elastic_apm_globals->globals = new(std::nothrow) elasticapm::php::AgentGlobals(std::move(phpBridge), std::move(tickGenerator), inferredSpans);
+    elastic_apm_globals->globals = new(std::nothrow) elasticapm::php::AgentGlobals(std::move(phpBridge), {}, inferredSpans);
 }
 
 static PHP_GSHUTDOWN_FUNCTION(elastic_apm) {

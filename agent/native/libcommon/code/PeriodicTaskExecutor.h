@@ -12,7 +12,7 @@
 namespace elasticapm::php {
 
 
-class TickGenerator : public ForkableInterface {
+class PeriodicTaskExecutor : public ForkableInterface {
 private:
     auto getThread() {
         return [this](std::stop_token stoken) { work(stoken); };
@@ -25,10 +25,10 @@ public:
     using task_t = std::function<void(time_point_t)>;
     using worker_init_t = std::function<void()>;
 
-    TickGenerator(worker_init_t workerInit = {}) : workerInit_(std::move(workerInit)),  thread_(getThread()) {
+    PeriodicTaskExecutor(worker_init_t workerInit = {}) : workerInit_(std::move(workerInit)),  thread_(getThread()) {
     }
 
-    ~TickGenerator() {
+    ~PeriodicTaskExecutor() {
         shutdown();
         thread_.join();
     }
@@ -105,8 +105,8 @@ public:
     }
 
 private:
-   TickGenerator(const TickGenerator&) = delete;
-   TickGenerator& operator=(const TickGenerator&) = delete;
+   PeriodicTaskExecutor(const PeriodicTaskExecutor&) = delete;
+   PeriodicTaskExecutor& operator=(const PeriodicTaskExecutor&) = delete;
 
    void shutdown() {
         thread_.request_stop();

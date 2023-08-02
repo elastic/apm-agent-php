@@ -507,24 +507,24 @@ static void callbackToLogForkBeforeInParent()
 {
     ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( "Before process fork (i.e., in parent context); its parent (i.e., grandparent) PID: %d", (int)getParentProcessId() );
 //TODO implement forkable registry 
-    if (ELASTICAPM_G(globals) && ELASTICAPM_G(globals)->tickGenerator_) {
-        ELASTICAPM_G(globals)->tickGenerator_->prefork();
+    if (ELASTICAPM_G(globals) && ELASTICAPM_G(globals)->periodicTaskExecutor_) {
+        ELASTICAPM_G(globals)->periodicTaskExecutor_->prefork();
     }
 }
 
 static void callbackToLogForkAfterInParent()
 {
     ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( "After process fork (in parent context)" );
-    if (ELASTICAPM_G(globals) && ELASTICAPM_G(globals)->tickGenerator_) {
-        ELASTICAPM_G(globals)->tickGenerator_->postfork(false);
+    if (ELASTICAPM_G(globals) && ELASTICAPM_G(globals)->periodicTaskExecutor_) {
+        ELASTICAPM_G(globals)->periodicTaskExecutor_->postfork(false);
     }
 }
 
 static void callbackToLogForkAfterInChild()
 {
     ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( "After process fork (in child context); parent PID: %d", (int)getParentProcessId() );
-    if (ELASTICAPM_G(globals) && ELASTICAPM_G(globals)->tickGenerator_) {
-        ELASTICAPM_G(globals)->tickGenerator_->postfork(true);
+    if (ELASTICAPM_G(globals) && ELASTICAPM_G(globals)->periodicTaskExecutor_) {
+        ELASTICAPM_G(globals)->periodicTaskExecutor_->postfork(true);
     }
 }
 

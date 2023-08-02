@@ -630,6 +630,26 @@ void elasticApmGetLastPhpError( zval* return_value )
     ELASTIC_APM_ZEND_ADD_ASSOC( return_value, "stackTrace", zval, &( g_lastPhpErrorData.stackTrace ) );
 }
 
+auto buildPeriodicTaskExecutor() {
+    auto periodicTaskExecutor = std::make_unique<elasticapm::php::PeriodicTaskExecutor>([]() {
+        // block signals for this thread to be handled by main Apache/PHP thread
+        // list of signals from Apaches mpm handlers
+        elasticapm::utils::blockSignal(SIGTERM);
+        elasticapm::utils::blockSignal(SIGHUP);
+        elasticapm::utils::blockSignal(SIGINT);
+        elasticapm::utils::blockSignal(SIGWINCH);
+        elasticapm::utils::blockSignal(SIGUSR1);
+        elasticapm::utils::blockSignal(SIGPROF); // php timeout signal
+    });
+
+    periodicTaskExecutor->addPeriodicTask([inferredSpans = ELASTICAPM_G(globals)->inferredSpans_](elasticapm::php::PeriodicTaskExecutor::time_point_t now) {
+        inferredSpans->tryRequestInterrupt(now);
+    });
+
+    ELASTIC_APM_LOG_DEBUG("starting inferred spans thread");
+    return periodicTaskExecutor;
+}
+
 void elasticApmRequestInit()
 {
     requestCounter++;
@@ -704,7 +724,11 @@ void elasticApmRequestInit()
     ELASTIC_APM_CALL_IF_FAILED_GOTO( tracerPhpPartOnRequestInit( config, &requestInitStartTime ) );
 
     if (config->profilingInferredSpansEnabled) {
-        std::chrono::milliseconds interval{20}; //TODO how to get default
+        if (!ELASTICAPM_G(globals)->periodicTaskExecutor_) {
+            ELASTICAPM_G(globals)->periodicTaskExecutor_ = buildPeriodicTaskExecutor();
+        }
+
+        std::chrono::milliseconds interval{100};
         try {
             if (config->profilingInferredSpansSamplingInterval) {
                 interval = elasticapm::utils::convertDurationWithUnit(config->profilingInferredSpansSamplingInterval);
@@ -713,9 +737,14 @@ void elasticApmRequestInit()
             ELASTIC_APM_LOG_ERROR( "profilingInferredSpansSamplingInterval '%s': '%s'", e.what(), config->profilingInferredSpansSamplingInterval);
         }
 
-        ELASTICAPM_G(globals)->inferredSpans_->setInterval(interval);
-        ELASTICAPM_G(globals)->tickGenerator_->setInterval(interval);
-        ELASTICAPM_G(globals)->tickGenerator_->resumeCounting();
+        if (interval.count() > 0) {
+            ELASTIC_APM_LOG_DEBUG("resuming inferred spans thread with sampling interval %zums", interval.count());
+            ELASTICAPM_G(globals)->inferredSpans_->setInterval(interval);
+            ELASTICAPM_G(globals)->periodicTaskExecutor_->setInterval(interval);
+            ELASTICAPM_G(globals)->periodicTaskExecutor_->resumeCounting();
+        } else {
+            ELASTIC_APM_LOG_DEBUG("inferred spans thread paused - sampling interval %zums", interval.count());
+        }
     }
 
     resultCode = resultSuccess;
@@ -783,7 +812,10 @@ void elasticApmRequestShutdown()
         goto finally;
     }
 	
-    ELASTICAPM_G(globals)->tickGenerator_->pauseCounting();
+    if (ELASTICAPM_G(globals)->periodicTaskExecutor_) {
+        ELASTIC_APM_LOG_DEBUG("pausing inferred spans thread");
+        ELASTICAPM_G(globals)->periodicTaskExecutor_->pauseCounting();
+    }
 
     tracerPhpPartOnRequestShutdown();
 

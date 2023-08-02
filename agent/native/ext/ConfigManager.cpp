@@ -1120,7 +1120,7 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             buildStringOptionMetadata,
             profilingInferredSpansSamplingInterval,
             ELASTIC_APM_CFG_OPT_NAME_PROFILING_INFERRED_SPANS_SAMPLING_INTERVAL,
-            /* defaultValue: */ NULL );
+            "100ms" );
 
     ELASTIC_APM_INIT_SECRET_METADATA(
             buildStringOptionMetadata,
