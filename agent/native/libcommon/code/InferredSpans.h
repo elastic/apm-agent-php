@@ -20,12 +20,18 @@ public:
     }
 
     void attachBacktraceIfInterrupted() {
+        if (phpSideBacktracePending_.load()) { // avoid triggers from agent side with low interval
+            return;
+        }
+
         std::unique_lock lock(mutex_);
         time_point_t requestInterruptTime = lastInterruptRequestTick_;
 
         if (checkAndResetInterruptFlag()) {
             lock.unlock();
+            phpSideBacktracePending_ = true;
             attachInferredSpansOnPhp_(requestInterruptTime, std::chrono::time_point_cast<std::chrono::milliseconds>(clock_t::now()));
+            phpSideBacktracePending_ = false;
         }
     }
 
@@ -61,6 +67,7 @@ private:
     std::mutex mutex_;
     interruptFunc_t interrupt_;
     attachInferredSpansOnPhp_t attachInferredSpansOnPhp_;
+    std::atomic_bool phpSideBacktracePending_;
 };
 
 

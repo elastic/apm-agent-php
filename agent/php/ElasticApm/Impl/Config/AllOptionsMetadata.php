@@ -103,7 +103,7 @@ final class AllOptionsMetadata
             OptionNames::NON_KEYWORD_STRING_MAX_LENGTH              => self::buildPositiveOrZeroIntMetadata(/* default */ 10 * 1024),
             OptionNames::PROFILING_INFERRED_SPANS_ENABLED           => new BoolOptionMetadata(/* default */ false),
             OptionNames::PROFILING_INFERRED_SPANS_MIN_DURATION      => self::buildDurationMetadataInMilliseconds(/* default */ 0),
-            OptionNames::PROFILING_INFERRED_SPANS_SAMPLING_INTERVAL => self::buildDurationMetadataInMillisecondsWithMin(/* min */ 1000, /* default */ 1000),
+            OptionNames::PROFILING_INFERRED_SPANS_SAMPLING_INTERVAL => self::buildDurationMetadataInMillisecondsWithMin(/* min */ 0, /* default */ 100),
             OptionNames::SANITIZE_FIELD_NAMES                       => new WildcardListOptionMetadata(WildcardListOptionParser::staticParse(self::SANITIZE_FIELD_NAMES_DEFAULT)),
             OptionNames::SECRET_TOKEN                               => new NullableStringOptionMetadata(),
             OptionNames::SERVER_TIMEOUT                             => self::buildDurationMetadataInSeconds(/* default */ 30),
