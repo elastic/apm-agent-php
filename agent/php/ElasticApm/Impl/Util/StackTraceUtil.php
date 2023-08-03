@@ -65,10 +65,11 @@ final class StackTraceUtil
     /** @var string */
     private $namePrefixForInternalFramesToHide;
 
-    public function __construct(LoggerFactory $loggerFactory,
+    public function __construct(
+        LoggerFactory $loggerFactory,
         string $namePrefixForFramesToHide = self::ELASTIC_APM_FQ_NAME_PREFIX,
-        string $namePrefixForInternalFramesToHide = self::ELASTIC_APM_INTERNAL_FUNCTION_NAME_PREFIX)
-    {
+        string $namePrefixForInternalFramesToHide = self::ELASTIC_APM_INTERNAL_FUNCTION_NAME_PREFIX
+    ) {
         $this->loggerFactory = $loggerFactory;
         $this->logger = $this->loggerFactory->loggerForClass(LogCategory::INFRASTRUCTURE, __NAMESPACE__, __CLASS__, __FILE__);
         $this->namePrefixForFramesToHide = $namePrefixForFramesToHide;

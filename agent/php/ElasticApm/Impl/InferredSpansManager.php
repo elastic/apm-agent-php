@@ -55,9 +55,6 @@ final class InferredSpansManager implements LoggableInterface
     /** @var Tracer */
     private $tracer;
 
-    /** @var bool */
-    private $originalPcntlAsyncSignalsEnabled;
-
     /** @var ?InferredSpansBuilder */
     private $builder = null;
 
@@ -123,7 +120,7 @@ final class InferredSpansManager implements LoggableInterface
         return true;
     }
 
-    public function handleAutomaticCapturing($duration): void
+    public function handleAutomaticCapturing(int $duration): void
     {
         ($loggerProxy = $this->logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered');
