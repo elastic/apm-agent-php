@@ -728,7 +728,7 @@ void elasticApmRequestInit()
             ELASTICAPM_G(globals)->periodicTaskExecutor_ = buildPeriodicTaskExecutor();
         }
 
-        std::chrono::milliseconds interval{100};
+        std::chrono::milliseconds interval{50};
         try {
             if (config->profilingInferredSpansSamplingInterval) {
                 interval = elasticapm::utils::convertDurationWithUnit(config->profilingInferredSpansSamplingInterval);
@@ -737,14 +737,15 @@ void elasticApmRequestInit()
             ELASTIC_APM_LOG_ERROR( "profilingInferredSpansSamplingInterval '%s': '%s'", e.what(), config->profilingInferredSpansSamplingInterval);
         }
 
-        if (interval.count() > 0) {
-            ELASTIC_APM_LOG_DEBUG("resuming inferred spans thread with sampling interval %zums", interval.count());
-            ELASTICAPM_G(globals)->inferredSpans_->setInterval(interval);
-            ELASTICAPM_G(globals)->periodicTaskExecutor_->setInterval(interval);
-            ELASTICAPM_G(globals)->periodicTaskExecutor_->resumePeriodicTasks();
-        } else {
-            ELASTIC_APM_LOG_DEBUG("inferred spans thread suspended - sampling interval %zums", interval.count());
+        if (interval.count() == 0) {
+            interval = std::chrono::milliseconds{50};
+            ELASTIC_APM_LOG_DEBUG("inferred spans thread interval too low, forced to default %zums", interval.count());
         }
+
+        ELASTIC_APM_LOG_DEBUG("resuming inferred spans thread with sampling interval %zums", interval.count());
+        ELASTICAPM_G(globals)->inferredSpans_->setInterval(interval);
+        ELASTICAPM_G(globals)->periodicTaskExecutor_->setInterval(interval);
+        ELASTICAPM_G(globals)->periodicTaskExecutor_->resumePeriodicTasks();
     }
 
     resultCode = resultSuccess;
