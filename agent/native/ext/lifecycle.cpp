@@ -741,9 +741,9 @@ void elasticApmRequestInit()
             ELASTIC_APM_LOG_DEBUG("resuming inferred spans thread with sampling interval %zums", interval.count());
             ELASTICAPM_G(globals)->inferredSpans_->setInterval(interval);
             ELASTICAPM_G(globals)->periodicTaskExecutor_->setInterval(interval);
-            ELASTICAPM_G(globals)->periodicTaskExecutor_->resumeCounting();
+            ELASTICAPM_G(globals)->periodicTaskExecutor_->resumePeriodicTasks();
         } else {
-            ELASTIC_APM_LOG_DEBUG("inferred spans thread paused - sampling interval %zums", interval.count());
+            ELASTIC_APM_LOG_DEBUG("inferred spans thread suspended - sampling interval %zums", interval.count());
         }
     }
 
@@ -814,7 +814,7 @@ void elasticApmRequestShutdown()
 	
     if (ELASTICAPM_G(globals)->periodicTaskExecutor_) {
         ELASTIC_APM_LOG_DEBUG("pausing inferred spans thread");
-        ELASTICAPM_G(globals)->periodicTaskExecutor_->pauseCounting();
+        ELASTICAPM_G(globals)->periodicTaskExecutor_->suspendPeriodicTasks();
     }
 
     tracerPhpPartOnRequestShutdown();

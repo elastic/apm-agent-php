@@ -12,7 +12,7 @@ class InferredSpans {
 public:
     
     using clock_t = std::chrono::steady_clock;
-	using time_point_t = std::chrono::time_point<clock_t, std::chrono::milliseconds>;
+    using time_point_t = std::chrono::time_point<clock_t, std::chrono::milliseconds>;
     using interruptFunc_t = std::function<void()>; 
     using attachInferredSpansOnPhp_t = std::function<void(time_point_t interruptRequest, time_point_t now)>;
 
@@ -35,12 +35,13 @@ public:
         }
     }
 
-	void tryRequestInterrupt(time_point_t now) {
+    void tryRequestInterrupt(time_point_t now) {
+        if (interruptedRequested_.load()) {
+            return; // it was requested to interrupt in previous interval
+        }
+
         std::unique_lock lock(mutex_);
         if (now > lastInterruptRequestTick_ + samplingInterval_) {
-            if (interruptedRequested_.load()) {
-                return; // it was requested to interrupt in previous interval
-            } 
             lastInterruptRequestTick_ = now;
 
             interruptedRequested_ = true;
@@ -58,7 +59,7 @@ public:
 private:
     bool checkAndResetInterruptFlag() {
         bool interrupted = true;
-        return interruptedRequested_.compare_exchange_strong(interrupted, false, std::memory_order_release, std::memory_order_relaxed);
+        return interruptedRequested_.compare_exchange_strong(interrupted, false, std::memory_order_release, std::memory_order_acquire);
     }
 
     std::atomic_bool interruptedRequested_;

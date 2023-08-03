@@ -28,13 +28,6 @@ static void elastic_execute_internal(INTERNAL_FUNCTION_PARAMETERS) {
 static void elastic_interrupt_function(zend_execute_data *execute_data) {
     ELASTIC_APM_LOG_DIRECT_DEBUG( "%s: interrupt; parent PID: %d", __FUNCTION__, (int)getParentProcessId() );
 
-#if PHP_VERSION_ID >= 80200
-    zend_atomic_bool_load_ex(&EG(vm_interrupt));
-#else
-    // bool status = EG(vm_interrupt);
-    EG(vm_interrupt) = 0;
-#endif
-
     ELASTICAPM_G(globals)->inferredSpans_->attachBacktraceIfInterrupted();
 
     zend_try {

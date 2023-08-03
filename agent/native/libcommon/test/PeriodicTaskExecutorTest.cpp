@@ -36,7 +36,7 @@ TEST_F(PeriodicTaskExecutorTest, AutoShutdown) {
         }
     );
 
-    periodicTaskExecutor_.resumeCounting();
+    periodicTaskExecutor_.resumePeriodicTasks();
     std::this_thread::sleep_for(100ms);
 }
 
@@ -69,7 +69,7 @@ TEST_F(PeriodicTaskExecutorTest, resumeAfterFork) {
     globalPeriodicTaskExecutor = &periodicTaskExecutor_;
     pthread_atfork(fh_prepare, fh_parent, fh_child);
 
-    periodicTaskExecutor_.resumeCounting();
+    periodicTaskExecutor_.resumePeriodicTasks();
     std::this_thread::sleep_for(100ms);
     auto counterBeforeFork = counter.load();
 

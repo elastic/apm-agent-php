@@ -14,7 +14,7 @@ namespace elasticapm::php {
 
 class PeriodicTaskExecutor : public ForkableInterface {
 private:
-    auto getThread() {
+    auto getThreadWorkerFunction() {
         return [this](std::stop_token stoken) { work(stoken); };
     }
 
@@ -25,7 +25,7 @@ public:
     using task_t = std::function<void(time_point_t)>;
     using worker_init_t = std::function<void()>;
 
-    PeriodicTaskExecutor(worker_init_t workerInit = {}) : workerInit_(std::move(workerInit)),  thread_(getThread()) {
+    PeriodicTaskExecutor(worker_init_t workerInit = {}) : workerInit_(std::move(workerInit)),  thread_(getThreadWorkerFunction()) {
     }
 
     ~PeriodicTaskExecutor() {
@@ -41,14 +41,14 @@ public:
 
         while(!stoken.stop_requested()) {
             {
-                std::unique_lock<std::mutex> lock(mutex_);
-
-                if (!counting_.load()) {
+ 
+                if (!working_.load()) {
+                    std::unique_lock<std::mutex> lock(mutex_);
                     pauseCondition_.wait(lock, [this, &stoken]() {
                         if (stoken.stop_requested()) {
                             return true;
                         }
-                        return static_cast<bool>(counting_);
+                        return static_cast<bool>(working_);
                     });
                 }
             }
@@ -76,21 +76,21 @@ public:
     }
 
     void postfork([[maybe_unused]] bool child) final {
-        thread_ = std::move(std::jthread(getThread()));
+        thread_ = std::move(std::jthread(getThreadWorkerFunction()));
         pauseCondition_.notify_all();
     }
 
-    void resumeCounting() {
+    void resumePeriodicTasks() {
         {
         std::lock_guard<std::mutex> lock(mutex_);
-        counting_ = true;
+        working_ = true;
         }
         pauseCondition_.notify_all();
     }
-    void pauseCounting() {
+    void suspendPeriodicTasks() {
         {
        	std::lock_guard<std::mutex> lock(mutex_);
-        counting_ = false;
+        working_ = false;
         }
         pauseCondition_.notify_all();
     }
@@ -117,7 +117,7 @@ private:
 
     worker_init_t workerInit_;
     std::jthread thread_;
-    std::atomic_bool counting_ = false;
+    std::atomic_bool working_ = false;
     std::chrono::milliseconds sleepInterval_ = std::chrono::milliseconds(20);
     std::mutex mutex_;
 	std::condition_variable pauseCondition_;
