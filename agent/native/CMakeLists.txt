@@ -110,6 +110,8 @@ conan_cmake_run(REQUIRES ${dependencies}
                 BASIC_SETUP CMAKE_TARGETS UPDATE NO_OUTPUT_DIRS
                 )
 
+enable_testing()
+
 add_subdirectory(libcommon)
 add_subdirectory(libphpbridge)
 

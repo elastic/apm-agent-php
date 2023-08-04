@@ -16,3 +16,6 @@ target_include_directories(${targetName}
     PRIVATE "code"
     "${CONAN_INCLUDE_DIRS_GTEST}")
 
+
+add_test(NAME ${targetName}
+    COMMAND ${targetName})
