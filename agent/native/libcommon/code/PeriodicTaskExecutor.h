@@ -30,7 +30,9 @@ public:
 
     ~PeriodicTaskExecutor() {
         shutdown();
-        thread_.join();
+        if (thread_.joinable()) {
+            thread_.join();
+        }
     }
 
     void work(std::stop_token stoken) {
