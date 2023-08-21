@@ -50,6 +50,8 @@ final class StackTraceUtil
     public const LINE_NUMBER_NOT_AVAILABLE_SUBSTITUTE = 0;
 
     private const ELASTIC_APM_FQ_NAME_PREFIX = 'Elastic\\Apm\\';
+    private const ELASTIC_APM_INTERNAL_FUNCTION_NAME_PREFIX = 'elastic_apm_';
+
 
     /** @var LoggerFactory */
     private $loggerFactory;
@@ -60,11 +62,18 @@ final class StackTraceUtil
     /** @var string */
     private $namePrefixForFramesToHide;
 
-    public function __construct(LoggerFactory $loggerFactory, string $namePrefixForFramesToHide = self::ELASTIC_APM_FQ_NAME_PREFIX)
-    {
+    /** @var string */
+    private $namePrefixForInternalFramesToHide;
+
+    public function __construct(
+        LoggerFactory $loggerFactory,
+        string $namePrefixForFramesToHide = self::ELASTIC_APM_FQ_NAME_PREFIX,
+        string $namePrefixForInternalFramesToHide = self::ELASTIC_APM_INTERNAL_FUNCTION_NAME_PREFIX
+    ) {
         $this->loggerFactory = $loggerFactory;
         $this->logger = $this->loggerFactory->loggerForClass(LogCategory::INFRASTRUCTURE, __NAMESPACE__, __CLASS__, __FILE__);
         $this->namePrefixForFramesToHide = $namePrefixForFramesToHide;
+        $this->namePrefixForInternalFramesToHide = $namePrefixForInternalFramesToHide;
     }
 
     /**
@@ -273,7 +282,8 @@ final class StackTraceUtil
     private function isCallToCodeToHide(ClassicFormatStackTraceFrame $frame): bool
     {
         return ($frame->class !== null && TextUtil::isPrefixOf($this->namePrefixForFramesToHide, $frame->class))
-               || ($frame->function !== null && TextUtil::isPrefixOf($this->namePrefixForFramesToHide, $frame->function));
+               || ($frame->function !== null && TextUtil::isPrefixOf($this->namePrefixForFramesToHide, $frame->function))
+               || ($frame->function !== null && $frame->file === null && TextUtil::isPrefixOf($this->namePrefixForInternalFramesToHide, $frame->function));
     }
 
     /**

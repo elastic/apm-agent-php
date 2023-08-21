@@ -328,10 +328,11 @@ final class InferredSpansBuilder implements LoggableInterface
     /**
      * @param ClassicFormatStackTraceFrame[] $newStackTrace
      */
-    public function addStackTrace(array $newStackTrace): void
+    public function addStackTrace(array $newStackTrace, int $durationMs = 0): void
     {
-        $monotonicClockNow = $this->tracer->getClock()->getMonotonicClockCurrentTime();
-        $systemClockNow = $this->tracer->getClock()->getSystemClockCurrentTime();
+        $durationOffsetUs = $durationMs * 1000;
+        $monotonicClockNow = $this->tracer->getClock()->getMonotonicClockCurrentTime() - $durationOffsetUs;
+        $systemClockNow = $this->tracer->getClock()->getSystemClockCurrentTime() - $durationOffsetUs;
 
         ($loggerTrace = $this->logger->ifTraceLevelEnabledNoLine(__FUNCTION__))
         && $loggerTrace->log(

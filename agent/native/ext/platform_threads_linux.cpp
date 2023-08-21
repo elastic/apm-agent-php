@@ -30,6 +30,10 @@
 #include "elastic_apm_alloc.h"
 #include "log.h"
 
+#ifndef ELASTIC_APM_NON_PROD_UNIT_TEST
+#include "php_elastic_apm.h"
+#endif
+
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_PLATFORM
 
 struct Thread
@@ -496,19 +500,32 @@ ResultCode signalConditionVariable( ConditionVariable* condVar, String dbgDesc )
     return resultSuccess;
 }
 
+#ifndef ELASTIC_APM_NON_PROD_UNIT_TEST
+//TODO move to separate file
+
 static void callbackToLogForkBeforeInParent()
 {
     ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( "Before process fork (i.e., in parent context); its parent (i.e., grandparent) PID: %d", (int)getParentProcessId() );
+//TODO implement forkable registry 
+    if (ELASTICAPM_G(globals) && ELASTICAPM_G(globals)->periodicTaskExecutor_) {
+        ELASTICAPM_G(globals)->periodicTaskExecutor_->prefork();
+    }
 }
 
 static void callbackToLogForkAfterInParent()
 {
     ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( "After process fork (in parent context)" );
+    if (ELASTICAPM_G(globals) && ELASTICAPM_G(globals)->periodicTaskExecutor_) {
+        ELASTICAPM_G(globals)->periodicTaskExecutor_->postfork(false);
+    }
 }
 
 static void callbackToLogForkAfterInChild()
 {
     ELASTIC_APM_SIGNAL_SAFE_LOG_DEBUG( "After process fork (in child context); parent PID: %d", (int)getParentProcessId() );
+    if (ELASTICAPM_G(globals) && ELASTICAPM_G(globals)->periodicTaskExecutor_) {
+        ELASTICAPM_G(globals)->periodicTaskExecutor_->postfork(true);
+    }
 }
 
 void registerCallbacksToLogFork()
@@ -523,3 +540,5 @@ void registerCallbacksToLogFork()
         ELASTIC_APM_SIGNAL_SAFE_LOG_WARNING( "Failed to register callbacks to log process fork; return value: %d", retVal );
     }
 }
+
+#endif

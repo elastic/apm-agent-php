@@ -54,6 +54,8 @@ foreach(_php_version ${_supported_php_versions})
     target_link_libraries(${_Target}
                 PRIVATE CONAN_PKG::libcurl
                 PRIVATE CONAN_PKG::libunwind
+                libcommon
+                libphpbridge_${_php_version}
     )
 
     get_php_api_from_release(${_php_version} _ZEND_API_version)

@@ -55,7 +55,7 @@ build:
 		elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-$(BUILD_ARCHITECTURE)-0.0.2 \
 		sh -c "cmake --preset $(BUILD_ARCHITECTURE)-release \
 				&& cmake --build --preset $(BUILD_ARCHITECTURE)-release \
-				&& /source/agent/native/_build/$(BUILD_ARCHITECTURE)-release/ext/unit_tests/unit_tests"
+				&& ctest --preset $(BUILD_ARCHITECTURE)-release --verbose"
 	@echo "::endgroup::"
 
 .PHONY: static-check-unit-test
