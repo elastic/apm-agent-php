@@ -98,3 +98,7 @@ and the downloaded source files.
 So if you would like to build `elastic_apm-*.so` on one machine and
 then deploy it on a different machine, you will need to copy both
 the built `elastic_apm-*.so` and the downloaded source files.
+
+=== Limitations
+
+Please be aware that if the https://www.php.net/manual/en/ini.core.php#ini.open-basedir[open_basedir] option is configured in your php.ini, the source code of the agent (php part) must be located within a path included in the https://www.php.net/manual/en/ini.core.php#ini.open-basedir[open_basedir] configuration and should be within the directory tree. Otherwise, the agent will not be loaded correctly.
