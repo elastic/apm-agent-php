@@ -41,22 +41,22 @@ use Elastic\Apm\SpanInterface;
 final class Span extends ExecutionSegment implements SpanInterface, SpanToSendInterface
 {
     /** @var string */
-    public $parentId;
+    private $parentId;
 
     /** @var string */
-    public $transactionId;
+    private $transactionId;
 
     /** @var ?string */
-    public $action = null;
+    private $action = null;
 
     /** @var ?string */
-    public $subtype = null;
+    private $subtype = null;
 
     /** @var null|StackTraceFrame[] */
-    public $stackTrace = null;
+    private $stackTrace = null;
 
     /** @var ?SpanContext */
-    public $context = null;
+    private $context = null;
 
     /** @var Logger */
     private $logger;
