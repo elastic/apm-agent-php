@@ -27,12 +27,11 @@ RUN curl -LO https://gcc.gnu.org/pub/gcc/releases/gcc-${GCC_VERSION}/gcc-${GCC_V
 
 RUN cd gcc-${GCC_VERSION} \
  && ./contrib/download_prerequisites \
- && SHARED_CONFIGURE_OPTIONS="--enable-languages=c,c++ --enable-shared --enable-linker-build-id --with-system-zlib --without-included-gettext --enable-threads=posix --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --disable-werror --enable-checking=release --with-pic --disable-symvers --enable-obsolete" \
- && SHARED_CONFIGURE_OPTIONS="$SHARED_CONFIGURE_OPTIONS --disable-libstdcxx-visibility" \
- && CONFIGURE_OPTIONS="$SHARED_CONFIGURE_OPTIONS --with-tune=generic --enable-libstdcxx-debug-flags=-gdwarf-2" \
- && CONFIGURE_OPTIONS="$CONFIGURE_OPTIONS --build=x86_64-linux-musl --host=x86_64-linux-musl --target=x86_64-linux-musl --disable-multilib --disable-libsanitizer" \
- && echo $CONFIGURE_OPTIONS \
- && ./configure --prefix=/opt/gcc-${GCC_VERSION} $CONFIGURE_OPTIONS \
+ && CFG_OPTIONS="--enable-languages=c,c++ --enable-shared --enable-linker-build-id --with-system-zlib --without-included-gettext --enable-threads=posix --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --disable-werror --enable-checking=release --with-pic --disable-symvers --enable-obsolete \
+ --disable-libstdcxx-visibility --with-tune=generic --enable-libstdcxx-debug-flags=-gdwarf-2 --disable-multilib --disable-libsanitizer \
+ --build=x86_64-linux-musl --host=x86_64-linux-musl --target=x86_64-linux-musl" \
+ && echo $CFG_OPTIONS \
+ && ./configure --prefix=/opt/gcc-${GCC_VERSION} $CFG_OPTIONS \
  && make -j$(nproc) \
  && sudo make install \
  && cd - \

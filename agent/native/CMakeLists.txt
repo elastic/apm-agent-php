@@ -30,7 +30,7 @@ if(EXISTS /etc/alpine-release)
     set(MUSL_BUILD true)
 endif()
 
-if ((NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Linux") OR (NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64"))
+if ((NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Linux") OR (NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" AND NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64"))
      message(FATAL_ERROR "System or architecture not supported")
 endif()
 
