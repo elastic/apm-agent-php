@@ -101,4 +101,4 @@ the built `elastic_apm-*.so` and the downloaded source files.
 
 === Limitations
 
-Please be aware that if the https://www.php.net/manual/en/ini.core.php#ini.open-basedir[open_basedir] option is configured in your php.ini, the source code of the agent (php part) must be located within a path included in the https://www.php.net/manual/en/ini.core.php#ini.open-basedir[open_basedir] configuration and should be within the directory tree. Otherwise, the agent will not be loaded correctly.
+Please be aware that if the https://www.php.net/manual/en/ini.core.php#ini.open-basedir[open_basedir] option is configured in your php.ini, the installation directory of the agent (by default /opt/elastic/apm-agent/php) must be located within a path included in the https://www.php.net/manual/en/ini.core.php#ini.open-basedir[open_basedir] configuration. Otherwise, the agent will not be loaded correctly.
