@@ -62,3 +62,13 @@ to enable verbose log for the agent's communication with Elastic APM Server.
 The log is written under `INFO` level - see <<configure-logging>>.
 
 Also see <<dev-internal-config-disclaimer>>.
+
+=== Agent is not instrumenting code
+[source,bash]
+
+==== open_basedir issue
+
+If you see a similar entry in the agent log, this indicates an incorrect open_basedir configuration. Please read the details https://www.elastic.co/guide/en/apm/agent/php/current/setup.html#limitations[here]
+----
+[Elastic APM PHP Tracer] 2023-08-23 14:38:12.223397+02:00 [PID: 268995] [TID: 268995] [WARNING]  [Lifecycle] [lifecycle.cpp:558] [elasticApmModuleInit] Elastic Agent bootstrap file (/home/paplo/sources/apm-agent-php/agent/php/bootstrap_php_part.php) is located outside of paths allowed by open_basedir ini setting. Read more details here https://www.elastic.co/guide/en/apm/agent/php/current/setup.html
+----
