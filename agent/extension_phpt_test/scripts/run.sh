@@ -24,6 +24,7 @@ elif [ $PHP_VERSION == "8.2" ]; then
 fi
 
 mkdir -m 666 -p /results/${PHP_VERSION}
+echo "Making results directory /results/${PHP_VERSION} resultCode: $?" 
 
 RESULT_PREFIX=`date -u +"%Y%m%d_%H%M%S-"`
 
@@ -32,7 +33,7 @@ TEST_FAILED_WITH_AGENT_ARCH=/results/${PHP_VERSION}/${RESULT_PREFIX}tests-faled-
 TEST_FAILED_WITHOUT_AGENT=/results/${PHP_VERSION}/${RESULT_PREFIX}tests-failed-without-agent.txt
 TEST_FAILED_WITHOUT_AGENT_ARCH=/results/${PHP_VERSION}/${RESULT_PREFIX}tests-failed-without-agent.tar.gz
 
-TEST_ALLOWED_TO_FAIL=/results/allowedToFail${PHP_VERSION}.txt
+TEST_ALLOWED_TO_FAIL=/allowedToFailLists/allowedToFail${PHP_VERSION}.txt
 
 
 printf --  '-%.0s' {1..80} && echo ""
@@ -58,19 +59,20 @@ function compress_test_results() {
 	FILES_TO_COMPRESS=$(mktemp)
 	shopt -s globstar
 
+	EXTENSIONS=( "diff" "exp" "log" "out" "php" "phpt" "sh" )
+
 	for TEST in **/*.exp; do
 		if [ "${TEST}" == "**/*.exp" ]; then
 			continue
 		fi
 
 		BASE="${TEST%.*}"
-		echo "${BASE}.diff" >>${FILES_TO_COMPRESS}
-		echo "${BASE}.exp" >>${FILES_TO_COMPRESS}
-		echo "${BASE}.log" >>${FILES_TO_COMPRESS}
-		echo "${BASE}.out" >>${FILES_TO_COMPRESS}
-		echo "${BASE}.php" >>${FILES_TO_COMPRESS}
-		echo "${BASE}.phpt" >>${FILES_TO_COMPRESS}
-		echo "${BASE}.sh" >>${FILES_TO_COMPRESS}
+		for EXTENSION in "${EXTENSIONS[@]}"
+		do
+			if [ -f "${BASE}.${EXTENSION}" ]; then
+				echo "${BASE}.${EXTENSION}" >>${FILES_TO_COMPRESS}
+			fi
+		done
 	done
 	tar -czf ${OUTPUT} -T ${FILES_TO_COMPRESS}
 	rm ${FILES_TO_COMPRESS}
@@ -113,6 +115,5 @@ cleanup
 TEST_PHP_EXECUTABLE=/usr/local/bin/php  ./run-tests.php -q -x --offline -w "${TEST_FAILED_WITH_AGENT}" -d "extension=/opt/elastic/elastic_apm-${PHP_API_VERSION}.so" ${TEST_OR_DIRECTORY_TO_EXECUTE}
 compress_test_results ${TEST_FAILED_WITH_AGENT_ARCH}
 
-chmod 666 ${TEST_FAILED_WITH_AGENT} ${TEST_FAILED_WITH_AGENT_ARCH} ${TEST_FAILED_WITHOUT_AGENT} ${TEST_FAILED_WITHOUT_AGENT_ARCH}
 
 /scripts/processResults.php --allowed ${TEST_ALLOWED_TO_FAIL} --failed_with_agent ${TEST_FAILED_WITH_AGENT} --failed_without_agent ${TEST_FAILED_WITHOUT_AGENT}

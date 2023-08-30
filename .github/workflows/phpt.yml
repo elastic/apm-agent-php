@@ -1,0 +1,61 @@
+name: Execute agent with phpt tests delivered with PHP source code
+
+on:
+  workflow_dispatch:
+    inputs:
+      php-version:
+        description: 'PHP version'
+        default: 'all'
+        required: true
+        type: choice
+        options:
+          - all
+          - 72
+          - 73
+          - 74
+          - 80
+          - 81
+          - 82
+  schedule:
+    - cron: '0 12 * * *'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  run-phpt-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run phpt tests from PHP source code
+      run: |
+        wget https://github.com/elastic/apm-agent-php/releases/latest/download/apm-agent-php-linux-x86-64.tar -O /tmp/apm-agent-php-linux-x86-64.tar
+        mkdir -p agent/native/_build/linux-x86-64-release/ext/
+        cd agent/native/_build/linux-x86-64-release/ext/
+        tar --wildcards  --strip-components 5 -xf /tmp/apm-agent-php-linux-x86-64.tar ./opt/elastic/apm-agent-php/extensions/elastic_apm*
+        cd -
+        echo "::group:Running phpt test for release"
+        cd agent/extension_phpt_test
+
+        if [ "${{ github.event.inputs.php-version }}" == "all" ]; then
+            docker-compose build elasticsearch apm-server phpt_${{ github.event.inputs.php-version }}
+            docker-compose up -d elasticsearch apm-server
+            docker-compose up phpt_${{ github.event.inputs.php-version }}
+            docker-compose stop
+        else          
+            docker-compose build elasticsearch apm-server phpt_82
+            docker-compose up -d elasticsearch apm-server
+            docker-compose run phpt_82
+            docker-compose stop
+        fi
+    - name: Change results ownership 
+      run: |
+        sudo chmod -R 777 agent/extension_phpt_test/results
+        sudo chown -R $(id -u):$(id -g) agent/extension_phpt_test/results
+    - uses: actions/upload-artifact@v3
+      with:
+        name: phpt-test-results
+        path: agent/extension_phpt_test/results
+        if-no-files-found: error

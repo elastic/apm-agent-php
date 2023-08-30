@@ -13,6 +13,7 @@ services:
             - ../native/_build/linux-x86-64-release/ext:/opt/elastic
             - ../php:/opt/elastic/php
             - ./results:/results
+            - ./allowedToFailLists/:/allowedToFailLists
         depends_on:
             - elasticsearch
             - apm-server
@@ -29,6 +30,7 @@ services:
             - ../native/_build/linux-x86-64-release/ext:/opt/elastic
             - ../php:/opt/elastic/php
             - ./results:/results
+            - ./allowedToFailLists/:/allowedToFailLists
         depends_on:
             - elasticsearch
             - apm-server
@@ -45,6 +47,7 @@ services:
             - ../native/_build/linux-x86-64-release/ext:/opt/elastic
             - ../php:/opt/elastic/php
             - ./results:/results
+            - ./allowedToFailLists/:/allowedToFailLists
         depends_on:
             - elasticsearch
             - apm-server
@@ -61,6 +64,7 @@ services:
             - ../native/_build/linux-x86-64-release/ext:/opt/elastic
             - ../php:/opt/elastic/php
             - ./results:/results
+            - ./allowedToFailLists/:/allowedToFailLists
         depends_on:
             - elasticsearch
             - apm-server
@@ -77,6 +81,7 @@ services:
             - ../native/_build/linux-x86-64-release/ext:/opt/elastic
             - ../php:/opt/elastic/php
             - ./results:/results
+            - ./allowedToFailLists/:/allowedToFailLists
         depends_on:
             - elasticsearch
             - apm-server
@@ -93,6 +98,7 @@ services:
             - ../native/_build/linux-x86-64-release/ext:/opt/elastic
             - ../php:/opt/elastic/php
             - ./results:/results
+            - ./allowedToFailLists/:/allowedToFailLists
         depends_on:
             - elasticsearch
             - apm-server
