@@ -1,0 +1,128 @@
+version: "2.1"
+services:
+    phpt_72:
+        build:
+            context: .
+            dockerfile: images/Dockerfile
+            args:
+                PHP_VERSION: 7.2
+        networks:
+          - elastic-net
+        volumes:
+            - ./config/99-elastic.ini:/usr/local/etc/php/conf.d/99-elastic.ini
+            - ../native/_build/linux-x86-64-release/ext:/opt/elastic
+            - ../php:/opt/elastic/php
+            - ./results:/results
+        depends_on:
+            - elasticsearch
+            - apm-server
+    phpt_73:
+        build:
+            context: .
+            dockerfile: images/Dockerfile
+            args:
+                PHP_VERSION: 7.3
+        networks:
+          - elastic-net
+        volumes:
+            - ./config/99-elastic.ini:/usr/local/etc/php/conf.d/99-elastic.ini
+            - ../native/_build/linux-x86-64-release/ext:/opt/elastic
+            - ../php:/opt/elastic/php
+            - ./results:/results
+        depends_on:
+            - elasticsearch
+            - apm-server
+    phpt_74:
+        build:
+            context: .
+            dockerfile: images/Dockerfile
+            args:
+                PHP_VERSION: 7.4
+        networks:
+          - elastic-net
+        volumes:
+            - ./config/99-elastic.ini:/usr/local/etc/php/conf.d/99-elastic.ini
+            - ../native/_build/linux-x86-64-release/ext:/opt/elastic
+            - ../php:/opt/elastic/php
+            - ./results:/results
+        depends_on:
+            - elasticsearch
+            - apm-server
+    phpt_80:
+        build:
+            context: .
+            dockerfile: images/Dockerfile
+            args:
+                PHP_VERSION: 8.0
+        networks:
+          - elastic-net
+        volumes:
+            - ./config/99-elastic.ini:/usr/local/etc/php/conf.d/99-elastic.ini
+            - ../native/_build/linux-x86-64-release/ext:/opt/elastic
+            - ../php:/opt/elastic/php
+            - ./results:/results
+        depends_on:
+            - elasticsearch
+            - apm-server
+    phpt_81:
+        build:
+            context: .
+            dockerfile: images/Dockerfile
+            args:
+                PHP_VERSION: 8.1
+        networks:
+          - elastic-net
+        volumes:
+            - ./config/99-elastic.ini:/usr/local/etc/php/conf.d/99-elastic.ini
+            - ../native/_build/linux-x86-64-release/ext:/opt/elastic
+            - ../php:/opt/elastic/php
+            - ./results:/results
+        depends_on:
+            - elasticsearch
+            - apm-server
+    phpt_82:
+        build:
+            context: .
+            dockerfile: images/Dockerfile
+            args:
+                PHP_VERSION: 8.2
+        networks:
+          - elastic-net
+        volumes:
+            - ./config/99-elastic.ini:/usr/local/etc/php/conf.d/99-elastic.ini
+            - ../native/_build/linux-x86-64-release/ext:/opt/elastic
+            - ../php:/opt/elastic/php
+            - ./results:/results
+        depends_on:
+            - elasticsearch
+            - apm-server
+
+
+    apm-server:
+        image: docker.elastic.co/apm/apm-server:7.14.0
+        container_name: apm-server
+        networks:
+          - elastic-net
+        environment:
+          - output.elasticsearch.hosts=["elasticsearch:9200"]
+ #       logging:
+ #         driver: none
+    elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.14.0
+        container_name: elasticsearch
+        environment:
+          - discovery.type=single-node
+          - ELASTICSEARCH_USERNAME=elastic
+          - ELASTICSEARCH_PASSWORD=elastic
+        networks:
+          - elastic-net
+#        logging:
+#          driver: none
+
+networks:
+  elastic-net:
+    driver: bridge
+
+volumes:
+  esdata:
+    driver: local
