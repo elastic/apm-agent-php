@@ -35,11 +35,12 @@ jobs:
 
     - name: Run phpt tests from PHP source code
       run: |
-        echo "::group:Running phpt test for release"
+        VERSION=${{ matrix.php-version }}
+        VERSION_SHORT=${VERSION//./}
         cd agent/extension_phpt_test
-        docker-compose build elasticsearch apm-server phpt_${{ matrix.php-version }}
+        docker-compose build elasticsearch apm-server phpt_${VERSION_SHORT}
         docker-compose up -d elasticsearch apm-server
-        docker-compose run phpt_${{ matrix.php-version }}
+        docker-compose run phpt_${VERSION_SHORT}
         docker-compose stop
     - name: Change results ownership 
       run: |
