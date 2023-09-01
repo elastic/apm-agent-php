@@ -117,7 +117,23 @@
             "debug",
             "binutils"
         ]
-    }
+    },
+    {
+        "name": "linuxmusl-arm64-release",
+        "inherits": [
+            "os-type-unix",
+            "release",
+            "binutils"
+        ]
+    },
+    {
+        "name": "linuxmusl-arm64-debug",
+        "inherits": [
+            "os-type-unix",
+            "debug",
+            "binutils"
+        ]
+    }    
     ],
     "buildPresets": [
     {
@@ -235,6 +251,20 @@
             "inherits": [
                 "release"
             ]
-        }
+        },
+        {
+            "name": "linuxmusl-arm64-debug",
+            "configurePreset": "linux-arm64-debug",
+            "inherits": [
+                "debug"
+            ]
+        },
+        {
+            "name": "linuxmusl-arm64-release",
+            "configurePreset": "linux-arm64-release",
+            "inherits": [
+                "release"
+            ]
+        }        
     ]
   }
