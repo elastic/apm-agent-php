@@ -386,7 +386,7 @@ You must use the query bar to filter for a specific environment in versions prio
 
 [options="header"]
 |============
-| Hostname variable name      | Option name in `php.ini`
+| Environment variable name      | Option name in `php.ini`
 | `ELASTIC_APM_GLOBAL_LABELS` | `elastic_apm.global_labels`
 |============
 
@@ -416,7 +416,7 @@ NOTE: This option requires APM Server 7.2 or later. It will have no effect on ol
 
 [options="header"]
 |============
-| Hostname variable name      | Option name in `php.ini`
+| Environment variable name      | Option name in `php.ini`
 | `ELASTIC_APM_HOSTNAME` | `elastic_apm.hostname`
 |============
 
