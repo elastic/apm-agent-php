@@ -29,7 +29,7 @@ RUN cd gcc-${GCC_VERSION} \
  && ./contrib/download_prerequisites \
  && CFG_OPTIONS="--enable-languages=c,c++ --enable-shared --enable-linker-build-id --with-system-zlib --without-included-gettext --enable-threads=posix --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --disable-werror --enable-checking=release --with-pic --disable-symvers --enable-obsolete \
  --disable-libstdcxx-visibility --with-tune=generic --enable-libstdcxx-debug-flags=-gdwarf-2 --disable-multilib --disable-libsanitizer \
- --build=aarch64-linux-musl --host=aarch64-linux-musl --target=aarch64-linux-musl" \
+ --build=aarch64-alpine-linux-musl --host=aarch64-alpine-linux-musl --target=aarch64-alpine-linux-musl" \
  && echo $CFG_OPTIONS \
  && ./configure --prefix=/opt/gcc-${GCC_VERSION} $CFG_OPTIONS \
  && make -j$(nproc) \

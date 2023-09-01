@@ -39,6 +39,17 @@ execute_process(
 
 set(_PRV_CONAN_PROFILE_OS ${CMAKE_SYSTEM_NAME})
 
+
+if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
+    set(_PRV_CONAN_PROFILE_ARCH "arch=armv8")
+    set(_PRV_CONAN_PROFILE_ARCH_BUILD "arch_build=armv8")
+elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+    set(_PRV_CONAN_PROFILE_ARCH "arch=x86_64")
+    set(_PRV_CONAN_PROFILE_ARCH_BUILD "arch_build=x86_64")
+else()
+    message(FATAL_ERROR "CPU Architecure not supported ${CMAKE_SYSTEM_PROCESSOR}")
+endif()
+
 if (MUSL_BUILD)
     #this is workaround to force build from souce on musl - this will prevent from installing libc binaries
     set(_PRV_CONAN_PROFILE_OS_DISTRO "os.distro=Alpine")
@@ -49,7 +60,7 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 endif()
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-    message(STATUS "Linux ${_PRV_CONAN_PROFILE_OS_DISTRO}, ${_PRV_COMPILER_LIBC_IMPLEMENTATION}")
+    message(STATUS "Linux ${_PRV_CONAN_PROFILE_OS_DISTRO}, ${_PRV_COMPILER_LIBC_IMPLEMENTATION}, ${_PRV_CONAN_PROFILE_ARCH_BUILD}")
 endif()
 
 # setting up paths used to configure compiler profile

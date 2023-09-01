@@ -191,6 +191,20 @@
         "inherits": [
             "release"
         ]
+    },
+    {
+        "name": "linuxmusl-arm64-debug",
+            "configurePreset": "linuxmusl-arm64-debug",
+            "inherits": [
+	            "debug"
+        ]
+    },
+    {
+        "name": "linuxmusl-arm64-release",
+        "configurePreset": "linuxmusl-arm64-release",
+        "inherits": [
+            "release"
+        ]
     }
     ],
     "testPresets": [

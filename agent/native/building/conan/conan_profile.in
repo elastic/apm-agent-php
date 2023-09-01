@@ -2,8 +2,8 @@
 [settings]
 os=@_PRV_CONAN_PROFILE_OS@
 @_PRV_CONAN_PROFILE_OS_DISTRO@
-arch=x86_64
-arch_build=x86_64
+@_PRV_CONAN_PROFILE_ARCH@
+@_PRV_CONAN_PROFILE_ARCH_BUILD@
 build_type=Release
 compiler=@_PRV_COMPILER_NAME@
 compiler.version=@_PRV_COMPILER_VERSION_SHORT@
