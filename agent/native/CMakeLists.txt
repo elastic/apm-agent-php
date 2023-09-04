@@ -87,11 +87,15 @@ endforeach()
 
 set(dependencies
     "libcurl/8.0.1"
-    "cmocka/1.1.5@"
     "libunwind/1.6.2"
 #    "boost/1.82.0"
     "gtest/1.13.0"
 )
+
+# cmocka has issues on arm64
+if (NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
+    list(APPEND dependencies "cmocka/1.1.5@")
+endif()
 
 foreach(_php_version ${_supported_php_versions})
    list(APPEND dependencies "php-headers-${_php_version}/1.0@elastic/local")
