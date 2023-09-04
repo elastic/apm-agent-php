@@ -186,7 +186,7 @@ jobs:
         with:
           name: package-parts-linuxmusl-x86-64
           path: agent/native/_build/linuxmusl-x86-64-release/ext
-          
+
       - if: ${{ env.TESTING_TYPE == 'lifecycle' }}
         name: lifecycle test
         run: |
@@ -247,3 +247,13 @@ jobs:
         with:
           name: syslogs
           path: build/syslog-files/
+
+  # The very last job to report whether the Workflow passed.
+  # This will act as the Branch Protection gatekeeper
+  ci:
+    needs:
+      - test-packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: report
+        run: echo "CI workflow passed"

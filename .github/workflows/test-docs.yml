@@ -19,10 +19,15 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
-
 jobs:
   # dummy steps that allow to bypass those mandatory checks for tests
   build-packages:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "Not required for docs"'
+
+  # dummy steps that allow to bypass those mandatory checks for tests
+  ci:
     runs-on: ubuntu-latest
     steps:
       - run: 'echo "Not required for docs"'
