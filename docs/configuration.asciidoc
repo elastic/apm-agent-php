@@ -491,6 +491,10 @@ See <<configure-logging>> for details.
 [[config-profiling-inferred-spans-enabled]]
 ==== `profiling_inferred_spans_enabled`
 
+NOTE: This feature is currently experimental,
+which means it is disabled by default
+and it is not guaranteed to be backwards compatible in future releases.
+
 [options="header"]
 |============
 | Environment variable name                      | Option name in `php.ini`
@@ -500,7 +504,7 @@ See <<configure-logging>> for details.
 [options="header"]
 |============
 | Default | Type
-| `true`  | Boolean
+| `false`  | Boolean
 |============
 
 If this option is set to `true` then the agent creates spans for method executions
