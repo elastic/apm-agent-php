@@ -1,4 +1,4 @@
-FROM arm64v8/ubuntu:18.04 as devtools
+FROM arm64v8/centos:7 as devtools
 
 ARG GCC_VERSION=12.2.0
 ARG BINUTILS_VERSION=2.40
@@ -8,12 +8,14 @@ ARG USER_NAME=build
 
 #binutils: bison - gprofng, texinfo - makeinfo
 
-RUN apt-get update && apt-get -y install sudo curl wget git make autoconf bzip2 \
+RUN yum -y update && yum -y install centos-release-scl
+RUN yum -y install sudo curl wget git make autoconf bzip2 \
     texinfo bison \
     python3 python3-pip python3-venv \
-    binutils gcc libz-dev
+    devtoolset-7-binutils devtoolset-7-gcc  devtoolset-7-gcc-c++ zlib-devel
 
-RUN adduser --disabled-password --gecos "" ${USER_NAME} \
+RUN adduser -p password ${USER_NAME} \
+    && passwd -d ${USER_NAME} \
     && echo "${USER_NAME} ALL=(ALL) NOPASSWD:ALL" >>/etc/sudoers
 
 USER ${USER_NAME}
@@ -25,10 +27,11 @@ RUN curl -LO https://gcc.gnu.org/pub/gcc/releases/gcc-${GCC_VERSION}/gcc-${GCC_V
  && tar -xf gcc-${GCC_VERSION}.tar.xz \
  && rm gcc-${GCC_VERSION}.tar.xz
 
-RUN cd gcc-${GCC_VERSION} \
+RUN source scl_source enable devtoolset-7 \
+ && cd gcc-${GCC_VERSION} \
  && ./contrib/download_prerequisites \
  && CFG_OPTIONS="--enable-languages=c,c++ --enable-shared --enable-linker-build-id --with-system-zlib --without-included-gettext --enable-threads=posix --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --disable-werror --enable-checking=release --with-pic --disable-symvers --enable-obsolete \
- --disable-libstdcxx-visibility --enable-libstdcxx-debug-flags=-gdwarf-2 --disable-multilib \ 
+ --disable-libstdcxx-visibility --enable-libstdcxx-debug-flags=-gdwarf-2 --disable-multilib \
  --build=aarch64-linux-gnu --host=aarch64-linux-gnu --target=aarch64-linux-gnu" \
  && echo $CFG_OPTIONS \
  && ./configure --prefix=/opt/gcc-${GCC_VERSION} $CFG_OPTIONS \
@@ -41,7 +44,8 @@ RUN curl -LO https://ftp.gnu.org/gnu/binutils/binutils-${BINUTILS_VERSION}.tar.x
  && tar -xf binutils-${BINUTILS_VERSION}.tar.xz \
  && rm binutils-${BINUTILS_VERSION}.tar.xz 
 
-RUN cd binutils-${BINUTILS_VERSION} \
+RUN source scl_source enable devtoolset-7 \
+ && cd binutils-${BINUTILS_VERSION} \
  && ./configure --prefix=/opt/binutils-${BINUTILS_VERSION} CFLAGS=-Wno-unused-value --enable-gold \
  && make -j$(nproc) \
  && sudo make install \
@@ -58,18 +62,21 @@ RUN curl -LO https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON
  && tar -xf Python-${PYTHON_VERSION}.tgz \
  && rm Python-${PYTHON_VERSION}.tgz
 
-#RUN sudo apt-get -y install libffi-dev openssl-dev sqlite-dev readline-dev xz-dev bzip2-dev
+RUN sudo yum -y install libffi-devel openssl-devel sqlite-devel readline-devel xz-devel bzip2-devel
 
-RUN cd Python-${PYTHON_VERSION} \
+RUN source scl_source enable devtoolset-7 \
+ && cd Python-${PYTHON_VERSION} \
  && ./configure --help \
  && ./configure --enable-optimizations --prefix=/opt/python-${PYTHON_VERSION} \
  && make \
  && sudo make install
 
-RUN sudo apt-get clean
+
+RUN sudo yum -y remove devtoolset-7* centos-release-scl \
+ && sudo yum -y clean all
 
 
-FROM arm64v8/ubuntu:18.04
+FROM arm64v8/centos:7
 
 ARG GCC_VERSION=12.2.0
 ARG BINUTILS_VERSION=2.40
@@ -79,9 +86,13 @@ ARG USER_NAME=build
 
 COPY --from=devtools /opt /opt
 
-RUN apt-get -y update && apt-get -y install sudo curl wget git make autoconf bzip2 file libc-dev
+RUN yum -y update && yum -y install sudo curl wget git make autoconf bzip2 \
+    perl-Thread-Queue perl-IPC-Cmd perl-Digest-SHA \
+    file \
+    glibc-devel
 
-RUN adduser --disabled-password --gecos "" ${USER_NAME} \
+RUN adduser -p password ${USER_NAME} \
+    && passwd -d ${USER_NAME} \
     && echo "${USER_NAME} ALL=(ALL) NOPASSWD:ALL" >>/etc/sudoers
 
 USER ${USER_NAME}
