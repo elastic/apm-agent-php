@@ -32,7 +32,6 @@ jobs:
         cd agent/native/_build/linux-x86-64-release/ext/
         tar --wildcards  --strip-components 5 -xf /tmp/apm-agent-php-linux-x86-64.tar ./opt/elastic/apm-agent-php/extensions/elastic_apm*
         cd -
-
     - name: Run phpt tests from PHP source code
       run: |
         VERSION=${{ matrix.php-version }}
@@ -51,3 +50,6 @@ jobs:
         name: phpt-test-results-${{ matrix.php-version }}
         path: agent/extension_phpt_test/results
         if-no-files-found: error
+    - name: Test summary
+      run:
+        cat agent/extension_phpt_test/results/${{ matrix.php-version }}/*tests-result.md >> $GITHUB_STEP_SUMMARY

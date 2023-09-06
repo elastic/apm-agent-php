@@ -32,6 +32,9 @@ TEST_FAILED_WITH_AGENT=/results/${PHP_VERSION}/${RESULT_PREFIX}tests-failed-with
 TEST_FAILED_WITH_AGENT_ARCH=/results/${PHP_VERSION}/${RESULT_PREFIX}tests-faled-with-agent.tar.gz
 TEST_FAILED_WITHOUT_AGENT=/results/${PHP_VERSION}/${RESULT_PREFIX}tests-failed-without-agent.txt
 TEST_FAILED_WITHOUT_AGENT_ARCH=/results/${PHP_VERSION}/${RESULT_PREFIX}tests-failed-without-agent.tar.gz
+TEST_RESULTS_WITH_AGENT=/results/${PHP_VERSION}/${RESULT_PREFIX}tests-results-with-agent.txt
+TEST_RESULTS_WITHOUT_AGENT=/results/${PHP_VERSION}/${RESULT_PREFIX}tests-results-without-agent.txt
+TEST_RESULTS_MD=/results/${PHP_VERSION}/${RESULT_PREFIX}tests-result.md
 
 TEST_ALLOWED_TO_FAIL=/allowedToFailLists/allowedToFail${PHP_VERSION}.txt
 
@@ -104,7 +107,7 @@ echo "Running tests without agent"
 printf --  '-%.0s' {1..80} && echo ""
 
 cleanup
-TEST_PHP_EXECUTABLE=/usr/local//bin/php  ./run-tests.php -q -x --offline -w "${TEST_FAILED_WITHOUT_AGENT}" ${TEST_OR_DIRECTORY_TO_EXECUTE}
+TEST_PHP_EXECUTABLE=/usr/local//bin/php  ./run-tests.php -q -x --offline -w "${TEST_FAILED_WITHOUT_AGENT}" -W "${TEST_RESULTS_WITHOUT_AGENT}" ${TEST_OR_DIRECTORY_TO_EXECUTE}
 compress_test_results ${TEST_FAILED_WITHOUT_AGENT_ARCH}
 
 printf --  '-%.0s' {1..80} && echo ""
@@ -112,8 +115,7 @@ echo "Running tests with agent"
 printf --  '-%.0s' {1..80} && echo ""
 
 cleanup
-TEST_PHP_EXECUTABLE=/usr/local/bin/php  ./run-tests.php -q -x --offline -w "${TEST_FAILED_WITH_AGENT}" -d "extension=/opt/elastic/elastic_apm-${PHP_API_VERSION}.so" ${TEST_OR_DIRECTORY_TO_EXECUTE}
+TEST_PHP_EXECUTABLE=/usr/local/bin/php  ./run-tests.php -q -x --offline -w "${TEST_FAILED_WITH_AGENT}" -W "${TEST_RESULTS_WITH_AGENT}" -d "extension=/opt/elastic/elastic_apm-${PHP_API_VERSION}.so" ${TEST_OR_DIRECTORY_TO_EXECUTE}
 compress_test_results ${TEST_FAILED_WITH_AGENT_ARCH}
 
-
-/scripts/processResults.php --allowed ${TEST_ALLOWED_TO_FAIL} --failed_with_agent ${TEST_FAILED_WITH_AGENT} --failed_without_agent ${TEST_FAILED_WITHOUT_AGENT}
+/scripts/processResults.php --allowed ${TEST_ALLOWED_TO_FAIL} --failed_with_agent ${TEST_FAILED_WITH_AGENT} --failed_without_agent ${TEST_FAILED_WITHOUT_AGENT} --results_with_agent ${TEST_RESULTS_WITH_AGENT} --results_without_agent ${TEST_RESULTS_WITHOUT_AGENT} --markdown ${TEST_RESULTS_MD}
