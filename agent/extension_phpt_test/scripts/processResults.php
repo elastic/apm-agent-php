@@ -47,28 +47,50 @@ function getStatistics($results) {
 	return $stats;
 }
 
-function writeResultsPerTest($output, $stats, $testsAllowedToFail, $unexpectedFailures) {
+// returns true if test was successfull
+function writeResultsPerTest($output, $stats, $testsAllowedToFail, $unexpectedFailures, $segfaults, $suppressed) {
 	fwrite($output, "| Test result | count |".PHP_EOL);
 	fwrite($output, "| --- | --- |".PHP_EOL);
 	foreach ($stats as $res => $cnt) {
 		fwrite($output, "| ". $res." | ". $cnt." |".PHP_EOL);
 	}
+	fwrite($output, "| Segmentation faults | ".count($segfaults)." |".PHP_EOL);
 	fwrite($output, "| Tests allowed to fail | ".count($testsAllowedToFail)." |".PHP_EOL);
-	fwrite($output, "| Unexpected test failures | ".count($unexpectedFailures)." |".PHP_EOL);
+	fwrite($output, "| Unexpected test failures (without suppression) | ".count($unexpectedFailures)." |".PHP_EOL);
+
+	$afterSuppressionFailures = [];
+	$afterSuppressionFailures = getUnexpectedFailures($suppressed, $unexpectedFailures);
+	fwrite($output, "| Size of suppression list | ".count($suppressed)." |".PHP_EOL);
+	fwrite($output, "| Unexpected test failures (after suppression) | ".count($afterSuppressionFailures)." |".PHP_EOL);
+
 	fwrite($output, PHP_EOL);
 
-	if (count($unexpectedFailures) > 0) {
-		fwrite($output, "#### Tests that did not pass and are outside the list of allowed to fail".PHP_EOL);
+	if (count($segfaults) > 0) {
+		fwrite($output, "#### Tests with segmentation faults".PHP_EOL);
 
 		fwrite($output, "```".PHP_EOL);
-		foreach ($unexpectedFailures as $res) {
+		foreach ($segfaults as $res) {
 			fwrite($output, $res.PHP_EOL);
 		}
 		fwrite($output, "```".PHP_EOL);
 	}
+
+	if (count($afterSuppressionFailures) > 0) {
+		fwrite($output, "#### Tests which failed and was outside of suppressed and allowed to fail lists".PHP_EOL);
+
+		fwrite($output, "```".PHP_EOL);
+		foreach ($afterSuppressionFailures as $res) {
+			fwrite($output, $res.PHP_EOL);
+		}
+		fwrite($output, "```".PHP_EOL);
+
+		return false;
+	}
+
+	return count($segfaults) == 0;
 }
 
-function generateMarkdownResults($outputFileName, $statsWithAgent, $statsWithoutAgent, $unexpectedFailuresWithAgent, $unexpectedFailuresWithoutAgent, $testsAllowedToFail) {
+function generateMarkdownResults($outputFileName, $statsWithAgent, $statsWithoutAgent, $unexpectedFailuresWithAgent, $unexpectedFailuresWithoutAgent, $testsAllowedToFail, $testsFailuresSuppressed, $segfaultsWithAgent, $segfaultsWithoutAgent) {
 	$output = fopen($outputFileName, "w");
 
 	if (!$output) {
@@ -85,41 +107,83 @@ function generateMarkdownResults($outputFileName, $statsWithAgent, $statsWithout
 		fwrite($output, " :white_check_mark: Test passed".PHP_EOL);
 	}
 
-	writeResultsPerTest($output, $statsWithoutAgent, $testsAllowedToFail, $unexpectedFailuresWithoutAgent);
+	writeResultsPerTest($output, $statsWithoutAgent, $testsAllowedToFail, $unexpectedFailuresWithoutAgent, $segfaultsWithoutAgent, []);
 
 	fwrite($output, PHP_EOL);
-	fwrite($output, "## tests executed with agent");
+	fwrite($output, "## tests executed with agent. ");
 	if (count($unexpectedFailuresWithAgent) > 0) {
 		fwrite($output, " :x: Test failed".PHP_EOL);
 	} else {
 		fwrite($output, " :white_check_mark: Test passed".PHP_EOL);
 	}
 
-	writeResultsPerTest($output, $statsWithAgent, $testsAllowedToFail, $unexpectedFailuresWithAgent);
+	$result = writeResultsPerTest($output, $statsWithAgent, $testsAllowedToFail, $unexpectedFailuresWithAgent, $segfaultsWithAgent, $testsFailuresSuppressed);
 
 	fwrite($output, PHP_EOL);
-	if (count($unexpectedFailuresWithAgent) > 0) {
+	if (!$result) {
 		fwrite($output, "# :x: Test failed".PHP_EOL);
 	} else {
 		fwrite($output, "# :white_check_mark: Test passed".PHP_EOL);
 	}
 
 	fclose($output);
+
+	return $result;
 }
+
+// done in bash, lets keep it for future
+// function scanForSegFaults($pathToTests) {
+// 	$segfaults = array();
+// 	$it = new RecursiveDirectoryIterator($pathToTests);
+// 	foreach(new RecursiveIteratorIterator($it) as $file) {
+// 		if ($file->getExtension() != 'log') {
+// 			continue;
+// 		}
+// 		$fileobj = $file->openFile('r');
+// 		while (!$fileobj->eof()) {
+// 			if (str_contains($fileobj->current(), "Segmentation fault (core dumped)")) {
+// 				$phptFileName = $fileobj->getPath()."/".$fileobj->getBasename('.'.$fileobj->getExtension()).".phpt";
+// 				if (file_exists($phptFileName)) {
+// 					$segfaults[] = $phptFileName;
+// 				}
+// 			}
+// 			$fileobj->next();
+// 		}
+// 		$fileobj = null;
+// 	}
+// 	return $segfaults;
+// }
 
 function printHelp($argc, $argv) {
-	echo "Usage: ".$argv[0]." --allowed fileName --failed_with_agent fileName --failed_without_agent fileName".PHP_EOL.PHP_EOL;
-	echo "      --allowed fileName               - file with set of tests allowed to fail. Required".PHP_EOL;
-	echo "      --failed_with_agent fileName     - file with set of tests failed with agent injected. Required".PHP_EOL;
-	echo "      --failed_without_agent fileName  - file with set of tests failed without agent injected. Required".PHP_EOL;
-	echo "      --results_with_agent fileName    - set of full tests results with agent injected. Required".PHP_EOL;
-	echo "      --results_without_agent fileName - set of full tests results without agent injected. Required".PHP_EOL;
-	echo "      --markdown fileName              - name of the output file to generate results in markdown format. Required".PHP_EOL;
-	echo "      --help                           - display this help".PHP_EOL;
+	echo "Usage: ".$argv[0]." ... ".PHP_EOL.PHP_EOL;
+	echo "      --allowed fileName                 - file with set of tests allowed to fail. Mostly flaky tests failing with pure PHP. Required".PHP_EOL;
+	echo "      --suppressed fileName              - file with set of tests which will suppress failures (like test we're working on). Required".PHP_EOL;
+	echo "      --failed_with_agent fileName       - file with set of tests failed with agent injected. Required".PHP_EOL;
+	echo "      --failed_without_agent fileName    - file with set of tests failed without agent injected. Required".PHP_EOL;
+	echo "      --results_with_agent fileName      - set of full tests results with agent injected. Required".PHP_EOL;
+	echo "      --results_without_agent fileName   - set of full tests results without agent injected. Required".PHP_EOL;
+	echo "      --segfaults_with_agent fileName    - set of tests caused segmentation fault with agent injected. Required".PHP_EOL;
+	echo "      --segfaults_without_agent fileName - set of tests caused segmentation fault with agent injected. Required".PHP_EOL;
+	echo "      --markdown fileName                - name of the output file to generate results in markdown format. Required".PHP_EOL;
+	echo "      --help                             - display this help".PHP_EOL;
 }
 
-$options = getopt("h", ["allowed:", "failed_with_agent:", "failed_without_agent:", "results_with_agent:", "results_without_agent:", "markdown:", "help"]);
-if (array_key_exists("help", $options) || !array_key_exists("allowed", $options) || !array_key_exists("failed_without_agent", $options) || !array_key_exists("failed_with_agent", $options) || !array_key_exists("results_with_agent", $options) || !array_key_exists("results_without_agent", $options) || !array_key_exists("markdown", $options)) {
+$optionsTemplate = ["allowed:", "suppressed:", "failed_with_agent:", "failed_without_agent:", "results_with_agent:", "results_without_agent:", "markdown:", "segfaults_with_agent:", "segfaults_without_agent:", "help"];
+$options = getopt("h", $optionsTemplate);
+
+$missingOptions = "";
+foreach ($optionsTemplate as $opt) {
+	if (str_ends_with($opt, ":") && !array_key_exists(substr($opt, 0, -1), $options)) {
+		$missingOptions .= substr($opt, 0, -1)." ";
+	}
+}
+if (strlen($missingOptions) > 0) {
+	echo PHP_EOL."Error, missing required parameters: ".$missingOptions.PHP_EOL.PHP_EOL;
+	printHelp($argc, $argv);
+	exit(1);
+}
+
+if (array_key_exists("help", $options)) {
 	printHelp($argc, $argv);
 	exit(0);
 }
@@ -131,6 +195,13 @@ $testsFailedWithoutAgent = file($options["failed_without_agent"], FILE_IGNORE_NE
 $testsResultsWithAgent = file($options["results_with_agent"], FILE_IGNORE_NEW_LINES);
 $testsResultsWithoutAgent = file($options["results_without_agent"], FILE_IGNORE_NEW_LINES);
 
+$segfaultsWithAgent = file($options["segfaults_with_agent"], FILE_IGNORE_NEW_LINES);
+$segfaultsWithoutAgent = file($options["segfaults_without_agent"], FILE_IGNORE_NEW_LINES);
+
+
+$testsFailuresSuppressed = file($options["suppressed"], FILE_IGNORE_NEW_LINES);
+
+
 $unexpectedFailuresWithoutAgent = getUnexpectedFailures($testsAllowedToFail, $testsFailedWithoutAgent);
 $unexpectedFailuresWithAgent = getUnexpectedFailures($testsAllowedToFail, $testsFailedWithAgent);
 
@@ -139,6 +210,11 @@ printSummary($testsAllowedToFail, $testsFailedWithoutAgent, $testsFailedWithAgen
 $statsWithoutAgent = getStatistics($testsResultsWithoutAgent);
 $statsWithAgent = getStatistics($testsResultsWithAgent);
 
-generateMarkdownResults($options["markdown"], $statsWithAgent, $statsWithoutAgent, $unexpectedFailuresWithAgent, $unexpectedFailuresWithoutAgent, $testsAllowedToFail);
+
+#todo supperessed handling
+
+$result = generateMarkdownResults($options["markdown"], $statsWithAgent, $statsWithoutAgent, $unexpectedFailuresWithAgent, $unexpectedFailuresWithoutAgent, $testsAllowedToFail, $testsFailuresSuppressed, $segfaultsWithAgent, $segfaultsWithoutAgent);
+
+exit( $result ? 0 : 1);
 
 ?>
