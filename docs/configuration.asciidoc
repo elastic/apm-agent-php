@@ -491,9 +491,7 @@ See <<configure-logging>> for details.
 [[config-profiling-inferred-spans-enabled]]
 ==== `profiling_inferred_spans_enabled`
 
-NOTE: This feature is currently experimental,
-which means it is disabled by default
-and it is not guaranteed to be backwards compatible in future releases.
+preview::[]
 
 [options="header"]
 |============
@@ -557,7 +555,7 @@ For example: `100ms`.
 |============
 
 The frequency at which stack traces are gathered in order to construct inferred spans.
-The lower you set it, the more accurate the inferred spans durations will be.
+The lower this is set, the more accurate the inferred spans durations will be.
 On the other hand higher accuracy comes at the expense of higher overhead
 and more inferred spans for potentially irrelevant operations
 (see <<config-profiling-inferred-spans-min-duration>>).
