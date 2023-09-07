@@ -41,7 +41,8 @@ jobs:
         docker-compose up -d elasticsearch apm-server
         docker-compose run phpt_${VERSION_SHORT}
         docker-compose stop
-    - name: Change results ownership 
+    - if: success() || failure()
+      name: Change results ownership 
       run: |
         sudo chmod -R 777 agent/extension_phpt_test/results
         sudo chown -R $(id -u):$(id -g) agent/extension_phpt_test/results
