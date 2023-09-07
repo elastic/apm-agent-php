@@ -183,7 +183,7 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
 
         self::assertSame('InferredSpansBuilderTest', ClassNameUtil::fqToShort(__CLASS__));
         self::assertSame('helperForTestOneStackTrace', $expectedStackTrace[0]->function);
-        self::assertSame('InferredSpansBuilderTest->helperForTestOneStackTrace', $span->name);
+        self::assertSame('InferredSpansBuilderTest::helperForTestOneStackTrace', $span->name);
         self::assertSame(InferredSpanExpectationsBuilder::DEFAULT_SPAN_TYPE, $span->type);
         self::assertSame($expectedTimestampMicroseconds, $span->timestamp);
         self::assertSame($expectedDurationMilliseconds, $span->duration);
