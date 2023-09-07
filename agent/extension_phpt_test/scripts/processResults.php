@@ -107,7 +107,7 @@ function generateMarkdownResults($outputFileName, $statsWithAgent, $statsWithout
 		fwrite($output, " :white_check_mark: Test passed".PHP_EOL);
 	}
 
-	writeResultsPerTest($output, $statsWithoutAgent, $testsAllowedToFail, $unexpectedFailuresWithoutAgent, $segfaultsWithoutAgent, []);
+	writeResultsPerTest($output, $statsWithoutAgent, $testsAllowedToFail, $unexpectedFailuresWithoutAgent, $segfaultsWithoutAgent, array());
 
 	fwrite($output, PHP_EOL);
 	fwrite($output, "## tests executed with agent. ");
@@ -168,12 +168,13 @@ function printHelp($argc, $argv) {
 	echo "      --help                             - display this help".PHP_EOL;
 }
 
-$optionsTemplate = ["allowed:", "suppressed:", "failed_with_agent:", "failed_without_agent:", "results_with_agent:", "results_without_agent:", "markdown:", "segfaults_with_agent:", "segfaults_without_agent:", "help"];
-$options = getopt("h", $optionsTemplate);
+$optTemplateRequired = ["allowed:", "suppressed:", "failed_with_agent:", "failed_without_agent:", "results_with_agent:", "results_without_agent:", "markdown:", "segfaults_with_agent:", "segfaults_without_agent:"];
+$optTemplate = ["help"];
+$options = getopt("h", array_merge($optionsTemplate, $optTemplateRequired));
 
 $missingOptions = "";
-foreach ($optionsTemplate as $opt) {
-	if (str_ends_with($opt, ":") && !array_key_exists(substr($opt, 0, -1), $options)) {
+foreach ($optTemplateRequired as $opt) {
+	if (!array_key_exists(substr($opt, 0, -1), $options)) {
 		$missingOptions .= substr($opt, 0, -1)." ";
 	}
 }
@@ -197,7 +198,6 @@ $testsResultsWithoutAgent = file($options["results_without_agent"], FILE_IGNORE_
 
 $segfaultsWithAgent = file($options["segfaults_with_agent"], FILE_IGNORE_NEW_LINES);
 $segfaultsWithoutAgent = file($options["segfaults_without_agent"], FILE_IGNORE_NEW_LINES);
-
 
 $testsFailuresSuppressed = file($options["suppressed"], FILE_IGNORE_NEW_LINES);
 
