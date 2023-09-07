@@ -1,4 +1,4 @@
-FROM centos:7 as devtools
+FROM arm64v8/centos:7 as devtools
 
 ARG GCC_VERSION=12.2.0
 ARG BINUTILS_VERSION=2.40
@@ -31,8 +31,8 @@ RUN source scl_source enable devtoolset-7 \
  && cd gcc-${GCC_VERSION} \
  && ./contrib/download_prerequisites \
  && CFG_OPTIONS="--enable-languages=c,c++ --enable-shared --enable-linker-build-id --with-system-zlib --without-included-gettext --enable-threads=posix --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --disable-werror --enable-checking=release --with-pic --disable-symvers --enable-obsolete \
- --disable-libstdcxx-visibility --with-tune=generic --enable-libstdcxx-debug-flags=-gdwarf-2 --disable-multilib \
- --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu" \
+ --disable-libstdcxx-visibility --enable-libstdcxx-debug-flags=-gdwarf-2 --disable-multilib \
+ --build=aarch64-linux-gnu --host=aarch64-linux-gnu --target=aarch64-linux-gnu" \
  && echo $CFG_OPTIONS \
  && ./configure --prefix=/opt/gcc-${GCC_VERSION} $CFG_OPTIONS \
  && make -j$(nproc) \
@@ -52,11 +52,11 @@ RUN source scl_source enable devtoolset-7 \
  && cd - \
  && rm -rf binutils-${BINUTILS_VERSION}
 
-RUN curl -OL https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.sh \
- && chmod +x cmake-${CMAKE_VERSION}-linux-x86_64.sh \
+RUN curl -OL https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-aarch64.sh \
+ && chmod +x cmake-${CMAKE_VERSION}-linux-aarch64.sh \
  && sudo mkdir -p /opt/cmake-${CMAKE_VERSION} \
- && sudo ./cmake-${CMAKE_VERSION}-linux-x86_64.sh --skip-license --prefix=/opt/cmake-${CMAKE_VERSION} \
- && rm cmake-${CMAKE_VERSION}-linux-x86_64.sh
+ && sudo ./cmake-${CMAKE_VERSION}-linux-aarch64.sh --skip-license --prefix=/opt/cmake-${CMAKE_VERSION} \
+ && rm cmake-${CMAKE_VERSION}-linux-aarch64.sh
 
 RUN curl -LO https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz \
  && tar -xf Python-${PYTHON_VERSION}.tgz \
@@ -76,7 +76,7 @@ RUN sudo yum -y remove devtoolset-7* centos-release-scl \
  && sudo yum -y clean all
 
 
-FROM centos:7
+FROM arm64v8/centos:7
 
 ARG GCC_VERSION=12.2.0
 ARG BINUTILS_VERSION=2.40

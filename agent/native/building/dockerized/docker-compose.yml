@@ -17,3 +17,21 @@ services:
         volumes:
           - ../../../../:/source
         command: sh -c "cd /source/agent/native && cmake --preset linuxmusl-x86-64-release && cmake --build --preset linuxmusl-x86-64-release"
+
+    build_apm_php_arm64:
+        build:
+            context: .
+            dockerfile: images/Dockerfile_arm64
+        image: elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-linux-arm64-0.0.2
+        volumes:
+          - ../../../../:/source
+        command: sh -c "cd /source/agent/native && cmake --preset linux-arm64-release && cmake --build --preset linux-arm64-release"
+
+    build_apm_php_arm64_musl:
+        build:
+            context: .
+            dockerfile: images/Dockerfile_arm64_musl
+        image: elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-linuxmusl-arm64-0.0.2
+        volumes:
+          - ../../../../:/source
+        command: sh -c "cd /source/agent/native && cmake --preset linuxmusl-arm64-release && cmake --build --preset linuxmusl-arm64-release"
