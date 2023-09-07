@@ -59,7 +59,7 @@ final class StackTraceFrameExpectations extends ExpectationsBase
 
     private static function buildFunctionFromClassMethod(string $class, bool $isStatic, string $method): string
     {
-        return $class . ($isStatic ? '::' : '->') . $method;
+        return $class . StackTraceUtil::CLASS_AND_METHOD_SEPARATOR. $method;
     }
 
     public static function fromClassMethod(string $fileName, int $lineNumber, string $class, bool $isStatic, string $method): self

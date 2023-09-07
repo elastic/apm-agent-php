@@ -359,7 +359,7 @@ class StackTraceUtilTest extends TestCaseBase
         $addToResult(StackTraceUtil::FILE_KEY, $file);
         $addToResult(StackTraceUtil::LINE_KEY, $line);
         $addToResult(StackTraceUtil::CLASS_KEY, $class);
-        $addToResult(StackTraceUtil::TYPE_KEY, $isStaticMethod === null ? null : ($isStaticMethod ? '::' : '->'));
+        $addToResult(StackTraceUtil::TYPE_KEY, StackTraceUtil::CLASS_AND_METHOD_SEPARATOR);
         $addToResult(StackTraceUtil::FUNCTION_KEY, $method);
 
         return $result;
