@@ -43,14 +43,19 @@ jobs:
         docker-compose stop
     - if: success() || failure()
       name: Change results ownership 
+      continue-on-error: true
       run: |
         sudo chmod -R 777 agent/extension_phpt_test/results
         sudo chown -R $(id -u):$(id -g) agent/extension_phpt_test/results
-    - uses: actions/upload-artifact@v3
+    - if: success() || failure()
+      uses: actions/upload-artifact@v3
+      continue-on-error: true
       with:
         name: phpt-test-results-${{ matrix.php-version }}
         path: agent/extension_phpt_test/results
         if-no-files-found: error
-    - name: Test summary
+    - if: success() || failure()
+      name: Test summary
+      continue-on-error: true
       run:
         cat agent/extension_phpt_test/results/${{ matrix.php-version }}/*tests-result.md >> $GITHUB_STEP_SUMMARY
