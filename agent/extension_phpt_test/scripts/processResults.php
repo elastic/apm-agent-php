@@ -170,7 +170,7 @@ function printHelp($argc, $argv) {
 
 $optTemplateRequired = ["allowed:", "suppressed:", "failed_with_agent:", "failed_without_agent:", "results_with_agent:", "results_without_agent:", "markdown:", "segfaults_with_agent:", "segfaults_without_agent:"];
 $optTemplate = ["help"];
-$options = getopt("h", array_merge($optionsTemplate, $optTemplateRequired));
+$options = getopt("h", array_merge($optTemplate, $optTemplateRequired));
 
 $missingOptions = "";
 foreach ($optTemplateRequired as $opt) {
