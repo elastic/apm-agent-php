@@ -119,6 +119,14 @@ draft-release: validate-tag-name validate-github-token  ## Run a draft release g
 get-draft-release: validate-tag-name  ## Get the draft release id for the given TAG_NAME
 	@gh api repos/{owner}/{repo}/releases | jq --arg v "$(TAG_NAME)" '.[]|select(.draft)|select(.tag_name == $$v)|.id'
 
+.PHONY: github-release-ready
+github-release-ready: validate-tag-name validate-github-token  ## Transition the draft release to ready given the GITHUB_TOKEN and TAG_NAME
+	gh \
+		release \
+		edit \
+		"$(TAG_NAME)" \
+		--draft=false
+
 .PHONY: download-verify
 download-verify:  ## Download the assets for the given draft release and verify their signature
 	.ci/download_release_and_verify_checksum.sh "${TAG_NAME}" "${ORIGINAL_PACKAGES_LOCATION}"
