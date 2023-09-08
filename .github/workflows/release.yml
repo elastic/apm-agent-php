@@ -68,22 +68,50 @@ jobs:
         with:
           name: package
           path: build/packages
-      - run: echo "Upload artifacts to gs://internal-ci-artifacts/apm-agent-php/<TAG>"
+
+      - run: |-
+          cd build
+          zip -r unsigned.zip packages/
+
+      - name: 'Get service account'
+        uses: hashicorp/vault-action@v2.7.3
+        with:
+          url: ${{ secrets.VAULT_ADDR }}
+          roleId: ${{ secrets.VAULT_ROLE_ID }}
+          secretId: ${{ secrets.VAULT_SECRET_ID }}
+          method: approle
+          secrets: |
+            secret/observability-team/ci/apm-agent-php-bucket service-account | SERVICE_ACCOUNT ;
+
+      - name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ env.SERVICE_ACCOUNT }}'
+
+      - id: 'upload-file'
+        uses: 'google-github-actions/upload-cloud-storage@v1'
+        with:
+          path: "build/unsigned.zip"
+          destination: "${{ env.BUCKET }}/${{ github.run_id }}"
+          predefinedAcl: "publicRead"
 
       - id: buildkite
-        name: Run Release
+        name: Run buildkite pipeline
         uses: elastic/apm-pipeline-library/.github/actions/buildkite@current
         with:
           vaultUrl: ${{ secrets.VAULT_ADDR }}
           vaultRoleId: ${{ secrets.VAULT_ROLE_ID }}
           vaultSecretId: ${{ secrets.VAULT_SECRET_ID }}
-          pipeline: apm-agent-php-release
+          pipeline: observability-robots-php-release
+          triggerMessage: "${{ github.repository }}@${{ github.ref_name }} - sign artifacts"
           waitFor: true
           printBuildLogs: true
+          artifactName: signed-artifacts
+          artifactPath: "signed-artifacts.zip"
           buildEnvVars: |
-            dry_run=true
+            DOWNLOAD=https://storage.googleapis.com/${{ env.BUCKET }}/${{ steps.upload-file.outputs.uploaded }}
 
-      - run: echo "Download artifacts from  gs://internal-ci-artifacts/apm-agent-php/<TAG>/signed-artifacts"
+      - run: unzip signed-artifacts.zip
 
       - run: echo "Run tests"
 
