@@ -5,10 +5,10 @@ permissions:
   contents: read
 
 on:
+  ### TODO: For testing purposes
   workflow_dispatch:
-  ### TODO: listen for tags, so for now let's test whether it works in dry run mode by default
-  #create:
-  #  tags: [ "v*" ]
+  create:
+    tags: [ "v*" ]
 
 jobs:
   build:
@@ -247,36 +247,42 @@ jobs:
           cd build/packages
           unzip signed-artifacts.zip
 
+      ## TODO: uncomment
       - name: Create draft release
         run: |-
           echo "make -f .ci/Makefile draft-release"
           echo "RELEASE_ID=$(make -f .ci/Makefile get-draft-release)" >> $GITHUB_ENV
 
+      ## TODO: uncomment
       - name: Verify draft release
         run: echo "ORIGINAL_PACKAGES_LOCATION=build/packagesmake -f .ci/Makefile download-verify"
 
+      ## TODO: uncomment
       - name: Publish release
         run: echo "make -f .ci/Makefile github-release-ready"
 
-      - if: ${{ success() }}
-        uses: elastic/apm-pipeline-library/.github/actions/slack-message@current
+  notify:
+    if: always()
+    needs:
+      - build
+      - build-packages
+      - sign
+      - test-packages
+      - release
+      - generate-test-packages-matrix
+    runs-on: ubuntu-latest
+    steps:
+      - id: check
+        uses: elastic/apm-pipeline-library/.github/actions/check-dependent-jobs@current
         with:
-          url: ${{ secrets.VAULT_ADDR }}
-          roleId: ${{ secrets.VAULT_ROLE_ID }}
-          secretId: ${{ secrets.VAULT_SECRET_ID }}
-          #channel: "#apm-agent-php"
-          channel: "#on-week-oblt-productivity"
-          message: |
-            :runner: [${{ github.repository }}] Release *${{ github.ref_name }}* has been triggered in Buildkite: (<${{ steps.buildkite.outputs.build }}|build>)
-
-      - if: ${{ failure() }}
-        uses: elastic/apm-pipeline-library/.github/actions/slack-message@current
+          needs: ${{ toJSON(needs) }}
+      - uses: elastic/apm-pipeline-library/.github/actions/notify-build-status@current
         with:
-          url: ${{ secrets.VAULT_ADDR }}
-          roleId: ${{ secrets.VAULT_ROLE_ID }}
-          secretId: ${{ secrets.VAULT_SECRET_ID }}
-          #channel: "#apm-agent-php"
-          channel: "#on-week-oblt-productivity"
-          message: |
-            :ghost: [${{ github.repository }}] Release *${{ github.ref_name }}* didn't get triggered in Buildkite.
-            Build: (<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|here>)
+          status: ${{ steps.check.outputs.status }}
+          vaultUrl: ${{ secrets.VAULT_ADDR }}
+          vaultRoleId: ${{ secrets.VAULT_ROLE_ID }}
+          vaultSecretId: ${{ secrets.VAULT_SECRET_ID }}
+          ## TODO: uncomment
+          #slackChannel: "#apm-agent-php"
+          slackChannel: "#on-week-oblt-productivity"
+          message: "[${{ github.repository }}] Release (<${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}|${{ github.ref_name }}>)"
