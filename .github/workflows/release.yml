@@ -113,7 +113,7 @@ jobs:
           artifactName: signed-artifacts
           artifactPath: "signed-artifacts.zip"
           buildEnvVars: |
-            DOWNLOAD=https://storage.googleapis.com/${{ env.BUCKET_NAME }}/${{ steps.upload-file.outputs.uploaded }}
+            ARTIFACT_URL=https://storage.googleapis.com/${{ env.BUCKET_NAME }}/${{ steps.upload-file.outputs.uploaded }}
 
   generate-test-packages-matrix:
     runs-on: ubuntu-latest
