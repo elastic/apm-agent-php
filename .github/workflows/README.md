@@ -33,7 +33,7 @@ Every time there is a merge to main or any release branches the whole workflow w
 
 ### Release process
 
-This process has been fully automated and it gets triggered when a tag release has been created.
+This process has been fully automated and [it](https://github.com/elastic/apm-agent-php/actions/workflows/release.yml) gets triggered when a tag release has been created.
 The tag release follows the naming convention: `v.<major>.<minor>.<patch>`, where `<major>`, `<minor>` and `<patch>`.
 
 ### OpenTelemetry
