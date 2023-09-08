@@ -33,6 +33,7 @@ jobs:
           path: |
             agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm*.so
             agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm*.debug
+
   build-packages:
     runs-on: ubuntu-latest
     needs:
@@ -58,8 +59,7 @@ jobs:
             build/packages/*
             !build/packages/**/*.sha512
 
-  release:
-    name: Release
+  sign:
     runs-on: ubuntu-latest
     needs:
       - build-packages
@@ -70,7 +70,8 @@ jobs:
           name: package
           path: build/packages
 
-      - run: |-
+      - name: Prepare packages to be signed
+        run: |-
           cd build
           zip -r unsigned.zip packages/
 
@@ -112,17 +113,138 @@ jobs:
           buildEnvVars: |
             DOWNLOAD=https://storage.googleapis.com/${{ env.BUCKET }}/${{ steps.upload-file.outputs.uploaded }}
 
-      - run: unzip signed-artifacts.zip
+  generate-test-packages-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      include: ${{ steps.generate.outputs.matrix }}
+    needs:
+      - sign
+    steps:
+      - uses: actions/checkout@v3
+      - id: generate
+        run: |
+          MATRIX=$(.ci/generate_package_lifecycle_test_matrix.sh | jq --raw-input --slurp -c 'split("\n") | map(select(length > 0)) | map(split(",")) | map({ "item": . } )')
+          echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
 
-      - run: echo "Run tests"
+  test-packages:
+    timeout-minutes: 120
+    needs:
+      - generate-test-packages-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 20
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.generate-test-packages-matrix.outputs.include) }}
+    env:
+      PHP_VERSION: ${{ matrix.item[0] }}
+      LINUX_PACKAGE_TYPE: ${{ matrix.item[1] }}
+      TESTING_TYPE: ${{ matrix.item[2] }}
+      ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ join(matrix.item, ',') }}"
+    steps:
+      - uses: actions/checkout@v3
 
-      - run: echo "here is no approval input"
+      - uses: actions/download-artifact@v3
+        with:
+          name: signed-artifacts
+          path: build/packages
 
-      - run: echo "Publish draft release"
+      - name: Unzip
+        run: |-
+          cd build/packages
+          unzip signed-artifacts.zip || true
+          ls -l
 
-      - run: echo "Verify draft release checksum"
+      - uses: actions/download-artifact@v3
+        with:
+          name: package-parts-linux-x86-64
+          path: agent/native/_build/linux-x86-64-release/ext
+      - uses: actions/download-artifact@v3
+        with:
+          name: package-parts-linuxmusl-x86-64
+          path: agent/native/_build/linuxmusl-x86-64-release/ext
 
-      - run: echo "Publish release (draft -> regular)"
+      - if: ${{ env.TESTING_TYPE == 'lifecycle' }}
+        name: lifecycle test
+        run: |
+          make -C packaging "prepare-${LINUX_PACKAGE_TYPE}"
+          make -C packaging "${LINUX_PACKAGE_TYPE}-lifecycle-testing"
+
+      - if: ${{ startsWith(env.TESTING_TYPE, 'lifecycle-') }}
+        name: lifecycle test on prod server
+        run: |
+          make -C packaging prepare-${LINUX_PACKAGE_TYPE}-${TESTING_TYPE#lifecycle-}
+          make -C packaging "${LINUX_PACKAGE_TYPE}-lifecycle-testing-in-${TESTING_TYPE#lifecycle-}"
+
+      - if: ${{ env.TESTING_TYPE == 'php-upgrade' }}
+        name: php upgrade test
+        run: |
+          make -C packaging "prepare-${LINUX_PACKAGE_TYPE}"
+          make -C packaging "${LINUX_PACKAGE_TYPE}-php-upgrade-testing"
+
+      ## Agent upgrade requires to build the package with a different version
+      ## Then download the packages for the current version.
+      ## Run the upgrade testing.
+      - if: ${{ env.TESTING_TYPE == 'agent-upgrade' }}
+        name: agent upgrade test - prepare
+        run: |
+          mv build/packages build/backup
+          VERSION=1.0.0 make -C packaging package
+          mv build/packages build/local
+          mv build/backup build/packages
+          make -C packaging "${LINUX_PACKAGE_TYPE}-agent-upgrade-testing-local"
+
+      - if: success() || failure()
+        name: Prepare test result files
+        run: >-
+          find build
+          -name "*junit.xml"
+          -exec bash -c 'mv {} "build/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}-$(basename {})"'
+          \;
+
+      - if: success() || failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: build/*junit.xml
+          if-no-files-found: error
+
+      # Store syslog
+      - if: failure()
+        name: Prepare syslog files
+        continue-on-error: true
+        run: |-
+          mkdir build/syslog-files
+          cd build/syslog || true
+          find . -name "syslog" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
+          find . -name "messages" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
+      - if: failure()
+        uses: actions/upload-artifact@v3
+        continue-on-error: true
+        with:
+          name: syslogs
+          path: build/syslog-files/
+
+  release:
+    needs:
+      - test-packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create draft release
+        run: |-
+          echo "make -f .ci/Makefile draft-release"
+          echo "RELEASE_ID=$(make -f .ci/Makefile get-draft-release)" >> $GITHUB_ENV
+
+      - name: Create draft release
+        run: echo "make -f .ci/Makefile download-verify"
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+          ORIGINAL_PACKAGES_LOCATION: build/packages
+
+      - name: Publish release
+        run: echo "Publish release githubReleasePublish"
+        env:
+          TAG_NAME: ${{ github.ref_name }}
 
       - if: ${{ success() }}
         uses: elastic/apm-pipeline-library/.github/actions/slack-message@current
