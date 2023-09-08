@@ -134,7 +134,7 @@ jobs:
       - generate-test-packages-matrix
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 20
+      max-parallel: 40
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.generate-test-packages-matrix.outputs.include) }}
