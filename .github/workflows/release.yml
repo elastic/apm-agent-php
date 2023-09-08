@@ -151,11 +151,10 @@ jobs:
           name: signed-artifacts
           path: build/packages
 
-      - name: Unzip
+      - name: Unzip signed packages
         run: |-
           cd build/packages
-          unzip signed-artifacts.zip || true
-          ls -l
+          unzip signed-artifacts.zip
 
       - uses: actions/download-artifact@v3
         with:
@@ -237,7 +236,18 @@ jobs:
           echo "make -f .ci/Makefile draft-release"
           echo "RELEASE_ID=$(make -f .ci/Makefile get-draft-release)" >> $GITHUB_ENV
 
-      - name: Create draft release
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: signed-artifacts
+          path: build/packages
+
+      - name: Unzip signed packages
+        run: |-
+          cd build/packages
+          unzip signed-artifacts.zip
+
+      - name: Verify draft release
         run: echo "make -f .ci/Makefile download-verify"
         env:
           TAG_NAME: ${{ github.ref_name }}
