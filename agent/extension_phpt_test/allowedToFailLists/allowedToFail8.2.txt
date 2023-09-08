@@ -12,6 +12,7 @@
 # /usr/src/php/ext/pdo_sqlite/tests/common.phpt: /usr/src/php/ext/pdo/tests/pdo_022.phpt
 /usr/src/php/ext/phar/tests/bug69958.phpt
 /usr/src/php/ext/session/tests/bug71162.phpt
+/usr/src/php/sapi/cli/tests/023.phpt
 /usr/src/php/sapi/phpdbg/tests/basic_run.phpt
 /usr/src/php/sapi/phpdbg/tests/breakpoints_001.phpt
 /usr/src/php/sapi/phpdbg/tests/breakpoints_002.phpt

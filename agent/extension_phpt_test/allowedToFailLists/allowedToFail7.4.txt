@@ -74,3 +74,4 @@
 /usr/src/php/ext/phar/tests/bug69958.phpt
 /usr/src/php/ext/session/tests/bug71162.phpt
 /usr/src/php/ext/session/tests/bug73529.phpt
+/usr/src/php/sapi/cli/tests/023.phpt

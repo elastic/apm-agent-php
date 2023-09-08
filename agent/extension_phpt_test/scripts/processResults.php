@@ -64,7 +64,7 @@ function writeResultsPerTest($output, $stats, $testsAllowedToFail, $unexpectedFa
 
 	$afterSuppressionFailures = [];
 	$afterSuppressionFailures = getUnexpectedFailures($suppressed, $unexpectedFailures);
-	fwrite($output, "| Size of suppression list | " . count($suppressed) . " |" . PHP_EOL);
+	fwrite($output, "|  | Size of suppression list | " . count($suppressed) . " |" . PHP_EOL);
 	fwrite($output, "| " . (count($afterSuppressionFailures) > 0 ? ":x:" : ":heavy_check_mark:") . " | Unexpected test failures (after suppression) | " . count($afterSuppressionFailures) . " |" . PHP_EOL);
 
 	fwrite($output, PHP_EOL);
@@ -100,7 +100,7 @@ function writeResultsPerTest($output, $stats, $testsAllowedToFail, $unexpectedFa
 	fwrite($output, PHP_EOL);
 
 	if (count($retval) > 0) {
-		fwrite($output, "### :x: Test failed because of " . implode(" and ", $retval) . PHP_EOL);
+		fwrite($output, "### :x: Test failed because " . implode(" and ", $retval) . PHP_EOL);
 	} else {
 		fwrite($output, "### :white_check_mark: Test passed" . PHP_EOL);
 	}

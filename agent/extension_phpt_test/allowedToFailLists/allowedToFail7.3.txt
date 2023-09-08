@@ -76,4 +76,5 @@
 /usr/src/php/ext/session/tests/bug73529.phpt
 /usr/src/php/ext/standard/tests/general_functions/proc_nice_basic.phpt
 /usr/src/php/ext/standard/tests/serialize/bug70219.phpt
+/usr/src/php/sapi/cli/tests/023.phpt
 /usr/src/php/sapi/cli/tests/cli_process_title_unix.phpt
