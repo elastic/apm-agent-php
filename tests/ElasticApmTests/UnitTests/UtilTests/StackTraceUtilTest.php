@@ -111,18 +111,18 @@ class StackTraceUtilTest extends TestCaseBase
     public function dataProviderForTestConvertClassAndMethodToFunctionName(): iterable
     {
         yield ['MyClass', /* isStaticMethod */ true, 'myMethod', 'MyClass::myMethod'];
-        yield ['MyClass', /* isStaticMethod */ false, 'myMethod', 'MyClass->myMethod'];
-        yield ['MyClass', /* isStaticMethod */ null, 'myMethod', 'MyClass.myMethod'];
+        yield ['MyClass', /* isStaticMethod */ false, 'myMethod', 'MyClass::myMethod'];
+        yield ['MyClass', /* isStaticMethod */ null, 'myMethod', 'MyClass::myMethod'];
 
-        yield ['MyNamespace\\MyClass', /* isStaticMethod */ false, 'myMethod', 'MyNamespace\\MyClass->myMethod'];
-        yield ['', /* isStaticMethod */ false, 'myMethod', '->myMethod'];
+        yield ['MyNamespace\\MyClass', /* isStaticMethod */ false, 'myMethod', 'MyNamespace\\MyClass::myMethod'];
+        yield ['', /* isStaticMethod */ false, 'myMethod', '::myMethod'];
         yield ['', /* isStaticMethod */ true, 'myMethod', '::myMethod'];
-        yield ['', /* isStaticMethod */ null, 'myMethod', '.myMethod'];
+        yield ['', /* isStaticMethod */ null, 'myMethod', '::myMethod'];
         yield [null, /* isStaticMethod */ true, 'myMethod', 'myMethod'];
         yield [null, /* isStaticMethod */ false, 'myMethod', 'myMethod'];
         yield [null, /* isStaticMethod */ null, 'myMethod', 'myMethod'];
 
-        yield ['MyClass', /* isStaticMethod */ false, '', 'MyClass->'];
+        yield ['MyClass', /* isStaticMethod */ false, '', 'MyClass::'];
         yield ['MyClass', /* isStaticMethod */ true, '', 'MyClass::'];
         yield ['MyClass', /* isStaticMethod */ true, null, null];
         yield ['MyClass', /* isStaticMethod */ false, null, null];
