@@ -95,6 +95,7 @@ jobs:
     uses: ./.github/workflows/test-packages.yml
     with:
       include: ${{ needs.generate-test-packages-matrix.outputs.include }}
+      max-parallel: 40
 
   release:
     needs:

@@ -6,16 +6,21 @@ name: test-packages
 on:
   workflow_call:
     inputs:
-        include:
-          required: true
-          type: string
+      include:
+        required: true
+        type: string
+      max-parallel:
+        description: 'Set the maximum number of jobs that can run simultaneously in the matrix'
+        default: 20
+        required: false
+        type: number
 
 jobs:
-  build:
+  test-packages:
     timeout-minutes: 120
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 20
+      max-parallel: ${{ inputs.max-parallel }}
       fail-fast: false
       matrix:
         include: ${{ fromJSON(inputs.include) }}
