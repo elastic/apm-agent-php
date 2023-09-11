@@ -526,6 +526,11 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureLoggerInitialConfigIsLatest( tracer ) );
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
 
+    ELASTIC_APM_LOG_INFO(
+        "Custom build (based on version: " PHP_ELASTIC_APM_VERSION ") with "
+                                                                   "- span stack trace disabled by default (stack_trace_min_duration: -1)"
+                                                                   "- WordPress instrumentation disabled by default (ast_process_enabled: false)"
+    );
     logSupportabilityInfo( logLevel_debug );
 
     config = getTracerCurrentConfigSnapshot( tracer );
