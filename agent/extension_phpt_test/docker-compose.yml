@@ -14,7 +14,7 @@ services:
             - ../php:/opt/elastic/php
             - ./results:/results
             - ./allowedToFailLists/:/allowedToFailLists
-            - ./listOfFailuresToSuppress/:/listOfFailuresToSuppress/
+            - ./baselineFailures/:/baselineFailures/
         depends_on:
             - elasticsearch
             - apm-server
@@ -32,7 +32,7 @@ services:
             - ../php:/opt/elastic/php
             - ./results:/results
             - ./allowedToFailLists/:/allowedToFailLists
-            - ./listOfFailuresToSuppress/:/listOfFailuresToSuppress/
+            - ./baselineFailures/:/baselineFailures/
         depends_on:
             - elasticsearch
             - apm-server
@@ -50,7 +50,7 @@ services:
             - ../php:/opt/elastic/php
             - ./results:/results
             - ./allowedToFailLists/:/allowedToFailLists
-            - ./listOfFailuresToSuppress/:/listOfFailuresToSuppress/
+            - ./baselineFailures/:/baselineFailures/
         depends_on:
             - elasticsearch
             - apm-server
@@ -68,7 +68,7 @@ services:
             - ../php:/opt/elastic/php
             - ./results:/results
             - ./allowedToFailLists/:/allowedToFailLists
-            - ./listOfFailuresToSuppress/:/listOfFailuresToSuppress/
+            - ./baselineFailures/:/baselineFailures/
         depends_on:
             - elasticsearch
             - apm-server
@@ -86,7 +86,7 @@ services:
             - ../php:/opt/elastic/php
             - ./results:/results
             - ./allowedToFailLists/:/allowedToFailLists
-            - ./listOfFailuresToSuppress/:/listOfFailuresToSuppress/
+            - ./baselineFailures/:/baselineFailures/
         depends_on:
             - elasticsearch
             - apm-server
@@ -104,7 +104,7 @@ services:
             - ../php:/opt/elastic/php
             - ./results:/results
             - ./allowedToFailLists/:/allowedToFailLists
-            - ./listOfFailuresToSuppress/:/listOfFailuresToSuppress/
+            - ./baselineFailures/:/baselineFailures/
         depends_on:
             - elasticsearch
             - apm-server

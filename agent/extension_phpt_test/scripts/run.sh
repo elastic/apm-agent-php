@@ -40,7 +40,7 @@ TEST_SEGFAULTS_WITHOUT_AGENT=/results/${PHP_VERSION}/${RESULT_PREFIX}tests-segfa
 TEST_RESULTS_MD=/results/${PHP_VERSION}/${RESULT_PREFIX}tests-result.md
 
 TEST_ALLOWED_TO_FAIL=/allowedToFailLists/allowedToFail${PHP_VERSION}.txt
-TEST_FAILURES_SUPPRESSED=/listOfFailuresToSuppress/listOfFailuresToSuppress${PHP_VERSION}.txt
+TEST_FAILURES_BASELINE=/baselineFailures/baselineFailures${PHP_VERSION}.txt
 
 printf --  '-%.0s' {1..80} && echo ""
 echo "Elastic PHP agent configuration"
@@ -123,7 +123,7 @@ TEST_PHP_EXECUTABLE=/usr/local/bin/php  ./run-tests.php -q -x --offline -w "${TE
 grep -Rl "Segmentation fault (core dumped)" --include=*.log | sed 's|\.log$|.phpt|' >${TEST_SEGFAULTS_WITH_AGENT}
 compress_test_results ${TEST_FAILED_WITH_AGENT_ARCH}
 
-/scripts/processResults.php --test_folder="/usr/src/php/tests" --allowed ${TEST_ALLOWED_TO_FAIL} --suppressed ${TEST_FAILURES_SUPPRESSED} \
+/scripts/processResults.php --test_folder="/usr/src/php/tests" --allowed ${TEST_ALLOWED_TO_FAIL} --baseline ${TEST_FAILURES_BASELINE} \
  --failed_with_agent ${TEST_FAILED_WITH_AGENT} --failed_without_agent ${TEST_FAILED_WITHOUT_AGENT} \
  --results_with_agent ${TEST_RESULTS_WITH_AGENT} --results_without_agent ${TEST_RESULTS_WITHOUT_AGENT} \
  --segfaults_with_agent ${TEST_SEGFAULTS_WITH_AGENT} --segfaults_without_agent ${TEST_SEGFAULTS_WITHOUT_AGENT} \

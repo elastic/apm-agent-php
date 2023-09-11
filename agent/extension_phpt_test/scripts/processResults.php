@@ -51,7 +51,7 @@ function getStatistics($results)
 }
 
 // returns true on success or false on failure
-function writeResultsPerTest($output, $stats, $testsAllowedToFail, $unexpectedFailures, $segfaults, $suppressed)
+function writeResultsPerTest($output, $stats, $testsAllowedToFail, $unexpectedFailures, $segfaults, $baseline)
 {
 	fwrite($output, "| Status | Test result | count |" . PHP_EOL);
 	fwrite($output, "| --- | --- | --- |" . PHP_EOL);
@@ -60,12 +60,12 @@ function writeResultsPerTest($output, $stats, $testsAllowedToFail, $unexpectedFa
 	}
 	fwrite($output, "| " . (count($segfaults) > 0 ? ":x:" : ":heavy_check_mark:") . " | Segmentation faults | " . count($segfaults) . " |" . PHP_EOL);
 	fwrite($output, "|  | Tests allowed to fail | " . count($testsAllowedToFail) . " |" . PHP_EOL);
-	fwrite($output, "| " . (count($unexpectedFailures) > 0 ? ":warning:" : ":heavy_check_mark:") . " | Unexpected test failures (without suppression) | " . count($unexpectedFailures) . " |" . PHP_EOL);
+	fwrite($output, "| " . (count($unexpectedFailures) > 0 ? ":warning:" : ":heavy_check_mark:") . " | Unexpected test failures (without baseline) | " . count($unexpectedFailures) . " |" . PHP_EOL);
 
-	$afterSuppressionFailures = [];
-	$afterSuppressionFailures = getUnexpectedFailures($suppressed, $unexpectedFailures);
-	fwrite($output, "|  | Size of suppression list | " . count($suppressed) . " |" . PHP_EOL);
-	fwrite($output, "| " . (count($afterSuppressionFailures) > 0 ? ":x:" : ":heavy_check_mark:") . " | Unexpected test failures (after suppression) | " . count($afterSuppressionFailures) . " |" . PHP_EOL);
+	$afterBaselineFailures = [];
+	$afterBaselineFailures = getUnexpectedFailures($baseline, $unexpectedFailures);
+	fwrite($output, "|  | Size of baseline list | " . count($baseline) . " |" . PHP_EOL);
+	fwrite($output, "| " . (count($afterBaselineFailures) > 0 ? ":x:" : ":heavy_check_mark:") . " | Unexpected test failures (above baseline) | " . count($afterBaselineFailures) . " |" . PHP_EOL);
 
 	fwrite($output, PHP_EOL);
 
@@ -81,11 +81,11 @@ function writeResultsPerTest($output, $stats, $testsAllowedToFail, $unexpectedFa
 
 	$retval = [];
 
-	if (count($afterSuppressionFailures) > 0) {
-		fwrite($output, "#### Tests which failed and was outside of suppressed and allowed to fail lists" . PHP_EOL);
+	if (count($afterBaselineFailures) > 0) {
+		fwrite($output, "#### Tests which failed and was above baseline and allowed to fail list" . PHP_EOL);
 
 		fwrite($output, "```" . PHP_EOL);
-		foreach ($afterSuppressionFailures as $res) {
+		foreach ($afterBaselineFailures as $res) {
 			fwrite($output, $res . PHP_EOL);
 		}
 		fwrite($output, "```" . PHP_EOL);
@@ -108,7 +108,7 @@ function writeResultsPerTest($output, $stats, $testsAllowedToFail, $unexpectedFa
 	return count($retval) == 0;
 }
 
-function generateMarkdownResults($outputFileName, $statsWithAgent, $statsWithoutAgent, $unexpectedFailuresWithAgent, $unexpectedFailuresWithoutAgent, $testsAllowedToFail, $testsFailuresSuppressed, $segfaultsWithAgent, $segfaultsWithoutAgent)
+function generateMarkdownResults($outputFileName, $statsWithAgent, $statsWithoutAgent, $unexpectedFailuresWithAgent, $unexpectedFailuresWithoutAgent, $testsAllowedToFail, $baselineList, $segfaultsWithAgent, $segfaultsWithoutAgent)
 {
 	$output = fopen($outputFileName, "w");
 
@@ -128,7 +128,7 @@ function generateMarkdownResults($outputFileName, $statsWithAgent, $statsWithout
 	fwrite($output, "***".PHP_EOL);
 	fwrite($output, PHP_EOL);
 	fwrite($output, "## tests executed with agent. " . PHP_EOL);
-	$results[] = writeResultsPerTest($output, $statsWithAgent, $testsAllowedToFail, $unexpectedFailuresWithAgent, $segfaultsWithAgent, $testsFailuresSuppressed);
+	$results[] = writeResultsPerTest($output, $statsWithAgent, $testsAllowedToFail, $unexpectedFailuresWithAgent, $segfaultsWithAgent, $baselineList);
 
 	fwrite($output, "***".PHP_EOL);
 	fwrite($output, PHP_EOL . "# Summary status: " . (($results[0] && $results[1]) ? ":heavy_check_mark: PASSED" : ":x: FAILED") . PHP_EOL);
@@ -165,7 +165,7 @@ function printHelp($argc, $argv)
 {
 	echo "Usage: " . $argv[0] . " ... " . PHP_EOL . PHP_EOL;
 	echo "      --allowed fileName                 - file with set of tests allowed to fail. Mostly flaky tests failing with pure PHP. Required" . PHP_EOL;
-	echo "      --suppressed fileName              - file with set of tests which will suppress failures (like test we're working on). Required" . PHP_EOL;
+	echo "      --baseline fileName                - file with set of tests which will suppress failures (like test we're working on). Required" . PHP_EOL;
 	echo "      --failed_with_agent fileName       - file with set of tests failed with agent injected. Required" . PHP_EOL;
 	echo "      --failed_without_agent fileName    - file with set of tests failed without agent injected. Required" . PHP_EOL;
 	echo "      --results_with_agent fileName      - set of full tests results with agent injected. Required" . PHP_EOL;
@@ -176,7 +176,7 @@ function printHelp($argc, $argv)
 	echo "      --help                             - display this help" . PHP_EOL;
 }
 
-$optTemplateRequired = ["allowed:", "suppressed:", "failed_with_agent:", "failed_without_agent:", "results_with_agent:", "results_without_agent:", "markdown:", "segfaults_with_agent:", "segfaults_without_agent:"];
+$optTemplateRequired = ["allowed:", "baseline:", "failed_with_agent:", "failed_without_agent:", "results_with_agent:", "results_without_agent:", "markdown:", "segfaults_with_agent:", "segfaults_without_agent:"];
 $optTemplate = ["help"];
 $options = getopt("h", array_merge($optTemplate, $optTemplateRequired));
 
@@ -207,7 +207,7 @@ $testsResultsWithoutAgent = file($options["results_without_agent"], FILE_IGNORE_
 $segfaultsWithAgent = file($options["segfaults_with_agent"], FILE_IGNORE_NEW_LINES);
 $segfaultsWithoutAgent = file($options["segfaults_without_agent"], FILE_IGNORE_NEW_LINES);
 
-$testsFailuresSuppressed = file($options["suppressed"], FILE_IGNORE_NEW_LINES);
+$baselineList = file($options["baseline"], FILE_IGNORE_NEW_LINES);
 
 
 $unexpectedFailuresWithoutAgent = getUnexpectedFailures($testsAllowedToFail, $testsFailedWithoutAgent);
@@ -218,7 +218,7 @@ printSummary($testsAllowedToFail, $testsFailedWithoutAgent, $testsFailedWithAgen
 $statsWithoutAgent = getStatistics($testsResultsWithoutAgent);
 $statsWithAgent = getStatistics($testsResultsWithAgent);
 
-$result = generateMarkdownResults($options["markdown"], $statsWithAgent, $statsWithoutAgent, $unexpectedFailuresWithAgent, $unexpectedFailuresWithoutAgent, $testsAllowedToFail, $testsFailuresSuppressed, $segfaultsWithAgent, $segfaultsWithoutAgent);
+$result = generateMarkdownResults($options["markdown"], $statsWithAgent, $statsWithoutAgent, $unexpectedFailuresWithAgent, $unexpectedFailuresWithoutAgent, $testsAllowedToFail, $baselineList, $segfaultsWithAgent, $segfaultsWithoutAgent);
 
 exit($result ? 0 : 1);
 
