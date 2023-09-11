@@ -1,0 +1,24 @@
+---
+
+# Runs the generate matrix based on the provided files in test.yml or release.yml
+name: generate-matrix
+
+on:
+  workflow_call:
+    outputs:
+      include:
+        description: "The matrix"
+        value: ${{ jobs.generate-matrix.outputs.include }}
+
+jobs:
+  generate-matrix:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    outputs:
+      include: ${{ steps.generate.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v3
+      - id: generate
+        run: |
+          MATRIX=$(.ci/generate_package_lifecycle_test_matrix.sh | jq --raw-input --slurp -c 'split("\n") | map(select(length > 0)) | map(split(",")) | map({ "item": . } )')
+          echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT

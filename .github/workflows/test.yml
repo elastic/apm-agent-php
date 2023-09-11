@@ -107,15 +107,7 @@ jobs:
     uses: ./.github/workflows/build-packages.yml
 
   generate-test-packages-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      include: ${{ steps.generate.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@v3
-      - id: generate
-        run: |
-          MATRIX=$(.ci/generate_package_lifecycle_test_matrix.sh | jq --raw-input --slurp -c 'split("\n") | map(select(length > 0)) | map(split(",")) | map({ "item": . } )')
-          echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
+    uses: ./.github/workflows/generate-matrix.yml
 
   test-packages:
     needs:
