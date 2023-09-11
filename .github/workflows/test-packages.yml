@@ -1,0 +1,103 @@
+---
+
+# Runs the test packages based on the provided files in test.yml
+name: test-packages
+
+on:
+  workflow_call:
+    inputs:
+        include:
+          required: true
+          type: string
+
+jobs:
+  build:
+    timeout-minutes: 120
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 20
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.include) }}
+    env:
+      PHP_VERSION: ${{ matrix.item[0] }}
+      LINUX_PACKAGE_TYPE: ${{ matrix.item[1] }}
+      TESTING_TYPE: ${{ matrix.item[2] }}
+      ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ join(matrix.item, ',') }}"
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: package
+          path: build/packages
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: package-parts-linux-x86-64
+          path: agent/native/_build/linux-x86-64-release/ext
+      - uses: actions/download-artifact@v3
+        with:
+          name: package-parts-linuxmusl-x86-64
+          path: agent/native/_build/linuxmusl-x86-64-release/ext
+
+      - if: ${{ env.TESTING_TYPE == 'lifecycle' }}
+        name: lifecycle test
+        run: |
+          make -C packaging "prepare-${LINUX_PACKAGE_TYPE}"
+          make -C packaging "${LINUX_PACKAGE_TYPE}-lifecycle-testing"
+
+      - if: ${{ startsWith(env.TESTING_TYPE, 'lifecycle-') }}
+        name: lifecycle test on prod server
+        run: |
+          make -C packaging prepare-${LINUX_PACKAGE_TYPE}-${TESTING_TYPE#lifecycle-}
+          make -C packaging "${LINUX_PACKAGE_TYPE}-lifecycle-testing-in-${TESTING_TYPE#lifecycle-}"
+
+      - if: ${{ env.TESTING_TYPE == 'php-upgrade' }}
+        name: php upgrade test
+        run: |
+          make -C packaging "prepare-${LINUX_PACKAGE_TYPE}"
+          make -C packaging "${LINUX_PACKAGE_TYPE}-php-upgrade-testing"
+
+      ## Agent upgrade requires to build the package with a different version
+      ## Then download the packages for the current version.
+      ## Run the upgrade testing.
+      - if: ${{ env.TESTING_TYPE == 'agent-upgrade' }}
+        name: agent upgrade test - prepare
+        run: |
+          mv build/packages build/backup
+          VERSION=1.0.0 make -C packaging package
+          mv build/packages build/local
+          mv build/backup build/packages
+          make -C packaging "${LINUX_PACKAGE_TYPE}-agent-upgrade-testing-local"
+
+      - if: success() || failure()
+        name: Prepare test result files
+        run: >-
+          find build
+          -name "*junit.xml"
+          -exec bash -c 'mv {} "build/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}-$(basename {})"'
+          \;
+
+      - if: success() || failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: build/*junit.xml
+          if-no-files-found: error
+
+      # Store syslog
+      - if: failure()
+        name: Prepare syslog files
+        continue-on-error: true
+        run: |-
+          mkdir build/syslog-files
+          cd build/syslog || true
+          find . -name "syslog" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
+          find . -name "messages" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
+      - if: failure()
+        uses: actions/upload-artifact@v3
+        continue-on-error: true
+        with:
+          name: syslogs
+          path: build/syslog-files/

@@ -386,7 +386,7 @@ You must use the query bar to filter for a specific environment in versions prio
 
 [options="header"]
 |============
-| Hostname variable name      | Option name in `php.ini`
+| Environment variable name      | Option name in `php.ini`
 | `ELASTIC_APM_GLOBAL_LABELS` | `elastic_apm.global_labels`
 |============
 
@@ -416,7 +416,7 @@ NOTE: This option requires APM Server 7.2 or later. It will have no effect on ol
 
 [options="header"]
 |============
-| Hostname variable name      | Option name in `php.ini`
+| Environment variable name      | Option name in `php.ini`
 | `ELASTIC_APM_HOSTNAME` | `elastic_apm.hostname`
 |============
 
@@ -486,6 +486,82 @@ See <<configure-logging>> for details.
 
 The logging level for `syslog` logging sink.
 See <<configure-logging>> for details.
+
+[float]
+[[config-profiling-inferred-spans-enabled]]
+==== `profiling_inferred_spans_enabled`
+
+preview::[]
+
+[options="header"]
+|============
+| Environment variable name                      | Option name in `php.ini`
+| `ELASTIC_APM_PROFILING_INFERRED_SPANS_ENABLED` | `elastic_apm.profiling_inferred_spans_enabled`
+|============
+
+[options="header"]
+|============
+| Default | Type
+| `false`  | Boolean
+|============
+
+If this option is set to `true` then the agent creates spans for method executions
+based on sampling aka statistical profiler.
+
+Due to the nature of how sampling profilers work,
+the duration of the inferred spans are not exact, but only estimations.
+See <<config-profiling-inferred-spans-sampling-interval>>
+to fine tune the trade-off between accuracy and overhead.
+
+[float]
+[[config-profiling-inferred-spans-min-duration]]
+==== `profiling_inferred_spans_min_duration`
+
+[options="header"]
+|============
+| Environment variable name                           | Option name in `php.ini`
+| `ELASTIC_APM_PROFILING_INFERRED_SPANS_MIN_DURATION` | `elastic_apm.profiling_inferred_spans_min_duration`
+|============
+
+[options="header"]
+|============
+| Default | Type
+| `0ms`   | Duration
+|============
+
+The minimum duration of an inferred span.
+
+Note that effective minimum duration is also affected by the sampling interval
+so it is
+max(<<config-profiling-inferred-spans-min-duration>>, <<config-profiling-inferred-spans-sampling-interval>>)
+
+This configuration option supports the duration suffixes: `ms`, `s` and `m`.
+For example: `100ms`.
+
+[float]
+[[config-profiling-inferred-spans-sampling-interval]]
+==== `profiling_inferred_spans_sampling_interval`
+
+[options="header"]
+|============
+| Environment variable name                                | Option name in `php.ini`
+| `ELASTIC_APM_PROFILING_INFERRED_SPANS_SAMPLING_INTERVAL` | `elastic_apm.profiling_inferred_spans_sampling_interval`
+|============
+
+[options="header"]
+|============
+| Default | Type
+| `50ms`  | Duration
+|============
+
+The frequency at which stack traces are gathered in order to construct inferred spans.
+The lower this is set, the more accurate the inferred spans durations will be.
+On the other hand higher accuracy comes at the expense of higher overhead
+and more inferred spans for potentially irrelevant operations
+(see <<config-profiling-inferred-spans-min-duration>>).
+
+This configuration option supports the duration suffixes: `ms`, `s` and `m`.
+For example: `50ms`.
 
 [float]
 [[config-secret-token]]

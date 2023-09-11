@@ -554,6 +554,10 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
 
     elasticapm::php::Hooking::getInstance().replaceHooks();
 
+    if (php_check_open_basedir_ex(config->bootstrapPhpPartFile, false) != 0) {
+        ELASTIC_APM_LOG_WARNING( "Elastic Agent bootstrap file (%s) is located outside of paths allowed by open_basedir ini setting. Read more details here https://www.elastic.co/guide/en/apm/agent/php/current/setup.html#limitations", config->bootstrapPhpPartFile);
+    }
+
     resultCode = resultSuccess;
     finally:
 

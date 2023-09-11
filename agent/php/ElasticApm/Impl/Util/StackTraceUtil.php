@@ -43,6 +43,7 @@ final class StackTraceUtil
     public const TYPE_KEY = 'type';
     public const FUNCTION_IS_STATIC_METHOD_TYPE_VALUE = '::';
     public const FUNCTION_IS_METHOD_TYPE_VALUE = '->';
+    public const CLASS_AND_METHOD_SEPARATOR = '::';
     public const THIS_OBJECT_KEY = 'object';
     public const ARGS_KEY = 'args';
 
@@ -270,8 +271,7 @@ final class StackTraceUtil
             return $methodName;
         }
 
-        $classMethodSep = ($isStaticMethod === null) ? '.' : ($isStaticMethod ? StackTraceUtil::FUNCTION_IS_STATIC_METHOD_TYPE_VALUE : StackTraceUtil::FUNCTION_IS_METHOD_TYPE_VALUE);
-        return $classicName . $classMethodSep . $methodName;
+        return $classicName . StackTraceUtil::CLASS_AND_METHOD_SEPARATOR . $methodName;
     }
 
     private static function isTrampolineCall(ClassicFormatStackTraceFrame $frame): bool

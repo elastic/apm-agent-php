@@ -6,11 +6,17 @@
 If you don't want to install any of the dependencies you might need to compile and install the library then you can use the Dockerfile.
 
 ```bash
-## To compile the library for all supported PHP releases for glibc Linux distributions
+## To compile the library for all supported PHP releases for glibc Linux distributions for x86_64 architecture
 BUILD_ARCHITECTURE=linux-x86-64 make -f .ci/Makefile build
 
-## To compile the library for all supported PHP releases for musl libc Linux distributions
+## To compile the library for all supported PHP releases for musl libc Linux distributions for x86_64 architecture
 BUILD_ARCHITECTURE=linuxmusl-x86-64 make -f .ci/Makefile build
+
+## To compile the library for all supported PHP releases for glibc Linux distributions for aarch64 (ARMv8) architecture. This build is not officially supported.
+BUILD_ARCHITECTURE=linux-arm64 make -f .ci/Makefile build
+
+## To compile the library for all supported PHP releases for musl libc Linux distributions for aarch64 (ARMv8) architecture. This build is not officially supported.
+BUILD_ARCHITECTURE=linuxmusl-arm64 make -f .ci/Makefile build
 
 ## To prepare the docker container for testing
 PHP_VERSION=7.2 make -f .ci/Makefile prepare
