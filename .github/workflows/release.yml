@@ -5,8 +5,6 @@ permissions:
   contents: read
 
 on:
-  ### TODO: For testing purposes
-  workflow_dispatch:
   create:
     tags: [ "v*" ]
 
@@ -248,19 +246,16 @@ jobs:
           cd build/packages
           unzip signed-artifacts.zip
 
-      ## TODO: uncomment
       - name: Create draft release
         run: |-
-          echo "make -f .ci/Makefile draft-release"
+          make -f .ci/Makefile draft-release
           echo "RELEASE_ID=$(make -f .ci/Makefile get-draft-release)" >> $GITHUB_ENV
 
-      ## TODO: uncomment
       - name: Verify draft release
-        run: echo "ORIGINAL_PACKAGES_LOCATION=build/packagesmake -f .ci/Makefile download-verify"
+        run: ORIGINAL_PACKAGES_LOCATION=build/packagesmake -f .ci/Makefile download-verify
 
-      ## TODO: uncomment
       - name: Publish release
-        run: echo "make -f .ci/Makefile github-release-ready"
+        run: make -f .ci/Makefile github-release-ready
 
   notify:
     if: always()
@@ -283,7 +278,5 @@ jobs:
           vaultUrl: ${{ secrets.VAULT_ADDR }}
           vaultRoleId: ${{ secrets.VAULT_ROLE_ID }}
           vaultSecretId: ${{ secrets.VAULT_SECRET_ID }}
-          ## TODO: uncomment
-          #slackChannel: "#apm-agent-php"
-          slackChannel: "#on-week-oblt-productivity"
+          slackChannel: "#apm-agent-php"
           message: "[${{ github.repository }}] Release (<${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}|${{ github.ref_name }}>)"
