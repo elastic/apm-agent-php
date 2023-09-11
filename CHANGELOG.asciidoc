@@ -20,7 +20,7 @@ endif::[]
 
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
-[[release-notes-v1.9.2]]
+[[release-notes-v1.10.0]]
 === v1.10.0 - 2023/09/12
 [float]
 ==== Features
