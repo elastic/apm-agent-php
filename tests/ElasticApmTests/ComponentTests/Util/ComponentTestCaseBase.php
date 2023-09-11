@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\AutoInstrument\AutoInstrumentationBase;
+use Elastic\Apm\Impl\Config\OptionDefaultValues;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
@@ -184,6 +185,7 @@ class ComponentTestCaseBase extends TestCaseBase
     /**
      * @param class-string<AutoInstrumentationBase> $instrClassName
      * @param string[]                              $expectedNames
+     * @param bool                                  $isEnabledByDefault
      *
      * @return void
      */
@@ -197,7 +199,8 @@ class ComponentTestCaseBase extends TestCaseBase
         $actualNames = $instr->keywords();
         $actualNames[] = $instr->name();
         self::assertEqualAsSets($expectedNames, $actualNames);
-        self::assertTrue($instr->isEnabled());
+        $isEnabledByDefault = OptionDefaultValues::AST_PROCESS_ENABLED || (!$instr->requiresUserlandCodeInstrumentation());
+        self::assertSame($isEnabledByDefault, $instr->isEnabled());
 
         /**
          * @param string $name
@@ -238,7 +241,7 @@ class ComponentTestCaseBase extends TestCaseBase
             $dbgCtx->clearCurrentSubScope(['disableInstrumentationsOptVal' => $disableInstrumentationsOptVal]);
             $tracer = self::buildTracerForTests()->withConfig(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal)->build();
             $instr = new $instrClassName($tracer);
-            self::assertTrue($instr->isEnabled());
+            self::assertSame($isEnabledByDefault, $instr->isEnabled());
         }
         $dbgCtx->popSubScope();
 
