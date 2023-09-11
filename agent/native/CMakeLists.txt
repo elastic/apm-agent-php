@@ -86,6 +86,7 @@ endforeach()
 # TODO implement multiarray with mapping of library->version
 
 set(dependencies
+    "zlib/1.3"
     "libcurl/8.0.1"
     "libunwind/1.6.2"
 #    "boost/1.82.0"
