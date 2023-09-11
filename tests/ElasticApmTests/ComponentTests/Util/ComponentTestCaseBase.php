@@ -185,7 +185,6 @@ class ComponentTestCaseBase extends TestCaseBase
     /**
      * @param class-string<AutoInstrumentationBase> $instrClassName
      * @param string[]                              $expectedNames
-     * @param bool                                  $isEnabledByDefault
      *
      * @return void
      */
@@ -199,7 +198,7 @@ class ComponentTestCaseBase extends TestCaseBase
         $actualNames = $instr->keywords();
         $actualNames[] = $instr->name();
         self::assertEqualAsSets($expectedNames, $actualNames);
-        $isEnabledByDefault = OptionDefaultValues::AST_PROCESS_ENABLED || (!$instr->requiresUserlandCodeInstrumentation());
+        $isEnabledByDefault = OptionDefaultValues::AST_PROCESS_ENABLED || (!$instr->requiresUserlandCodeInstrumentation()); // @phpstan-ignore-line
         self::assertSame($isEnabledByDefault, $instr->isEnabled());
 
         /**
