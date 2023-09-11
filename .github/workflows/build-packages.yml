@@ -1,0 +1,31 @@
+---
+
+# Runs the build-packages based on the provided files in test.yml
+name: build-packages
+
+on:
+  workflow_call: ~
+
+jobs:
+  build-packages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
+        with:
+          name: package-parts-linux-x86-64
+          path: agent/native/_build/linux-x86-64-release/ext
+      - uses: actions/download-artifact@v3
+        with:
+          name: package-parts-linuxmusl-x86-64
+          path: agent/native/_build/linuxmusl-x86-64-release/ext
+      - name: package
+        run: make -C packaging package
+      - name: package info
+        run: make -C packaging info
+      - uses: actions/upload-artifact@v3
+        with:
+          name: package
+          path: |
+            build/packages/*
+            !build/packages/**/*.sha512

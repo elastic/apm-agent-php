@@ -25,27 +25,8 @@ concurrency:
 
 jobs:
   build:
-    name: build-agent-library
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        arch:
-          - "linux-x86-64"
-          - "linuxmusl-x86-64"
-    env:
-      BUILD_ARCHITECTURE: ${{ matrix.arch }}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Build
-        run: make -f .ci/Makefile build
-      - uses: actions/upload-artifact@v3
-        with:
-          name: package-parts-${{ matrix.arch }}
-          path: |
-            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm*.so
-            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm*.debug
+    uses: ./.github/workflows/build.yml
+
   phpt-tests:
     name: phpt-tests
     runs-on: ubuntu-latest
@@ -119,31 +100,12 @@ jobs:
           path: build/*junit.xml
           if-no-files-found: error
   build-packages:
-    runs-on: ubuntu-latest
     needs:
       - build
       - static-checks-unit-tests
       - phpt-tests
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v3
-        with:
-          name: package-parts-linux-x86-64
-          path: agent/native/_build/linux-x86-64-release/ext
-      - uses: actions/download-artifact@v3
-        with:
-          name: package-parts-linuxmusl-x86-64
-          path: agent/native/_build/linuxmusl-x86-64-release/ext
-      - name: package
-        run: make -C packaging package
-      - name: package info
-        run: make -C packaging info
-      - uses: actions/upload-artifact@v3
-        with:
-          name: package
-          path: |
-            build/packages/*
-            !build/packages/**/*.sha512
+    uses: ./.github/workflows/build-packages.yml
+
   generate-test-packages-matrix:
     runs-on: ubuntu-latest
     outputs:
@@ -154,99 +116,14 @@ jobs:
         run: |
           MATRIX=$(.ci/generate_package_lifecycle_test_matrix.sh | jq --raw-input --slurp -c 'split("\n") | map(select(length > 0)) | map(split(",")) | map({ "item": . } )')
           echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
+
   test-packages:
-    timeout-minutes: 120
     needs:
       - build-packages
       - generate-test-packages-matrix
-    runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 20
-      fail-fast: false
-      matrix:
-        include: ${{ fromJSON(needs.generate-test-packages-matrix.outputs.include) }}
-    env:
-      PHP_VERSION: ${{ matrix.item[0] }}
-      LINUX_PACKAGE_TYPE: ${{ matrix.item[1] }}
-      TESTING_TYPE: ${{ matrix.item[2] }}
-      ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ join(matrix.item, ',') }}"
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: package
-          path: build/packages
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: package-parts-linux-x86-64
-          path: agent/native/_build/linux-x86-64-release/ext
-      - uses: actions/download-artifact@v3
-        with:
-          name: package-parts-linuxmusl-x86-64
-          path: agent/native/_build/linuxmusl-x86-64-release/ext
-
-      - if: ${{ env.TESTING_TYPE == 'lifecycle' }}
-        name: lifecycle test
-        run: |
-          make -C packaging "prepare-${LINUX_PACKAGE_TYPE}"
-          make -C packaging "${LINUX_PACKAGE_TYPE}-lifecycle-testing"
-
-      - if: ${{ startsWith(env.TESTING_TYPE, 'lifecycle-') }}
-        name: lifecycle test on prod server
-        run: |
-          make -C packaging prepare-${LINUX_PACKAGE_TYPE}-${TESTING_TYPE#lifecycle-}
-          make -C packaging "${LINUX_PACKAGE_TYPE}-lifecycle-testing-in-${TESTING_TYPE#lifecycle-}"
-
-      - if: ${{ env.TESTING_TYPE == 'php-upgrade' }}
-        name: php upgrade test
-        run: |
-          make -C packaging "prepare-${LINUX_PACKAGE_TYPE}"
-          make -C packaging "${LINUX_PACKAGE_TYPE}-php-upgrade-testing"
-
-      ## Agent upgrade requires to build the package with a different version
-      ## Then download the packages for the current version.
-      ## Run the upgrade testing.
-      - if: ${{ env.TESTING_TYPE == 'agent-upgrade' }}
-        name: agent upgrade test - prepare
-        run: |
-          mv build/packages build/backup
-          VERSION=1.0.0 make -C packaging package
-          mv build/packages build/local
-          mv build/backup build/packages
-          make -C packaging "${LINUX_PACKAGE_TYPE}-agent-upgrade-testing-local"
-
-      - if: success() || failure()
-        name: Prepare test result files
-        run: >-
-          find build
-          -name "*junit.xml"
-          -exec bash -c 'mv {} "build/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW}-$(basename {})"'
-          \;
-
-      - if: success() || failure()
-        uses: actions/upload-artifact@v3
-        with:
-          name: test-results
-          path: build/*junit.xml
-          if-no-files-found: error
-
-      # Store syslog
-      - if: failure()
-        name: Prepare syslog files
-        continue-on-error: true
-        run: |-
-          mkdir build/syslog-files
-          cd build/syslog || true
-          find . -name "syslog" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
-          find . -name "messages" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
-      - if: failure()
-        uses: actions/upload-artifact@v3
-        continue-on-error: true
-        with:
-          name: syslogs
-          path: build/syslog-files/
+    uses: ./.github/workflows/test-packages.yml
+    with:
+      include: ${{ needs.generate-test-packages-matrix.outputs.include }}
 
   # The very last job to report whether the Workflow passed.
   # This will act as the Branch Protection gatekeeper

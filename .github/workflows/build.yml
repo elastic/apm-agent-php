@@ -1,0 +1,31 @@
+---
+
+# Runs the build based on the provided files in test.yml
+name: build
+
+on:
+  workflow_call: ~
+
+jobs:
+  build:
+    name: build-agent-library
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - "linux-x86-64"
+          - "linuxmusl-x86-64"
+    env:
+      BUILD_ARCHITECTURE: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: make -f .ci/Makefile build
+      - uses: actions/upload-artifact@v3
+        with:
+          name: package-parts-${{ matrix.arch }}
+          path: |
+            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm*.so
+            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm*.debug
