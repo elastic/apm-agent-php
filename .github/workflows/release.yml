@@ -72,10 +72,11 @@ jobs:
           name: package
           path: build/packages
 
+      ## NOTE: The name of the zip should match the name of the folder to be zipped.
       - name: Prepare packages to be signed
         run: |-
           cd build
-          zip -r unsigned.zip packages/
+          zip -r packages.zip packages/
 
       - name: 'Get service account'
         uses: hashicorp/vault-action@v2.7.3
@@ -95,7 +96,7 @@ jobs:
       - id: 'upload-file'
         uses: 'google-github-actions/upload-cloud-storage@v1'
         with:
-          path: "build/unsigned.zip"
+          path: "build/packages.zip"
           destination: "${{ env.BUCKET_NAME }}/${{ github.run_id }}"
           predefinedAcl: "publicRead"
 
@@ -113,7 +114,7 @@ jobs:
           artifactName: signed-artifacts
           artifactPath: "signed-artifacts.zip"
           buildEnvVars: |
-            ARTIFACT_URL=https://storage.googleapis.com/${{ env.BUCKET_NAME }}/${{ steps.upload-file.outputs.uploaded }}
+            BUNDLE_URL=https://storage.googleapis.com/${{ env.BUCKET_NAME }}/${{ steps.upload-file.outputs.uploaded }}
 
   generate-test-packages-matrix:
     runs-on: ubuntu-latest
