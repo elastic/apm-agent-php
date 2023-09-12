@@ -10,6 +10,18 @@ on:
 
 jobs:
 
+  release-started:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: elastic/apm-pipeline-library/.github/actions/slack-message@current
+        with:
+          url: ${{ secrets.VAULT_ADDR }}
+          roleId: ${{ secrets.VAULT_ROLE_ID }}
+          secretId: ${{ secrets.VAULT_SECRET_ID }}
+          channel: "#apm-agent-php"
+          message: |
+            :runner: [${{ github.repository }}] Release *${{ github.ref_name }}* has been triggered : (<${{ steps.buildkite.outputs.build }}|here> for further details)
+
   build:
     uses: ./.github/workflows/build.yml
 
