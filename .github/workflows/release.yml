@@ -5,8 +5,8 @@ permissions:
   contents: read
 
 on:
-  create:
-    tags: [ "v*" ]
+  push:
+    tags: [ "v[0-9]+*" ]
 
 jobs:
 
