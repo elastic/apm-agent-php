@@ -111,9 +111,7 @@ jobs:
           unzip signed-artifacts.zip
 
       - name: Create draft release
-        run: |-
-          make -f .ci/Makefile draft-release
-          echo "RELEASE_ID=$(make -f .ci/Makefile get-draft-release)" >> $GITHUB_ENV
+        run: make -f .ci/Makefile draft-release
 
       - name: Verify draft release
         run: ORIGINAL_PACKAGES_LOCATION=build/packages make -f .ci/Makefile download-verify
