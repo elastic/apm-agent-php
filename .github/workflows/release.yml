@@ -116,7 +116,7 @@ jobs:
           echo "RELEASE_ID=$(make -f .ci/Makefile get-draft-release)" >> $GITHUB_ENV
 
       - name: Verify draft release
-        run: ORIGINAL_PACKAGES_LOCATION=build/packagesmake -f .ci/Makefile download-verify
+        run: ORIGINAL_PACKAGES_LOCATION=build/packages make -f .ci/Makefile download-verify
 
       - name: Publish release
         run: make -f .ci/Makefile github-release-ready
