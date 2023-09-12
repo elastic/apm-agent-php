@@ -5,6 +5,7 @@ name: test-reporter
 on:
   workflow_run:
     workflows:
+      - release
       - test
     types: [completed]
 
