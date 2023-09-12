@@ -86,6 +86,7 @@ jobs:
     with:
       include: ${{ needs.generate-test-packages-matrix.outputs.include }}
       max-parallel: 40
+      package-name: 'signed-artifacts'
 
   release:
     needs:

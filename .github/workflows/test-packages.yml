@@ -14,6 +14,11 @@ on:
         default: 20
         required: false
         type: number
+      package-name:
+        description: 'The artifact name with the binaries to be tested'
+        default: "package"
+        required: false
+        type: string
 
 jobs:
   test-packages:
@@ -34,8 +39,15 @@ jobs:
 
       - uses: actions/download-artifact@v3
         with:
-          name: package
+          name: ${{ inputs.package-name }}
           path: build/packages
+
+      ## This will help with preparing the signed artifacts that were bundled in a zip file
+      - if: ${{ inputs.package-name == 'signed-artifacts' }}
+        name: Unzip signed packages
+        run: |-
+          cd build/packages
+          unzip ${{ inputs.package-name }}.zip
 
       - uses: actions/download-artifact@v3
         with:
