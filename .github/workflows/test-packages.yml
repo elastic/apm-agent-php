@@ -14,6 +14,11 @@ on:
         default: 20
         required: false
         type: number
+      package-name:
+        description: 'The artifact name with the binaries to be tested'
+        default: "package"
+        required: false
+        type: string
 
 jobs:
   test-packages:
@@ -29,18 +34,28 @@ jobs:
       LINUX_PACKAGE_TYPE: ${{ matrix.item[1] }}
       TESTING_TYPE: ${{ matrix.item[2] }}
       ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ join(matrix.item, ',') }}"
+      BUILD_PACKAGES: build/packages
     steps:
       - uses: actions/checkout@v3
 
       - uses: actions/download-artifact@v3
         with:
-          name: package
-          path: build/packages
+          name: ${{ inputs.package-name }}
+          path: ${{ env.BUILD_PACKAGES }}
+
+      ## This will help with preparing the signed artifacts that were bundled in a zip file
+      - if: ${{ inputs.package-name == 'signed-artifacts' }}
+        name: Unzip signed packages
+        run: unzip ${PACKAGE_FILE} && rm ${PACKAGE_FILE}
+        working-directory: ${{ env.BUILD_PACKAGES }}
+        env:
+          PACKAGE_FILE: "${{ inputs.package-name }}.zip"
 
       - uses: actions/download-artifact@v3
         with:
           name: package-parts-linux-x86-64
           path: agent/native/_build/linux-x86-64-release/ext
+
       - uses: actions/download-artifact@v3
         with:
           name: package-parts-linuxmusl-x86-64
@@ -70,10 +85,10 @@ jobs:
       - if: ${{ env.TESTING_TYPE == 'agent-upgrade' }}
         name: agent upgrade test - prepare
         run: |
-          mv build/packages build/backup
+          mv ${{ env.BUILD_PACKAGES }} build/backup
           VERSION=1.0.0 make -C packaging package
-          mv build/packages build/local
-          mv build/backup build/packages
+          mv ${{ env.BUILD_PACKAGES }} build/local
+          mv build/backup ${{ env.BUILD_PACKAGES }}
           make -C packaging "${LINUX_PACKAGE_TYPE}-agent-upgrade-testing-local"
 
       - if: success() || failure()

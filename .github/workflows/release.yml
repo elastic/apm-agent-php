@@ -8,7 +8,22 @@ on:
   push:
     tags: [ "v[0-9]+*" ]
 
+env:
+  BUILD_PACKAGES: build/packages
+
 jobs:
+
+  release-started:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: elastic/apm-pipeline-library/.github/actions/slack-message@current
+        with:
+          url: ${{ secrets.VAULT_ADDR }}
+          roleId: ${{ secrets.VAULT_ROLE_ID }}
+          secretId: ${{ secrets.VAULT_SECRET_ID }}
+          channel: "#apm-agent-php"
+          message: |
+            :runner: [${{ github.repository }}] Release *${{ github.ref_name }}* has been triggered : (<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|here> for further details)
 
   build:
     uses: ./.github/workflows/build.yml
@@ -29,13 +44,12 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: package
-          path: build/packages
+          path: ${{ env.BUILD_PACKAGES }}
 
       ## NOTE: The name of the zip should match the name of the folder to be zipped.
       - name: Prepare packages to be signed
-        run: |-
-          cd build
-          zip -r packages.zip packages/
+        run: zip -r packages.zip packages/
+        working-directory: build
 
       - name: 'Get service account'
         uses: hashicorp/vault-action@v2.7.3
@@ -55,7 +69,7 @@ jobs:
       - id: 'upload-file'
         uses: 'google-github-actions/upload-cloud-storage@v1'
         with:
-          path: "build/packages.zip"
+          path: "${{ env.BUILD_PACKAGES }}.zip"
           destination: "${{ env.BUCKET_NAME }}/${{ github.run_id }}"
           predefinedAcl: "publicRead"
 
@@ -86,6 +100,7 @@ jobs:
     with:
       include: ${{ needs.generate-test-packages-matrix.outputs.include }}
       max-parallel: 40
+      package-name: 'signed-artifacts'
 
   release:
     needs:
@@ -102,20 +117,19 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: signed-artifacts
-          path: build/packages
+          path: ${{ env.BUILD_PACKAGES }}
 
       - name: Unzip signed packages
-        run: |-
-          cd build/packages
-          unzip signed-artifacts.zip
+        run: unzip ${PACKAGE_FILE} && rm ${PACKAGE_FILE}
+        working-directory: ${{ env.BUILD_PACKAGES }}
+        env:
+          PACKAGE_FILE: "signed-artifacts.zip"
 
       - name: Create draft release
-        run: |-
-          make -f .ci/Makefile draft-release
-          echo "RELEASE_ID=$(make -f .ci/Makefile get-draft-release)" >> $GITHUB_ENV
+        run: make -f .ci/Makefile draft-release
 
       - name: Verify draft release
-        run: ORIGINAL_PACKAGES_LOCATION=build/packagesmake -f .ci/Makefile download-verify
+        run: ORIGINAL_PACKAGES_LOCATION=${{ env.BUILD_PACKAGES }} make -f .ci/Makefile download-verify
 
       - name: Publish release
         run: make -f .ci/Makefile github-release-ready
