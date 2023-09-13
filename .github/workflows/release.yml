@@ -120,8 +120,10 @@ jobs:
           path: ${{ env.BUILD_PACKAGES }}
 
       - name: Unzip signed packages
-        run: unzip signed-artifacts.zip && rm signed-artifacts.zip
+        run: unzip ${PACKAGE_FILE} && rm ${PACKAGE_FILE}
         working-directory: ${{ env.BUILD_PACKAGES }}
+        env:
+          PACKAGE_FILE: "signed-artifacts.zip"
 
       - name: Create draft release
         run: make -f .ci/Makefile draft-release
