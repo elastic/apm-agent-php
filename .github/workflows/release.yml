@@ -5,115 +5,141 @@ permissions:
   contents: read
 
 on:
-  workflow_dispatch:
-  ### TODO: listen for tags, so for now let's test whether it works in dry run mode by default
-  #create:
-  #  tags: [ "v*" ]
+  push:
+    tags: [ "v[0-9]+*" ]
 
 jobs:
+
   build:
-    name: build-agent-library
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        arch:
-          - "linux-x86-64"
-          - "linuxmusl-x86-64"
-    env:
-      BUILD_ARCHITECTURE: ${{ matrix.arch }}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Build
-        run: make -f .ci/Makefile build
-      - uses: actions/upload-artifact@v3
-        with:
-          name: package-parts-${{ matrix.arch }}
-          path: |
-            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm*.so
-            agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm*.debug
+    uses: ./.github/workflows/build.yml
+
   build-packages:
-    runs-on: ubuntu-latest
     needs:
       - build
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v3
-        with:
-          name: package-parts-linux-x86-64
-          path: agent/native/_build/linux-x86-64-release/ext
-      - uses: actions/download-artifact@v3
-        with:
-          name: package-parts-linuxmusl-x86-64
-          path: agent/native/_build/linuxmusl-x86-64-release/ext
-      - name: package
-        run: make -C packaging package
-      - name: package info
-        run: make -C packaging info
-      - uses: actions/upload-artifact@v3
-        with:
-          name: package
-          path: |
-            build/packages/*
-            !build/packages/**/*.sha512
+    uses: ./.github/workflows/build-packages.yml
 
-  release:
-    name: Release
+  sign:
     runs-on: ubuntu-latest
-
+    needs:
+      - build-packages
+    env:
+      BUCKET_NAME: "apm-agent-php"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
         with:
           name: package
           path: build/packages
-      - run: echo "Upload artifacts to gs://internal-ci-artifacts/apm-agent-php/<TAG>"
+
+      ## NOTE: The name of the zip should match the name of the folder to be zipped.
+      - name: Prepare packages to be signed
+        run: |-
+          cd build
+          zip -r packages.zip packages/
+
+      - name: 'Get service account'
+        uses: hashicorp/vault-action@v2.7.3
+        with:
+          url: ${{ secrets.VAULT_ADDR }}
+          roleId: ${{ secrets.VAULT_ROLE_ID }}
+          secretId: ${{ secrets.VAULT_SECRET_ID }}
+          method: approle
+          secrets: |
+            secret/observability-team/ci/apm-agent-php-bucket service-account | SERVICE_ACCOUNT ;
+
+      - name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ env.SERVICE_ACCOUNT }}'
+
+      - id: 'upload-file'
+        uses: 'google-github-actions/upload-cloud-storage@v1'
+        with:
+          path: "build/packages.zip"
+          destination: "${{ env.BUCKET_NAME }}/${{ github.run_id }}"
+          predefinedAcl: "publicRead"
 
       - id: buildkite
-        name: Run Release
+        name: Run buildkite pipeline
         uses: elastic/apm-pipeline-library/.github/actions/buildkite@current
         with:
           vaultUrl: ${{ secrets.VAULT_ADDR }}
           vaultRoleId: ${{ secrets.VAULT_ROLE_ID }}
           vaultSecretId: ${{ secrets.VAULT_SECRET_ID }}
-          pipeline: apm-agent-php-release
+          pipeline: observability-robots-php-release
+          triggerMessage: "${{ github.repository }}@${{ github.ref_name }} - sign artifacts"
           waitFor: true
           printBuildLogs: true
+          artifactName: signed-artifacts
+          artifactPath: "signed-artifacts.zip"
           buildEnvVars: |
-            dry_run=true
+            BUNDLE_URL=https://storage.googleapis.com/${{ env.BUCKET_NAME }}/${{ steps.upload-file.outputs.uploaded }}
 
-      - run: echo "Download artifacts from  gs://internal-ci-artifacts/apm-agent-php/<TAG>/signed-artifacts"
+  generate-test-packages-matrix:
+    uses: ./.github/workflows/generate-matrix.yml
 
-      - run: echo "Run tests"
+  test-packages:
+    needs:
+      - sign
+      - generate-test-packages-matrix
+    uses: ./.github/workflows/test-packages.yml
+    with:
+      include: ${{ needs.generate-test-packages-matrix.outputs.include }}
+      max-parallel: 40
 
-      - run: echo "here is no approval input"
+  release:
+    needs:
+      - test-packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      TAG_NAME: ${{ github.ref_name }}
+    steps:
 
-      - run: echo "Publish draft release"
-
-      - run: echo "Verify draft release checksum"
-
-      - run: echo "Publish release (draft -> regular)"
-
-      - if: ${{ success() }}
-        uses: elastic/apm-pipeline-library/.github/actions/slack-message@current
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
         with:
-          url: ${{ secrets.VAULT_ADDR }}
-          roleId: ${{ secrets.VAULT_ROLE_ID }}
-          secretId: ${{ secrets.VAULT_SECRET_ID }}
-          #channel: "#apm-agent-php"
-          channel: "#on-week-oblt-productivity"
-          message: |
-            :runner: [${{ github.repository }}] Release *${{ github.ref_name }}* has been triggered in Buildkite: (<${{ steps.buildkite.outputs.build }}|build>)
+          name: signed-artifacts
+          path: build/packages
 
-      - if: ${{ failure() }}
-        uses: elastic/apm-pipeline-library/.github/actions/slack-message@current
+      - name: Unzip signed packages
+        run: |-
+          cd build/packages
+          unzip signed-artifacts.zip
+
+      - name: Create draft release
+        run: |-
+          make -f .ci/Makefile draft-release
+          echo "RELEASE_ID=$(make -f .ci/Makefile get-draft-release)" >> $GITHUB_ENV
+
+      - name: Verify draft release
+        run: ORIGINAL_PACKAGES_LOCATION=build/packagesmake -f .ci/Makefile download-verify
+
+      - name: Publish release
+        run: make -f .ci/Makefile github-release-ready
+
+  notify:
+    if: always()
+    needs:
+      - build
+      - build-packages
+      - generate-test-packages-matrix
+      - release
+      - sign
+      - test-packages
+    runs-on: ubuntu-latest
+    steps:
+      - id: check
+        uses: elastic/apm-pipeline-library/.github/actions/check-dependent-jobs@current
         with:
-          url: ${{ secrets.VAULT_ADDR }}
-          roleId: ${{ secrets.VAULT_ROLE_ID }}
-          secretId: ${{ secrets.VAULT_SECRET_ID }}
-          #channel: "#apm-agent-php"
-          channel: "#on-week-oblt-productivity"
-          message: |
-            :ghost: [${{ github.repository }}] Release *${{ github.ref_name }}* didn't get triggered in Buildkite.
-            Build: (<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|here>)
+          needs: ${{ toJSON(needs) }}
+      - uses: elastic/apm-pipeline-library/.github/actions/notify-build-status@current
+        with:
+          status: ${{ steps.check.outputs.status }}
+          vaultUrl: ${{ secrets.VAULT_ADDR }}
+          vaultRoleId: ${{ secrets.VAULT_ROLE_ID }}
+          vaultSecretId: ${{ secrets.VAULT_SECRET_ID }}
+          slackChannel: "#apm-agent-php"
+          message: "[${{ github.repository }}] Release (<${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}|${{ github.ref_name }}>)"

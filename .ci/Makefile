@@ -103,46 +103,6 @@ component-test: prepare  ## Run component-test
 loop:  ## Bump the version given VERSION
 	.ci/loop.sh "$(LOOPS)" "${DOCKERFILE}" "${PHP_VERSION}"
 
-.PHONY: previous-version
-previous-version:  ## Fetch the current version
-	@grep '\(VERSION = \)' src/ElasticApm/ElasticApm.php | \
-	sed "s#.*= '\(.*\)';#\1#g"
-
-.PHONY: bump-version
-bump-version:  ## Bump the version given VERSION
-ifndef VERSION
-	@echo "Please set VERSION in the environment to bump the version"
-	exit 1
-endif
-	.ci/bump_version.sh
-
-.PHONY: prepare-changelog
-prepare-changelog:  ## Prepare the dependencies to run the changelog
-	@docker build --tag gren -f .ci/docker/gren/Dockerfile .
-
-.PHONY: changelog
-changelog:  ## Create the changelog for the given version
-ifndef GITHUB_TOKEN
-	@echo "Please set GITHUB_TOKEN in the environment to generate the changelog"
-	exit 1
-endif
-ifndef TAG_NAME
-	@echo "Please set TAG_NAME in the environment to create the changelog"
-	exit 1
-endif
-ifndef PREVIOUS_TAG
-	@echo "Please set PREVIOUS_TAG in the environment to create the changelog"
-	exit 1
-endif
-	docker run --rm -t \
-		--volume "$(PWD)":/app \
-		--workdir /app \
-		--env GITHUB_TOKEN=$(GITHUB_TOKEN) \
-		--env TAG_NAME=$(TAG_NAME) \
-		--env PREVIOUS_TAG=$(PREVIOUS_TAG) \
-		-u $(CURRENT_UID):$(CURRENT_GID) \
-		gren
-
 .PHONY: draft-release
 draft-release: validate-tag-name validate-github-token  ## Run a draft release given the GITHUB_TOKEN and TAG_NAME
 	gh \
@@ -158,6 +118,14 @@ draft-release: validate-tag-name validate-github-token  ## Run a draft release g
 .PHONY: get-draft-release
 get-draft-release: validate-tag-name  ## Get the draft release id for the given TAG_NAME
 	@gh api repos/{owner}/{repo}/releases | jq --arg v "$(TAG_NAME)" '.[]|select(.draft)|select(.tag_name == $$v)|.id'
+
+.PHONY: github-release-ready
+github-release-ready: validate-tag-name validate-github-token  ## Transition the draft release to ready given the GITHUB_TOKEN and TAG_NAME
+	gh \
+		release \
+		edit \
+		"$(TAG_NAME)" \
+		--draft=false
 
 .PHONY: download-verify
 download-verify:  ## Download the assets for the given draft release and verify their signature

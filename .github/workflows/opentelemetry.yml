@@ -10,6 +10,7 @@ on:
       - updatecli
       - "Issue Labeler"
       - "Auto Assign to Project(s)"
+      - release
       - snapshoty
     types: [completed]
 

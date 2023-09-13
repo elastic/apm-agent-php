@@ -20,6 +20,15 @@ endif::[]
 
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
+[[release-notes-v1.10.0]]
+=== v1.10.0 - 2023/09/12
+[float]
+==== Features
+* Preview of inferred spans feature. It needs to be enabled manually, please refer to documentation <<config-profiling-inferred-spans-enabled>> {pull}1038[#1038]
+
+==== Bug fixes
+* Detection and logging if agent source code doesn't comply open_basedir limitation {pull}#1044[##1044]
+
 [[release-notes-v1.9.1]]
 === v1.9.1 - 2023/07/06
 [float]

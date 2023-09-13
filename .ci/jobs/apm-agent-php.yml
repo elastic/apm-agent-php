@@ -1,5 +1,0 @@
----
-- job:
-    name: apm-agent-php
-    description: apm-agent-php
-    project-type: folder
