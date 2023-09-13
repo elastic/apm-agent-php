@@ -23,7 +23,7 @@ jobs:
           secretId: ${{ secrets.VAULT_SECRET_ID }}
           channel: "#apm-agent-php"
           message: |
-            :runner: [${{ github.repository }}] Release *${{ github.ref_name }}* has been triggered : (<${{ steps.buildkite.outputs.build }}|here> for further details)
+            :runner: [${{ github.repository }}] Release *${{ github.ref_name }}* has been triggered : (<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|here> for further details)
 
   build:
     uses: ./.github/workflows/build.yml
