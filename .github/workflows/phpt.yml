@@ -38,6 +38,10 @@ jobs:
     #     tar --wildcards  --strip-components 5 -xf /tmp/apm-agent-php-linux-x86-64.tar ./opt/elastic/apm-agent-php/extensions/elastic_apm*
     #     cd -
     - uses: actions/checkout@v3
+    - uses: actions/download-artifact@v3
+      with:
+        name: package-parts-linux-x86-64
+        path: agent/native/_build/linux-x86-64-release/ext/
     - name: Run phpt tests from PHP source code
       run: |
         VERSION=${{ matrix.php-version }}
