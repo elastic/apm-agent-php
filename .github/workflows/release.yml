@@ -8,6 +8,9 @@ on:
   push:
     tags: [ "v[0-9]+*" ]
 
+env:
+  BUILD_PACKAGES: build/packages
+
 jobs:
 
   release-started:
@@ -41,13 +44,12 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: package
-          path: build/packages
+          path: ${{ env.BUILD_PACKAGES }}
 
       ## NOTE: The name of the zip should match the name of the folder to be zipped.
       - name: Prepare packages to be signed
-        run: |-
-          cd build
-          zip -r packages.zip packages/
+        run: zip -r packages.zip packages/
+        working-directory: build
 
       - name: 'Get service account'
         uses: hashicorp/vault-action@v2.7.3
@@ -67,7 +69,7 @@ jobs:
       - id: 'upload-file'
         uses: 'google-github-actions/upload-cloud-storage@v1'
         with:
-          path: "build/packages.zip"
+          path: "${{ env.BUILD_PACKAGES }}.zip"
           destination: "${{ env.BUCKET_NAME }}/${{ github.run_id }}"
           predefinedAcl: "publicRead"
 
@@ -115,19 +117,17 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: signed-artifacts
-          path: build/packages
+          path: ${{ env.BUILD_PACKAGES }}
 
       - name: Unzip signed packages
-        run: |-
-          cd build/packages
-          unzip signed-artifacts.zip
-          rm signed-artifacts.zip
+        run: unzip signed-artifacts.zip && rm signed-artifacts.zip
+        working-directory: ${{ env.BUILD_PACKAGES }}
 
       - name: Create draft release
         run: make -f .ci/Makefile draft-release
 
       - name: Verify draft release
-        run: ORIGINAL_PACKAGES_LOCATION=build/packages make -f .ci/Makefile download-verify
+        run: ORIGINAL_PACKAGES_LOCATION=${{ env.BUILD_PACKAGES }} make -f .ci/Makefile download-verify
 
       - name: Publish release
         run: make -f .ci/Makefile github-release-ready
