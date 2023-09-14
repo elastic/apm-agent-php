@@ -31,7 +31,7 @@ function runComponentTests () {
             composerCommand=("${composerCommand[@]}" --filter "${ELASTIC_APM_PHP_TESTS_FILTER}")
         fi
     else
-        composerCommand=("${composerCommand[@]}" --filter "AgentEnabledConfigComponentTest")
+        composerCommand=("${composerCommand[@]}" --filter AgentEnabledConfigComponentTest)
     fi
 
     local initialTimeoutInMinutes=30
