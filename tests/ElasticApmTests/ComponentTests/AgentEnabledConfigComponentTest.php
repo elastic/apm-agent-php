@@ -64,7 +64,7 @@ final class AgentEnabledConfigComponentTest extends ComponentTestCaseBase
             ->addKeyedDimensionOnlyFirstValueCombinable(OptionNames::ENABLED, [null, true . false])
             ->build();
 
-        return self::adaptToSmoke(DataProviderForTestBuilder::convertEachDataSetToMixedMap($result));
+        return DataProviderForTestBuilder::convertEachDataSetToMixedMap($result);
     }
 
     /**
