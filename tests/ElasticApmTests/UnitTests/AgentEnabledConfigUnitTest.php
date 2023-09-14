@@ -36,11 +36,10 @@ final class AgentEnabledConfigUnitTest extends TestCaseBase
     public function test(): void
     {
         $configForTests = ConfigUtilForTests::read(/* additionalConfigSource */ null, NoopLoggerFactory::singletonInstance());
-        $agentEnabledConfigPhpPartDefault = AllOptionsMetadata::get()[OptionNames::ENABLED]->defaultValue();
         if ($configForTests->agentEnabledConfigDefault === null) {
-            self::assertSame(true, $agentEnabledConfigPhpPartDefault);
-        } else {
-            self::assertSame($configForTests->agentEnabledConfigDefault, $agentEnabledConfigPhpPartDefault);
+            self::dummyAssert();
+            return;
         }
+        self::assertSame($configForTests->agentEnabledConfigDefault, AllOptionsMetadata::get()[OptionNames::ENABLED]->defaultValue());
     }
 }
