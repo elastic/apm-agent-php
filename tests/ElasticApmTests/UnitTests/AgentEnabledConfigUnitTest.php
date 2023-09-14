@@ -33,7 +33,7 @@ use ElasticApmTests\Util\TestCaseBase;
 
 final class AgentEnabledConfigUnitTest extends TestCaseBase
 {
-    public function test(): void
+    public function testDefaultAsSeenByPhpPart(): void
     {
         $configForTests = ConfigUtilForTests::read(/* additionalConfigSource */ null, NoopLoggerFactory::singletonInstance());
         if ($configForTests->agentEnabledConfigDefault === null) {

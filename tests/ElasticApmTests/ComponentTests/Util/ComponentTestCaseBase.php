@@ -567,8 +567,10 @@ class ComponentTestCaseBase extends TestCaseBase
 
     protected static function setConfigIfNotNull(MixedMap $testArgs, string $optName, AppCodeHostParams $appCodeParams): void
     {
-        $optVal = $testArgs->getNullableString($optName);
+        $optVal = $testArgs->get($optName);
         if ($optVal !== null) {
+            self::assertTrue(is_string($optVal) || is_int($optVal) || is_float($optVal) || is_bool($optVal));
+            /** @var string|int|float|bool $optVal */
             $appCodeParams->setAgentOption($optName, $optVal);
         }
     }

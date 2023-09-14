@@ -24,11 +24,11 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\Impl\Config\OptionNames;
+use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
-use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\MixedMap;
@@ -39,11 +39,9 @@ use ElasticApmTests\Util\MixedMap;
  */
 final class AgentEnabledConfigComponentTest extends ComponentTestCaseBase
 {
-    private const ENABLED_CONFIG_SEEN_BY_TEST = 'enabled_config_seen_by_test';
-
-    public static function appCodeForTestWhenAgentIsDisabledItShouldNotSendAnyData(MixedMap $appCodeArgs): void
+    public static function appCodeForTestAgentEnabledConfig(MixedMap $appCodeArgs): void
     {
-        $enabledConfigSeenByTest = $appCodeArgs->getBool(self::ENABLED_CONFIG_SEEN_BY_TEST);
+        $agentEnabledExpected = $appCodeArgs->getBool(OptionNames::ENABLED);
 
         /**
          * elastic_apm_* functions are provided by the elastic_apm extension
@@ -51,26 +49,26 @@ final class AgentEnabledConfigComponentTest extends ComponentTestCaseBase
          * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
          * @phpstan-ignore-next-line
          */
-        $enabledConfigSeenByNativePart = \elastic_apm_is_enabled();
-        self::assertSame($enabledConfigSeenByTest, $enabledConfigSeenByNativePart);
+        $agentEnabledAsSeenByNativePart = \elastic_apm_is_enabled();
+        self::assertSame($agentEnabledExpected, $agentEnabledAsSeenByNativePart);
     }
 
     /**
      * @return iterable<string, array{MixedMap}>
      */
-    public static function dataProviderForTestWhenAgentIsDisabledItShouldNotSendAnyData(): iterable
+    public static function dataProviderForTestAgentEnabledConfig(): iterable
     {
         $result = (new DataProviderForTestBuilder())
-            ->addKeyedDimensionOnlyFirstValueCombinable(OptionNames::ENABLED, [null, true . false])
+            ->addKeyedDimensionAllValuesCombinable(OptionNames::ENABLED, [null, true, false])
             ->build();
 
         return DataProviderForTestBuilder::convertEachDataSetToMixedMap($result);
     }
 
     /**
-     * @dataProvider dataProviderForTestWhenAgentIsDisabledItShouldNotSendAnyData
+     * @dataProvider dataProviderForTestAgentEnabledConfig
      */
-    public function testWhenAgentIsDisabledItShouldNotSendAnyData(MixedMap $testArgs): void
+    public function testAgentEnabledConfig(MixedMap $testArgs): void
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
@@ -81,26 +79,32 @@ final class AgentEnabledConfigComponentTest extends ComponentTestCaseBase
             }
         );
 
-        $enabledConfigSeenByTest = $appCodeHost->appCodeHostParams->getEffectiveAgentConfig()->enabled();
-        $dbgCtx->add(compact('enabledConfigSeenByTest'));
-        $logger = self::getLogger(__NAMESPACE__, __CLASS__, __FILE__);
-        ($loggerProxy = $logger->ifInfoLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('', ['enabledConfigSeenByTest' => $enabledConfigSeenByTest]);
+        $agentEnabledTestArg = $testArgs->getNullableBool(OptionNames::ENABLED);
+        $agentEnabledActual = $appCodeHost->appCodeHostParams->getEffectiveAgentConfig()->enabled();
+        if (($agentEnabledExpected = $agentEnabledTestArg ?? AmbientContextForTests::testConfig()->agentEnabledConfigDefault) !== null) {
+            self::assertSame($agentEnabledExpected, $agentEnabledActual);
+        }
 
         $appCodeHost->sendRequest(
-            AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestWhenAgentIsDisabledItShouldNotSendAnyData']),
-            function (AppCodeRequestParams $appCodeRequestParams) use ($enabledConfigSeenByTest): void {
-                $appCodeRequestParams->setAppCodeArgs([self::ENABLED_CONFIG_SEEN_BY_TEST => $enabledConfigSeenByTest]);
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestAgentEnabledConfig']),
+            function (AppCodeRequestParams $appCodeRequestParams) use ($agentEnabledActual): void {
+                $appCodeRequestParams->setAppCodeArgs([OptionNames::ENABLED => $agentEnabledActual]);
             }
         );
 
-        if ($enabledConfigSeenByTest) {
+        if ($agentEnabledActual) {
             $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
             self::assertCount(1, $dataFromAgent->idToTransaction);
             self::assertCount(1, $dataFromAgent->metadatas);
         } else {
-            sleep(/* seconds */ 5);
-            $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->metadatas(0)->transactions(0), /* shouldValidate */ false);
+            $logger = self::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
+            $waitTimeSeconds = 5;
+            ($loggerProxy = $logger->ifInfoLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('Sleeping ' . $waitTimeSeconds . ' seconds to give agent enough time to send data (which it should not since it is disabled)...');
+            sleep($waitTimeSeconds);
+            $dataFromAgent = $testCaseHandle->getDataFromAgentWithoutWaiting();
             self::assertCount(0, $dataFromAgent->idToTransaction);
+            self::assertCount(0, $dataFromAgent->metadatas);
         }
         self::assertCount(0, $dataFromAgent->idToSpan);
         self::assertCount(0, $dataFromAgent->idToError);
