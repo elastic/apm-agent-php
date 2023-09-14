@@ -507,11 +507,11 @@ void logImportantAgentInfo( const ConfigSnapshot* config, String calledFromFunc 
         "; Custom changes: "
         "- agent is disabled by default (enabled: false)"
         "; config->enabled: %s."
-        "; SAPI: %s"
+        "; SAPI module name: %s"
         "; Called from: %s"
         , PHP_ELASTIC_APM_VERSION
         , boolToString( config->enabled )
-        , isPhpRunningAsCliScript()
+        , getPhpSapiModuleName()
         , calledFromFunc
     );
 }

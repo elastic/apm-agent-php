@@ -254,11 +254,12 @@ class ComponentTestCaseBase extends TestCaseBase
     }
 
     /**
-     * @template T
+     * @template TKey
+     * @template TValue
      *
-     * @param iterable<T> $variants
+     * @param iterable<TKey, TValue> $variants
      *
-     * @return iterable<T>
+     * @return iterable<TKey, TValue>
      */
     public static function adaptToSmoke(iterable $variants): iterable
     {

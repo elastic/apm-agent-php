@@ -22,12 +22,16 @@ function runComponentTests () {
     phpUnitConfigFile=$(php ./tests/ElasticApmTests/Util/runSelectPhpUnitConfigFile.php --tests-type=component)
     composerCommand=("${composerCommand[@]}" -c "${phpUnitConfigFile}")
 
-    if [ -n "${ELASTIC_APM_PHP_TESTS_GROUP}" ] ; then
-        composerCommand=("${composerCommand[@]}" --group "${ELASTIC_APM_PHP_TESTS_GROUP}")
-    fi
+    if [ "${ELASTIC_APM_PHP_TESTS_AGENT_ENABLED_CONFIG_DEFAULT:?}" == "true" ]; then
+        if [ -n "${ELASTIC_APM_PHP_TESTS_GROUP}" ] ; then
+            composerCommand=("${composerCommand[@]}" --group "${ELASTIC_APM_PHP_TESTS_GROUP}")
+        fi
 
-    if [ -n "${ELASTIC_APM_PHP_TESTS_FILTER}" ] ; then
-        composerCommand=("${composerCommand[@]}" --filter "${ELASTIC_APM_PHP_TESTS_FILTER}")
+        if [ -n "${ELASTIC_APM_PHP_TESTS_FILTER}" ] ; then
+            composerCommand=("${composerCommand[@]}" --filter "${ELASTIC_APM_PHP_TESTS_FILTER}")
+        fi
+    else
+        composerCommand=("${composerCommand[@]}" --filter "AgentEnabledConfigComponentTest")
     fi
 
     local initialTimeoutInMinutes=30
