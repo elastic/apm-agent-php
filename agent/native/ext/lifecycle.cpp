@@ -504,7 +504,7 @@ void logImportantAgentInfo( const ConfigSnapshot* config, String calledFromFunc 
 {
     ELASTIC_APM_LOG_INFO(
         "Custom build based on version: %s"
-        "; Custom changes: "
+        "; Custom changes:"
         " * span stack trace disabled by default (stack_trace_min_duration: -1)"
         " * WordPress instrumentation disabled by default (ast_process_enabled: false)"
         "; config->enabled: %s."
