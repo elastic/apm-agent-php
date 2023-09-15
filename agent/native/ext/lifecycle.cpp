@@ -504,8 +504,8 @@ void logImportantAgentInfo( const ConfigSnapshot* config, String calledFromFunc 
 {
     ELASTIC_APM_LOG_INFO(
         "Custom build based on version: %s"
-        "; Custom changes: "
-        "- agent is disabled by default (enabled: false)"
+        "; Custom changes:"
+        " * agent is disabled by default (enabled: false)"
         "; config->enabled: %s."
         "; SAPI module name: %s"
         "; Called from: %s"
