@@ -88,4 +88,5 @@ struct ConfigSnapshot
     String transactionSampleRate = nullptr;
     String urlGroups = nullptr;
     bool verifyServerCert = false;
+    String debugDiagnosticsFile = nullptr;
 };

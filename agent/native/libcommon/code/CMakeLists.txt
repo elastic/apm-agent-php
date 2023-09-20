@@ -7,5 +7,9 @@ set (_Target  libcommon)
 add_library (${_Target}
     STATIC ${SrcFiles}
 )
-target_include_directories(${_Target} PUBLIC "./")
+
+
+target_include_directories(${_Target} PUBLIC "./"
+                                            "${CONAN_INCLUDE_DIRS_BOOST}"
+                                            )
 
