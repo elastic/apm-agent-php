@@ -116,7 +116,7 @@ echo "Running tests without agent"
 printf --  '-%.0s' {1..80} && echo ""
 
 cleanup
-TEST_PHP_EXECUTABLE=/usr/local//bin/php /usr/local/bin/php /scripts/run-tests_80.php -q -x --offline -w "${TEST_FAILED_WITHOUT_AGENT}" -W "${TEST_RESULTS_WITHOUT_AGENT}" ${TEST_OR_DIRECTORY_TO_EXECUTE}
+TEST_PHP_EXECUTABLE=/usr/local//bin/php ./run-tests.php -q -x --offline -w "${TEST_FAILED_WITHOUT_AGENT}" -W "${TEST_RESULTS_WITHOUT_AGENT}" ${TEST_OR_DIRECTORY_TO_EXECUTE}
 grep -Rl "Segmentation fault (core dumped)" --include=*.log | sed 's|\.log$|.phpt|' >${TEST_SEGFAULTS_WITHOUT_AGENT}
 compress_test_results ${TEST_FAILED_WITHOUT_AGENT_ARCH}
 
@@ -125,7 +125,7 @@ echo "Running tests with agent"
 printf --  '-%.0s' {1..80} && echo ""
 
 cleanup
-TEST_PHP_EXECUTABLE=/usr/local/bin/php /usr/local/bin/php /scripts/run-tests_80.php -q -x --offline -w "${TEST_FAILED_WITH_AGENT}" -W "${TEST_RESULTS_WITH_AGENT}" -d "extension=/opt/elastic/elastic_apm-${PHP_API_VERSION}.so" ${TEST_OR_DIRECTORY_TO_EXECUTE}
+TEST_PHP_EXECUTABLE=/usr/local/bin/php ./run-tests.php -q -x --offline -w "${TEST_FAILED_WITH_AGENT}" -W "${TEST_RESULTS_WITH_AGENT}" -d "extension=/opt/elastic/elastic_apm-${PHP_API_VERSION}.so" ${TEST_OR_DIRECTORY_TO_EXECUTE}
 grep -Rl "Segmentation fault (core dumped)" --include=*.log | sed 's|\.log$|.phpt|' >${TEST_SEGFAULTS_WITH_AGENT}
 compress_test_results ${TEST_FAILED_WITH_AGENT_ARCH}
 
