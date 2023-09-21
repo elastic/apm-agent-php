@@ -1,0 +1,1 @@
+ext/opcache/tests/bug76796.phpt

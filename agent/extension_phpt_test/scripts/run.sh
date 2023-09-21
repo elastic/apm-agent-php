@@ -37,6 +37,8 @@ TEST_RESULTS_WITHOUT_AGENT=/results/${PHP_VERSION}/${RESULT_PREFIX}tests-results
 TEST_SEGFAULTS_WITH_AGENT=/results/${PHP_VERSION}/${RESULT_PREFIX}tests-segfaults-with-agent.txt
 TEST_SEGFAULTS_WITHOUT_AGENT=/results/${PHP_VERSION}/${RESULT_PREFIX}tests-segfaults-without-agent.txt
 
+TESTS_TO_REMOVE=/testsToRemove/testsToRemove${PHP_VERSION}.txt
+
 TEST_RESULTS_MD=/results/${PHP_VERSION}/${RESULT_PREFIX}tests-result.md
 
 TEST_ALLOWED_TO_FAIL=/allowedToFailLists/allowedToFail${PHP_VERSION}.txt
@@ -104,6 +106,10 @@ wait_for_endpoint http://elasticsearch:9200/ 30
 wait_for_endpoint http://apm-server:8200/ 30
 
 cd /usr/src/php
+
+while read file; do
+	rm ${file}
+done <${TESTS_TO_REMOVE}
 
 printf --  '-%.0s' {1..80} && echo ""
 echo "Running tests without agent"
