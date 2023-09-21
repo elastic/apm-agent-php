@@ -482,3 +482,5 @@
 /usr/src/php/sapi/phpdbg/tests/watch_004.phpt
 /usr/src/php/sapi/phpdbg/tests/watch_005.phpt
 /usr/src/php/sapi/phpdbg/tests/watch_006.phpt
+/usr/src/php/ext/spl/tests/bug71735.phpt
+/usr/src/php/ext/standard/tests/strings/chop_basic.phpt

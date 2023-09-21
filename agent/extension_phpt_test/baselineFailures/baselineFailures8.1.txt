@@ -842,3 +842,9 @@
 /usr/src/php/ext/standard/tests/strings/highlight_file.phpt
 /usr/src/php/ext/zlib/tests/gzopen_variation6.phpt
 /usr/src/php/sapi/cli/tests/bug64878.phpt
+/usr/src/php/Zend/tests/bug43344_9.phpt
+/usr/src/php/Zend/tests/bug70898.phpt
+/usr/src/php/Zend/tests/custom_assert_forbidden.phpt
+/usr/src/php/Zend/tests/fe_fetch_dtor_exception.phpt
+/usr/src/php/ext/curl/tests/curl_basic_002.phpt
+/usr/src/php/ext/mbstring/tests/mb_strstr_error2.phpt

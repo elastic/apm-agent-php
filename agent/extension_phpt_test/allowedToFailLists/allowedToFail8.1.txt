@@ -112,3 +112,11 @@
 /usr/src/php/sapi/phpdbg/tests/watch_005.phpt
 /usr/src/php/sapi/phpdbg/tests/watch_006.phpt
 /usr/src/php/sapi/phpdbg/tests/watch_007.phpt
+/usr/src/php/tests/output/stream_isatty_err.phpt
+/usr/src/php/tests/output/stream_isatty_in-err.phpt
+/usr/src/php/tests/output/stream_isatty_in-out.phpt
+/usr/src/php/tests/output/stream_isatty_out-err.phpt
+/usr/src/php/tests/output/stream_isatty_out.phpt
+/usr/src/php/tests/security/open_basedir_linkinfo.phpt
+/usr/src/php/Zend/tests/access_modifiers_008.phpt
+/usr/src/php/Zend/tests/access_modifiers_009.phpt

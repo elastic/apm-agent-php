@@ -127,7 +127,7 @@ function generateMarkdownResults($outputFileName, $statsWithAgent, $statsWithout
 	fwrite($output, PHP_EOL);
 	fwrite($output, "***".PHP_EOL);
 	fwrite($output, PHP_EOL);
-	fwrite($output, "## tests executed with agent. " . PHP_EOL);
+	fwrite($output, "## Tests executed with agent. " . PHP_EOL);
 	$results[] = writeResultsPerTest($output, $statsWithAgent, $testsAllowedToFail, $unexpectedFailuresWithAgent, $segfaultsWithAgent, $baselineList);
 
 	fwrite($output, "***".PHP_EOL);
