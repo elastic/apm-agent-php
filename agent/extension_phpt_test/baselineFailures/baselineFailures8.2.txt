@@ -856,3 +856,7 @@
 /usr/src/php/ext/standard/tests/strings/chunk_split_variation3.phpt
 /usr/src/php/ext/standard/tests/strings/get_html_translation_table_basic2.phpt
 /usr/src/php/ext/standard/tests/strings/str_pad_variation1.phpt
+/usr/src/php/tests/basic/bug80384.phpt
+/usr/src/php/Zend/tests/nullsafe_operator/002.phpt
+/usr/src/php/ext/standard/tests/general_functions/bug49692.phpt
+/usr/src/php/ext/standard/tests/strings/sprintf_basic1.phpt

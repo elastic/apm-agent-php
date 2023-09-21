@@ -673,3 +673,4 @@
 /usr/src/php/ext/standard/tests/streams/gh8409.phpt
 /usr/src/php/ext/standard/tests/strings/chunk_split_variation3.phpt
 /usr/src/php/ext/standard/tests/strings/str_pad_variation1.phpt
+/usr/src/php/tests/basic/bug80384.phpt

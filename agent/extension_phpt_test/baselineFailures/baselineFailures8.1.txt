@@ -831,3 +831,14 @@
 /usr/src/php/ext/standard/tests/strings/str_pad_variation1.phpt
 /usr/src/php/ext/tokenizer/tests/PhpToken_constructor.phpt
 /usr/src/php/ext/tokenizer/tests/PhpToken_tokenize.phpt
+/usr/src/php/tests/classes/interfaces_001.phpt
+/usr/src/php/tests/classes/property_override_public_privateStatic.phpt
+/usr/src/php/tests/strings/offsets_general.phpt
+/usr/src/php/Zend/tests/bug37715.phpt
+/usr/src/php/Zend/tests/fibers/get-return-in-unfinished-fiber.phpt
+/usr/src/php/ext/openssl/tests/bug41353.phpt
+/usr/src/php/ext/standard/tests/array/array_walk_recursive_object1.phpt
+/usr/src/php/ext/standard/tests/file/include_userstream_003.phpt
+/usr/src/php/ext/standard/tests/strings/highlight_file.phpt
+/usr/src/php/ext/zlib/tests/gzopen_variation6.phpt
+/usr/src/php/sapi/cli/tests/bug64878.phpt
