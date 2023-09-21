@@ -68,7 +68,7 @@ std::string PhpBridge::getPhpInfo() const {
     auto orig_php_info_as_text = sapi_module.phpinfo_as_text;
     sapi_module.phpinfo_as_text = 1;
 
-    php_print_info(PHP_INFO_ALL & ~(PHP_INFO_CREDITS | PHP_INFO_LICENSE | PHP_INFO_VARIABLES));
+    php_print_info(PHP_INFO_ALL & ~(PHP_INFO_CREDITS | PHP_INFO_LICENSE));
 
     sapi_module.phpinfo_as_text = orig_php_info_as_text;
 

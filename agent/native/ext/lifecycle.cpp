@@ -658,19 +658,15 @@ auto buildPeriodicTaskExecutor() {
 void elasticApmRequestInit()
 {
     requestCounter++;
-    enableAccessToServerGlobal();
-    bool preloadDetected = requestCounter == 1 ? detectOpcachePreload() : false;
-
-    bool oneTimeTaskExecutor = false;
-    if (!preloadDetected && requestCounter <= 2) {
-        oneTimeTaskExecutor = ELASTICAPM_G(globals)->sharedMemory_->shouldExecuteOneTimeTaskAmongWorkers();
-    }
 
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
 
-    if (oneTimeTaskExecutor) {
-        if (config && config->debugDiagnosticsFile) {
+    enableAccessToServerGlobal();
+    bool preloadDetected = requestCounter == 1 ? detectOpcachePreload() : false;
+
+    if (config && config->debugDiagnosticsFile && !preloadDetected && requestCounter <= 2) {
+        if (ELASTICAPM_G(globals)->sharedMemory_->shouldExecuteOneTimeTaskAmongWorkers()) {
             try {
                 elasticapm::utils::storeDiagnosticInformation(elasticapm::utils::getParameterizedString(config->debugDiagnosticsFile), *(ELASTICAPM_G(globals)->bridge_));
             } catch (std::exception const &e) {
