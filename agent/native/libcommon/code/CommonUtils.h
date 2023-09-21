@@ -10,4 +10,6 @@ namespace elasticapm::utils {
 
 std::chrono::milliseconds convertDurationWithUnit(std::string timeWithUnit); // default unit - ms, handles ms, s, m, throws std::invalid_argument if unit is unknown
 
+std::string getParameterizedString(std::string_view format);
+
 }

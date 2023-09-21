@@ -5,6 +5,8 @@
 #include <string_view>
 #include <signal.h>
 #include <stddef.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 
 namespace elasticapm::utils {
@@ -51,6 +53,37 @@ std::chrono::milliseconds convertDurationWithUnit(std::string timeWithUnit) {
     }
 
     throw std::invalid_argument("Invalid time unit.");
+}
+
+std::string getParameterizedString(std::string_view format) {
+
+    std::string out;
+
+    for (auto c = format.begin(); c < format.end(); ++c) {
+        if (*c == '%') {
+            c++;
+            if (c == format.end()) {
+                out.append(1, '%');
+                break;
+            }
+
+            switch (*c) {
+                case 'p':
+                    out.append(std::to_string(getpid()));
+                    break;
+                case 't':
+                    out.append(std::to_string(std::chrono::milliseconds(std::time(NULL)).count()));
+                    break;
+                default:
+                    out.append(1, '%');
+                    out.append(1, *c);
+                }
+        } else {
+            out.append({*c});
+        }
+    }
+
+    return out;
 }
 
 

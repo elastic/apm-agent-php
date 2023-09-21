@@ -194,6 +194,8 @@ PHP_INI_BEGIN()
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_SAMPLE_RATE )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_URL_GROUPS )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_VERIFY_SERVER_CERT )
+
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_DEBUG_DIAGNOSTICS_FILE )
 PHP_INI_END()
 
 #undef ELASTIC_APM_INI_ENTRY_IMPL
@@ -273,7 +275,7 @@ static PHP_GINIT_FUNCTION(elastic_apm)
     });
 
     try {
-        elastic_apm_globals->globals = new elasticapm::php::AgentGlobals(std::move(phpBridge), {}, std::move(inferredSpans));
+        elastic_apm_globals->globals = new elasticapm::php::AgentGlobals(std::move(phpBridge), {}, std::move(inferredSpans), std::make_shared<elasticapm::php::SharedMemoryState>());
     } catch (std::exception const &e) {
         ELASTIC_APM_LOG_DIRECT_CRITICAL( "Unable to allocate AgentGlobals. '%s'", e.what());
     }

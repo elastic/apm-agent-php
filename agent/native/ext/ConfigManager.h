@@ -117,6 +117,7 @@ enum OptionId
     optionId_transactionSampleRate,
     optionId_urlGroups,
     optionId_verifyServerCert,
+    optionId_debugDiagnosticsFile,
 
     numberOfOptions
 };
@@ -335,5 +336,8 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_TRANSACTION_SAMPLE_RATE "transaction_sample_rate"
 #define ELASTIC_APM_CFG_OPT_NAME_URL_GROUPS "url_groups"
 #define ELASTIC_APM_CFG_OPT_NAME_VERIFY_SERVER_CERT "verify_server_cert"
+
+#define ELASTIC_APM_CFG_OPT_NAME_DEBUG_DIAGNOSTICS_FILE "debug_diagnostic_file"
+
 
 #define ELASTIC_APM_CFG_CONVERT_OPT_NAME_TO_INI_NAME( optNameStringLiteral ) ( "elastic_apm." optNameStringLiteral )

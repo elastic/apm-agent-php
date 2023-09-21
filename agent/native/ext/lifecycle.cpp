@@ -44,6 +44,7 @@
 #include "AST_instrumentation.h"
 #include "Hooking.h"
 #include "CommonUtils.h"
+#include "Diagnostics.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_LIFECYCLE
 
@@ -658,6 +659,22 @@ void elasticApmRequestInit()
 {
     requestCounter++;
 
+    Tracer* const tracer = getGlobalTracer();
+    const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
+
+    enableAccessToServerGlobal();
+    bool preloadDetected = requestCounter == 1 ? detectOpcachePreload() : false;
+
+    if (config && config->debugDiagnosticsFile && !preloadDetected && requestCounter <= 2) {
+        if (ELASTICAPM_G(globals)->sharedMemory_->shouldExecuteOneTimeTaskAmongWorkers()) {
+            try {
+                elasticapm::utils::storeDiagnosticInformation(elasticapm::utils::getParameterizedString(config->debugDiagnosticsFile), *(ELASTICAPM_G(globals)->bridge_));
+            } catch (std::exception const &e) {
+                ELASTIC_APM_LOG_WARNING( "Unable to write agent diagnostics: %s", e.what() );
+            }
+        }
+    }
+
     tracerPhpPartOnRequestInitSetInitialTracerState();
 
     TimePoint requestInitStartTime;
@@ -672,8 +689,6 @@ void elasticApmRequestInit()
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "parent PID: %d", (int)(getParentProcessId()) );
 
     ResultCode resultCode;
-    Tracer* const tracer = getGlobalTracer();
-    const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
 
     if ( ! tracer->isInited )
     {
@@ -707,13 +722,10 @@ void elasticApmRequestInit()
 
     enableAccessToServerGlobal();
 
-    if (requestCounter == 1) {
-        bool preloadDetected = detectOpcachePreload();
-        if (preloadDetected) {
-            ELASTIC_APM_LOG_DEBUG( "opcache.preload request detected on init" );
-            resultCode = resultSuccess;
-            goto finally;
-        }
+    if (requestCounter == 1 && preloadDetected) {
+        ELASTIC_APM_LOG_DEBUG( "opcache.preload request detected on init" );
+        resultCode = resultSuccess;
+        goto finally;
     }
 
     if (!config->captureErrors) {
