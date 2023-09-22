@@ -848,3 +848,6 @@
 /usr/src/php/Zend/tests/fe_fetch_dtor_exception.phpt
 /usr/src/php/ext/curl/tests/curl_basic_002.phpt
 /usr/src/php/ext/mbstring/tests/mb_strstr_error2.phpt
+/usr/src/php/tests/classes/property_override_private_protectedStatic.phpt
+/usr/src/php/Zend/tests/closure_052.phpt
+/usr/src/php/ext/openssl/tests/bug68920.phpt

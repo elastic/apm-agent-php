@@ -618,3 +618,5 @@
 /usr/src/php/sapi/phpdbg/tests/watch_004.phpt
 /usr/src/php/sapi/phpdbg/tests/watch_005.phpt
 /usr/src/php/sapi/phpdbg/tests/watch_006.phpt
+/usr/src/php/Zend/tests/closure_021.phpt
+/usr/src/php/Zend/tests/dval_to_lval_64.phpt

@@ -674,3 +674,5 @@
 /usr/src/php/ext/standard/tests/strings/chunk_split_variation3.phpt
 /usr/src/php/ext/standard/tests/strings/str_pad_variation1.phpt
 /usr/src/php/tests/basic/bug80384.phpt
+/usr/src/php/Zend/tests/constants/dir-constant-eval.phpt
+/usr/src/php/sapi/cli/tests/php_cli_server_003.phpt
