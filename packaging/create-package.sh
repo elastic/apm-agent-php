@@ -8,10 +8,34 @@ set -x
 
 BUILD_EXT_DIR=""
 
-if [ "${TYPE}" = 'apk' ] ; then
-	BUILD_EXT_DIR=agent/native/_build/linuxmusl-x86-64-release/ext/
+# BUILD_ARCH = x86-64
+# BUILD_ARCH = arm64
+
+PACKAGE_ARCH=""
+if [ "${BUILD_ARCH}" == "x86-64" ]; then
+	PACKAGE_ARCH="x86_64"
+elif [ "${BUILD_ARCH}" == "arm64" ]; then
+	PACKAGE_ARCH="aarch64"
 else
-	BUILD_EXT_DIR=agent/native/_build/linux-x86-64-release/ext/
+	echo "Architecture not supported"
+	exit 1
+fi
+
+BUILD_TARGET=""
+if [ "${TYPE}" = 'apk' ] ; then
+	BUILD_TARGET="linuxmusl-${BUILD_ARCH}"
+else
+	BUILD_TARGET="linux-${BUILD_ARCH}"
+fi
+
+BUILD_EXT_DIR=agent/native/_build/${BUILD_TARGET}-release/ext/
+
+echo "Fetching agent libraies from ${BUILD_EXT_DIR}"
+echo "Package architecture ${PACKAGE_ARCH}"
+
+if [ ! -d "${BUILD_EXT_DIR}" ]; then
+	echo "Agent libraries was not built! Missing folder ${BUILD_EXT_DIR}"
+	exit 1
 fi
 
 touch build/elastic-apm.ini
@@ -25,7 +49,7 @@ fpm --input-type dir \
 		--output-type "${TYPE}" \
 		--name "${NAME}" \
 		--version "${VERSION}" \
-		--architecture all \
+		--architecture ${PACKAGE_ARCH} \
 		--url 'https://github.com/elastic/apm-agent-php' \
 		--maintainer 'APM Team <info@elastic.co>' \
 		--license 'ASL 2.0' \
