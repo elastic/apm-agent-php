@@ -171,7 +171,7 @@ function printHelp($argc, $argv)
 	echo "      --results_with_agent fileName      - set of full tests results with agent injected. Required" . PHP_EOL;
 	echo "      --results_without_agent fileName   - set of full tests results without agent injected. Required" . PHP_EOL;
 	echo "      --segfaults_with_agent fileName    - set of tests caused segmentation fault with agent injected. Required" . PHP_EOL;
-	echo "      --segfaults_without_agent fileName - set of tests caused segmentation fault with agent injected. Required" . PHP_EOL;
+	echo "      --segfaults_without_agent fileName - set of tests caused segmentation fault without agent injected. Required" . PHP_EOL;
 	echo "      --markdown fileName                - name of the output file to generate results in markdown format. Required" . PHP_EOL;
 	echo "      --help                             - display this help" . PHP_EOL;
 }
