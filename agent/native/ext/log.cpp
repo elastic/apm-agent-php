@@ -549,10 +549,13 @@ void vLogWithLoggerImpl(
     };
     char commonPrefixBuffer[commonPrefixBufferSize];
 
-    StringView commonPrefix = buildCommonPrefix( statementLevel, category, filePath, lineNumber, funcName, commonPrefixBuffer, commonPrefixBufferSize );
+    StringView commonPrefix = {nullptr, 0};
 
     if ( isForced || logger->config.levelPerSinkType[ logSink_stderr ] >= statementLevel )
     {
+        if (commonPrefix.begin == nullptr) {
+             commonPrefix = buildCommonPrefix( statementLevel, category, filePath, lineNumber, funcName, commonPrefixBuffer, commonPrefixBufferSize );
+        }
         // create a separate copy of va_list because functions using it (such as fprintf, etc.) modify it
         va_list msgPrintfFmtArgsCopy;
         va_copy( /* dst: */ msgPrintfFmtArgsCopy, /* src: */ msgPrintfFmtArgs );
@@ -563,6 +566,9 @@ void vLogWithLoggerImpl(
     #ifndef PHP_WIN32
     if ( isForced || logger->config.levelPerSinkType[ logSink_syslog ] >= statementLevel )
     {
+        if (commonPrefix.begin == nullptr) {
+             commonPrefix = buildCommonPrefix( statementLevel, category, filePath, lineNumber, funcName, commonPrefixBuffer, commonPrefixBufferSize );
+        }
         // create a separate copy of va_list because functions using it (such as fprintf, etc.) modify it
         va_list msgPrintfFmtArgsCopy;
         va_copy( /* dst: */ msgPrintfFmtArgsCopy, /* src: */ msgPrintfFmtArgs );
@@ -574,6 +580,9 @@ void vLogWithLoggerImpl(
     #ifdef PHP_WIN32
     if ( isForced || logger->config.levelPerSinkType[ logSink_winSysDebug ] >= statementLevel )
     {
+        if (commonPrefix.begin == nullptr) {
+             commonPrefix = buildCommonPrefix( statementLevel, category, filePath, lineNumber, funcName, commonPrefixBuffer, commonPrefixBufferSize );
+        }
         // create a separate copy of va_list because functions using it (such as fprintf, etc.) modify it
         va_list msgPrintfFmtArgsCopy;
         va_copy( /* dst: */ msgPrintfFmtArgsCopy, /* src: */ msgPrintfFmtArgs );
@@ -584,6 +593,9 @@ void vLogWithLoggerImpl(
 
     if ( ( isForced || logger->config.levelPerSinkType[ logSink_file ] >= statementLevel ) && isLogFileInGoodState( logger ) )
     {
+        if (commonPrefix.begin == nullptr) {
+             commonPrefix = buildCommonPrefix( statementLevel, category, filePath, lineNumber, funcName, commonPrefixBuffer, commonPrefixBufferSize );
+        }
         // create a separate copy of va_list because functions using it (such as fprintf, etc.) modify it
         va_list msgPrintfFmtArgsCopy;
         va_copy( /* dst: */ msgPrintfFmtArgsCopy, /* src: */ msgPrintfFmtArgs );
@@ -592,6 +604,9 @@ void vLogWithLoggerImpl(
     }
 
 #ifdef ELASTIC_APM_LOG_CUSTOM_SINK_FUNC
+        if (commonPrefix.begin == nullptr) {
+             commonPrefix = buildCommonPrefix( statementLevel, category, filePath, lineNumber, funcName, commonPrefixBuffer, commonPrefixBufferSize );
+        }
         va_list msgPrintfFmtArgsCopy;
         va_copy( /* dst: */ msgPrintfFmtArgsCopy, /* src: */ msgPrintfFmtArgs );
         buildFullTextAndWriteToCustomSink( logger, commonPrefix, msgPrintfFmt, msgPrintfFmtArgsCopy );
