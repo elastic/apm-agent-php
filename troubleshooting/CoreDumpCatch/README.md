@@ -16,16 +16,16 @@ Before using the Core Dump Capture Script, ensure the following prerequisites ar
 ```bash
 ulimit -c unlimited
 ```
-- Edit linux /proc/sys/kernel/core_pattern and put there string like this.
+- Edit linux /proc/sys/kernel/core_pattern and a string in there like this.
 ```bash
 |/path/to/core_dump_catch.sh %p %P %i %s %h %t %E %e
 ```
  Make it temporary or permanent, as appropriate.
-- Edit core_dump_catch.sh script and change `OUTPUT_DIRECTORY` to location where you want to store core data.
+- Edit core_dump_catch.sh script and change `OUTPUT_DIRECTORY` to the location where you want to store core data.
 
 ## Testing
 
-To test it, simply open bash and type following code. It will crash sleep command and script should store core dump files in `OUTPUT_DIRECTORY` location.
+To test it, simply open bash and type the following code. It will crash sleep command and the script should store core dump files in `OUTPUT_DIRECTORY` location.
 
 ```bash
 sleep 10 &
