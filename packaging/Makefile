@@ -40,6 +40,7 @@ create-%: prepare  ## Create the specific package
 		-e OUTPUT=$(OUTPUT) \
 		-e FPM_FLAGS=${FPM_FLAGS} \
 		-e PHP_AGENT_DIR=${PHP_AGENT_DIR} \
+		-e BUILD_ARCH=x86-64 \
 		-w /app $(IMAGE)
 	@echo "::endgroup::"
 
