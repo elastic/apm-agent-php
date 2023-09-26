@@ -12,7 +12,7 @@ Before using the Core Dump Capture Script, ensure the following prerequisites ar
 -  Bash shell (usually available by default)
 -  Sufficient disk space to store core dump files
 -  Permission to execute the script and access core dump files
-- You need to adjust core limits to ensure the script works properly. Set the core limits to "unlimited" to allow for the capture of core file to be captured in its entirety
+- You need to adjust core limits to ensure the script works properly. Set the core limits to "unlimited" to allow for the core file to be captured in its entirety
 ```bash
 ulimit -c unlimited
 ```
