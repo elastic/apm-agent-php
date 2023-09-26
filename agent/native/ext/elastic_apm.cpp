@@ -274,8 +274,10 @@ static PHP_GINIT_FUNCTION(elastic_apm)
         phpBridge->callInferredSpans(now - requestTime);
     });
 
+    elasticapm::php::PhpSapi sapi(phpBridge->getPhpSapiName());
+
     try {
-        elastic_apm_globals->globals = new elasticapm::php::AgentGlobals(std::move(phpBridge), {}, std::move(inferredSpans), std::make_shared<elasticapm::php::SharedMemoryState>());
+        elastic_apm_globals->globals = new elasticapm::php::AgentGlobals(std::move(phpBridge), std::move(sapi), {}, std::move(inferredSpans), std::make_shared<elasticapm::php::SharedMemoryState>());
     } catch (std::exception const &e) {
         ELASTIC_APM_LOG_DIRECT_CRITICAL( "Unable to allocate AgentGlobals. '%s'", e.what());
     }

@@ -8,13 +8,15 @@
 
 namespace elasticapm::php {
 
-class PhpBridge : public PhpBridgeInterface{
+class PhpBridge : public PhpBridgeInterface {
 public:
 
     bool callInferredSpans(std::chrono::milliseconds duration) const final;
 
     std::vector<phpExtensionInfo_t> getExtensionList() const final;
     std::string getPhpInfo() const final;
+
+    std::string_view getPhpSapiName() const final;
 
 protected:
     zend_class_entry *findClassEntry(std::string_view className) const;
