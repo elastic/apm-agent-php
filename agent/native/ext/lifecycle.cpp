@@ -235,7 +235,7 @@ const char* zendErrorCallbackFileNameToCString( ZendErrorCallbackFileName fileNa
 #       if ELASTIC_APM_IS_ZEND_ERROR_CALLBACK_FILE_NAME_C_STRING == 1
     return fileName;
 #       else
-    return ZSTR_VAL( fileName );
+    return fileName ? ZSTR_VAL( fileName ) : nullptr;
 #       endif
 }
 
