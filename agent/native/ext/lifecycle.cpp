@@ -848,6 +848,10 @@ ZEND_RESULT_CODE  elasticApmRequestPostDeactivate(void) {
 #else
 int  elasticApmRequestPostDeactivate(void) {
 #endif
+    if (!ELASTICAPM_G(globals)->sapi_.isSupported()) {
+        return SUCCESS;
+    }
+
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     if (requestCounter == 1 && detectOpcachePreload()) {
