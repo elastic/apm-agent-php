@@ -141,19 +141,10 @@ typedef void (* ZendThrowExceptionHook )(
 static bool elasticApmZendErrorCallbackSet = false;
 static bool elasticApmZendThrowExceptionHookSet = false;
 static ZendThrowExceptionHook originalZendThrowExceptionHook = NULL;
-static bool g_isLastThrownSet = false;
-static zval g_lastThrown;
 
-void resetLastThrown()
-{
-    if ( ! g_isLastThrownSet )
-    {
-        return;
-    }
-
-    zval_ptr_dtor( &g_lastThrown );
-    ZVAL_UNDEF( &g_lastThrown );
-    g_isLastThrownSet = false;
+void resetLastThrown() {
+    zval_dtor(&ELASTICAPM_G(lastException));
+    ZVAL_UNDEF(&ELASTICAPM_G(lastException));
 }
 
 void elasticApmZendThrowExceptionHookImpl(
@@ -164,30 +155,27 @@ void elasticApmZendThrowExceptionHookImpl(
 #endif
 )
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "g_isLastThrownSet: %s", boolToString( g_isLastThrownSet ) );
+
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "lastException set: %s", boolToString( Z_TYPE(ELASTICAPM_G(lastException)) != IS_UNDEF ) );
 
     resetLastThrown();
 
 #if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
     zval thrownAsZval;
     zval* thrownAsPzval = &thrownAsZval;
-    ZVAL_OBJ( /* dst: */ thrownAsPzval, /* src: */ thrownAsPzobj );
+    ZVAL_OBJ_COPY( /* dst: */ thrownAsPzval, /* src: */ thrownAsPzobj );
 #endif
-    ZVAL_COPY( /* pZvalDst: */ &g_lastThrown, /* pZvalSrc: */ thrownAsPzval );
-
-    g_isLastThrownSet = true;
+    ZVAL_COPY( /* pZvalDst: */ &ELASTICAPM_G(lastException), /* pZvalSrc: */ thrownAsPzval );
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
 }
 
-void elasticApmGetLastThrown( zval* return_value )
-{
-    if ( ! g_isLastThrownSet )
-    {
+void elasticApmGetLastThrown(zval *return_value) {
+    if (Z_TYPE(ELASTICAPM_G(lastException)) == IS_UNDEF) {
         RETURN_NULL();
     }
 
-    RETURN_ZVAL( &g_lastThrown, /* copy */ true, /* dtor */ false );
+    RETURN_ZVAL(&ELASTICAPM_G(lastException), /* copy */ true, /* dtor */ false );
 }
 
 void elasticApmZendThrowExceptionHook(

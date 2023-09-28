@@ -281,6 +281,8 @@ static PHP_GINIT_FUNCTION(elastic_apm)
     } catch (std::exception const &e) {
         ELASTIC_APM_LOG_DIRECT_CRITICAL( "Unable to allocate AgentGlobals. '%s'", e.what());
     }
+
+    ZVAL_UNDEF(&elastic_apm_globals->lastException);
 }
 
 static PHP_GSHUTDOWN_FUNCTION(elastic_apm) {
@@ -288,6 +290,8 @@ static PHP_GSHUTDOWN_FUNCTION(elastic_apm) {
     if (elastic_apm_globals->globals) {
         delete elastic_apm_globals->globals;
     }
+    zval_ptr_dtor(&elastic_apm_globals->lastException);
+    ZVAL_UNDEF(&elastic_apm_globals->lastException);
 }
 
 PHP_MINIT_FUNCTION(elastic_apm)
