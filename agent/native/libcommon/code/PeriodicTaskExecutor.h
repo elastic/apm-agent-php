@@ -112,7 +112,7 @@ private:
 
    void shutdown() {
         thread_.request_stop();
-        pauseCondition_.notify_one();
+        pauseCondition_.notify_all();
    }
 
 private:
