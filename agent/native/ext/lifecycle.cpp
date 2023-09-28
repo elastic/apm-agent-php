@@ -503,7 +503,13 @@ static void unregisterErrorAndExceptionHooks() {
 
 void elasticApmModuleInit( int moduleType, int moduleNumber )
 {
-    ELASTIC_APM_LOG_DIRECT_DEBUG( "%s entered: moduleType: %d, moduleNumber: %d, parent PID: %d", __FUNCTION__, moduleType, moduleNumber, (int)(getParentProcessId()) );
+    auto const &sapi = ELASTICAPM_G(globals)->sapi_;
+
+    ELASTIC_APM_LOG_DIRECT_DEBUG( "%s entered: moduleType: %d, moduleNumber: %d, parent PID: %d, SAPI: %s (%d) is %s", __FUNCTION__, moduleType, moduleNumber, (int)(getParentProcessId()), sapi.getName().data(), static_cast<uint8_t>(sapi.getType()), sapi.isSupported() ? "supported" : "unsupported");
+
+    if (!sapi.isSupported()) {
+        return;
+    }
 
     registerOsSignalHandler();
 
@@ -577,6 +583,10 @@ void elasticApmModuleShutdown( int moduleType, int moduleNumber )
     ResultCode resultCode;
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "moduleType: %d, moduleNumber: %d", moduleType, moduleNumber );
+
+    if (!ELASTICAPM_G(globals)->sapi_.isSupported()) {
+        return;
+    }
 
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
@@ -657,6 +667,10 @@ auto buildPeriodicTaskExecutor() {
 
 void elasticApmRequestInit()
 {
+    if (!ELASTICAPM_G(globals)->sapi_.isSupported()) {
+        return;
+    }
+
     requestCounter++;
 
     Tracer* const tracer = getGlobalTracer();
@@ -798,6 +812,10 @@ void elasticApmRequestInit()
 
 void elasticApmRequestShutdown()
 {
+    if (!ELASTICAPM_G(globals)->sapi_.isSupported()) {
+        return;
+    }
+
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
     ResultCode resultCode;

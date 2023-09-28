@@ -7,6 +7,7 @@
 #include <Zend/zend_globals.h>
 #include <Zend/zend_types.h>
 
+#include <main/SAPI.h>
 
 namespace elasticapm::php {
 
@@ -100,5 +101,8 @@ bool PhpBridge::callInferredSpans(std::chrono::milliseconds duration) const {
     return callMethod(inferredSpansManager, "handleAutomaticCapturing"sv, params.data(), params.size(), rv.get());
 }
 
+std::string_view PhpBridge::getPhpSapiName() const {
+    return sapi_module.name;
+}
 
 }

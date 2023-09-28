@@ -21,6 +21,7 @@ public:
     virtual std::vector<phpExtensionInfo_t> getExtensionList() const = 0;
     virtual std::string getPhpInfo() const = 0;
 
+    virtual std::string_view getPhpSapiName() const = 0;
 
 };
 

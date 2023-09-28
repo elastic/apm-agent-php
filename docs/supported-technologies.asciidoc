@@ -23,6 +23,12 @@ The agent supports Linux operating system.
 The agent supports PHP versions 7.2-8.2.
 
 [float]
+[[unsupported-php-sapis]]
+=== Unsupported PHP Server API's (SAPI)
+
+Currenly we're not supporting `phpdbg` - agent extension can be loaded but will remain non-functional
+
+[float]
 [[supported-web-frameworks]]
 === Web frameworks
 
