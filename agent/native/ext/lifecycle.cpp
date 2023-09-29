@@ -141,19 +141,10 @@ typedef void (* ZendThrowExceptionHook )(
 static bool elasticApmZendErrorCallbackSet = false;
 static bool elasticApmZendThrowExceptionHookSet = false;
 static ZendThrowExceptionHook originalZendThrowExceptionHook = NULL;
-static bool g_isLastThrownSet = false;
-static zval g_lastThrown;
 
-void resetLastThrown()
-{
-    if ( ! g_isLastThrownSet )
-    {
-        return;
-    }
-
-    zval_ptr_dtor( &g_lastThrown );
-    ZVAL_UNDEF( &g_lastThrown );
-    g_isLastThrownSet = false;
+void resetLastThrown() {
+    zval_dtor(&ELASTICAPM_G(lastException));
+    ZVAL_UNDEF(&ELASTICAPM_G(lastException));
 }
 
 void elasticApmZendThrowExceptionHookImpl(
@@ -164,30 +155,27 @@ void elasticApmZendThrowExceptionHookImpl(
 #endif
 )
 {
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "g_isLastThrownSet: %s", boolToString( g_isLastThrownSet ) );
+
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "lastException set: %s", boolToString( Z_TYPE(ELASTICAPM_G(lastException)) != IS_UNDEF ) );
 
     resetLastThrown();
 
 #if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
     zval thrownAsZval;
     zval* thrownAsPzval = &thrownAsZval;
-    ZVAL_OBJ( /* dst: */ thrownAsPzval, /* src: */ thrownAsPzobj );
+    ZVAL_OBJ_COPY( /* dst: */ thrownAsPzval, /* src: */ thrownAsPzobj );
 #endif
-    ZVAL_COPY( /* pZvalDst: */ &g_lastThrown, /* pZvalSrc: */ thrownAsPzval );
-
-    g_isLastThrownSet = true;
+    ZVAL_COPY( /* pZvalDst: */ &ELASTICAPM_G(lastException), /* pZvalSrc: */ thrownAsPzval );
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
 }
 
-void elasticApmGetLastThrown( zval* return_value )
-{
-    if ( ! g_isLastThrownSet )
-    {
+void elasticApmGetLastThrown(zval *return_value) {
+    if (Z_TYPE(ELASTICAPM_G(lastException)) == IS_UNDEF) {
         RETURN_NULL();
     }
 
-    RETURN_ZVAL( &g_lastThrown, /* copy */ true, /* dtor */ false );
+    RETURN_ZVAL(&ELASTICAPM_G(lastException), /* copy */ true, /* dtor */ false );
 }
 
 void elasticApmZendThrowExceptionHook(
@@ -818,33 +806,27 @@ void elasticApmRequestShutdown()
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
 
-    ResultCode resultCode;
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
 
-    if ( ! doesCurrentPidMatchPidOnInit( g_pidOnRequestInit, "request" ) )
-    {
-        resultCode = resultSuccess;
-        goto finally;
+    if (!doesCurrentPidMatchPidOnInit( g_pidOnRequestInit, "request" )) {
+        return;
     }
 
-    if ( ! tracer->isInited )
-    {
+    if (!tracer->isInited) {
         ELASTIC_APM_LOG_TRACE( "Extension is not initialized" );
-        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
+        return;
     }
 
     if ( ! config->enabled )
     {
         ELASTIC_APM_LOG_DEBUG( "Extension is not enabled" );
-        resultCode = resultSuccess;
-        goto finally;
+        return;
     }
 
     if (requestCounter == 1 && detectOpcachePreload()) {
         ELASTIC_APM_LOG_DEBUG( "opcache.preload request detected on shutdown" );
-        resultCode = resultSuccess;
-        goto finally;
+        return;
     }
 	
     if (ELASTICAPM_G(globals)->periodicTaskExecutor_) {
@@ -853,6 +835,32 @@ void elasticApmRequestShutdown()
     }
 
     tracerPhpPartOnRequestShutdown();
+
+    // there is no guarantee that following code will be executed - in case of error on php side
+
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
+    // We ignore errors because we want the monitored application to continue working
+    // even if APM encountered an issue that prevent it from working
+}
+
+#if PHP_VERSION_ID >= 80000
+ZEND_RESULT_CODE  elasticApmRequestPostDeactivate(void) {
+#else
+int  elasticApmRequestPostDeactivate(void) {
+#endif
+    if (!ELASTICAPM_G(globals)->sapi_.isSupported()) {
+        return SUCCESS;
+    }
+
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+
+    if (requestCounter == 1 && detectOpcachePreload()) {
+        ELASTIC_APM_LOG_DEBUG( "opcache.preload request detected on post deactivate" );
+        return SUCCESS;
+    }
+
+    Tracer* const tracer = getGlobalTracer();
+    const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
 
     if ( config->astProcessEnabled )
     {
@@ -864,23 +872,14 @@ void elasticApmRequestShutdown()
     resetLastPhpErrorData();
     resetLastThrown();
 
-    resultCode = resultSuccess;
-
-    finally:
     if ( tracer->isInited && isMemoryTrackingEnabled( &tracer->memTracker ) )
     {
         memoryTrackerRequestShutdown( &tracer->memTracker );
     }
 
-    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
-    // We ignore errors because we want the monitored application to continue working
-    // even if APM encountered an issue that prevent it from working
-    ELASTIC_APM_UNUSED( resultCode );
-    return;
-
-    failure:
-    goto finally;
+    return SUCCESS;
 }
+
 
 static pid_t g_lastDetectedCurrentProcessId = -1;
 

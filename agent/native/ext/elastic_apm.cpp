@@ -281,6 +281,8 @@ static PHP_GINIT_FUNCTION(elastic_apm)
     } catch (std::exception const &e) {
         ELASTIC_APM_LOG_DIRECT_CRITICAL( "Unable to allocate AgentGlobals. '%s'", e.what());
     }
+
+    ZVAL_UNDEF(&elastic_apm_globals->lastException);
 }
 
 static PHP_GSHUTDOWN_FUNCTION(elastic_apm) {
@@ -715,7 +717,7 @@ zend_module_entry elastic_apm_module_entry = {
 	PHP_MODULE_GLOBALS(elastic_apm), /* PHP_MODULE_GLOBALS */
     PHP_GINIT(elastic_apm), 	     /* PHP_GINIT */
     PHP_GSHUTDOWN(elastic_apm),		 /* PHP_GSHUTDOWN */
-	NULL,                            /* post deactivate */
+	elasticApmRequestPostDeactivate, /* post deactivate */
 	STANDARD_MODULE_PROPERTIES_EX
 };
 /* }}} */
