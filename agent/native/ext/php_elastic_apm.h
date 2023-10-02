@@ -24,11 +24,14 @@
 
 #include "AgentGlobals.h"
 
+#include "PhpErrorData.h"
+
 #include <php.h>
 #include <zend.h>
 #include <zend_API.h>
 #include <zend_modules.h>
 
+#include <memory>
 
 
 extern zend_module_entry elastic_apm_module_entry;
@@ -37,10 +40,14 @@ extern zend_module_entry elastic_apm_module_entry;
 ZEND_TSRMLS_CACHE_EXTERN()
 #endif
 
+
+
 ZEND_BEGIN_MODULE_GLOBALS(elastic_apm)
     Tracer globalTracer;
     elasticapm::php::AgentGlobals *globals;
     zval lastException;
+    std::unique_ptr<elasticapm::php::PhpErrorData> lastErrorData;
+    bool captureErrors;
 ZEND_END_MODULE_GLOBALS(elastic_apm)
 
 ZEND_EXTERN_MODULE_GLOBALS(elastic_apm)
