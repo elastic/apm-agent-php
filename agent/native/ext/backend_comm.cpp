@@ -1038,12 +1038,6 @@ static bool deriveAsyncBackendComm( const ConfigSnapshot* config, String* dbgRea
         return config->asyncBackendComm.value;
     }
 
-    if ( isPhpRunningAsCliScript() )
-    {
-        *dbgReason = "implicitly set to false because PHP is running as CLI script";
-        return false;
-    }
-
     *dbgReason = "implicitly set to true";
     return true;
 }
