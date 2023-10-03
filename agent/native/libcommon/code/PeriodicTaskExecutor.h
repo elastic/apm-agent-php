@@ -15,7 +15,7 @@ namespace elasticapm::php {
 class PeriodicTaskExecutor : public ForkableInterface {
 private:
     auto getThreadWorkerFunction() {
-        return [this](std::stop_token stoken) { work(stoken); };
+        return [this]() { work(); };
     }
 
 public:
@@ -29,46 +29,47 @@ public:
     }
 
     ~PeriodicTaskExecutor() {
-        shutdown();
-        if (thread_.joinable()) {
-            thread_.join();
+        {
+        std::lock_guard<std::mutex> lock(mutex_);
+        periodicTasks_.clear();
         }
+        shutdown();
+        thread_.join();
     }
 
-    void work(std::stop_token stoken) {
-
+    void work() {
         if (workerInit_) {
             workerInit_();
         }
 
-        while(!stoken.stop_requested()) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        while(working_) {
             {
- 
-                if (!working_.load()) {
-                    std::unique_lock<std::mutex> lock(mutex_);
-                    pauseCondition_.wait(lock, [this, &stoken]() {
-                        if (stoken.stop_requested()) {
-                            return true;
-                        }
-                        return static_cast<bool>(working_);
-                    });
-                }
+                pauseCondition_.wait(lock, [this]() -> bool {
+                    return resumed_ || !working_;
+                });
             }
 
-            if (stoken.stop_requested()) {
+            if (!working_) {
                 break;
             }
 
+            lock.unlock();
+
+
             std::this_thread::sleep_for(sleepInterval_);
             {
-                std::unique_lock<std::mutex> lock(mutex_);
+                lock.lock();
                 for (auto const &task : periodicTasks_) {
 
                     lock.unlock();
                     task(std::chrono::time_point_cast<std::chrono::milliseconds>(clock_t::now()));
                     lock.lock();
                 }
+                lock.unlock();
             }
+
+            lock.lock();
         }
     }
 
@@ -78,21 +79,22 @@ public:
     }
 
     void postfork([[maybe_unused]] bool child) final {
-        thread_ = std::move(std::jthread(getThreadWorkerFunction()));
+        working_ = true;
+        thread_ = std::thread(getThreadWorkerFunction());
         pauseCondition_.notify_all();
     }
 
     void resumePeriodicTasks() {
         {
         std::lock_guard<std::mutex> lock(mutex_);
-        working_ = true;
+        resumed_ = true;
         }
         pauseCondition_.notify_all();
     }
     void suspendPeriodicTasks() {
         {
        	std::lock_guard<std::mutex> lock(mutex_);
-        working_ = false;
+        resumed_ = false;
         }
         pauseCondition_.notify_all();
     }
@@ -111,19 +113,23 @@ private:
    PeriodicTaskExecutor& operator=(const PeriodicTaskExecutor&) = delete;
 
    void shutdown() {
-        thread_.request_stop();
-        pauseCondition_.notify_one();
+        {
+        std::lock_guard<std::mutex> lock(mutex_);
+        working_ = false;
+        }
+        pauseCondition_.notify_all();
    }
 
 private:
 
     worker_init_t workerInit_;
-    std::jthread thread_;
-    std::atomic_bool working_ = false;
     std::chrono::milliseconds sleepInterval_ = std::chrono::milliseconds(20);
-    std::mutex mutex_;
-	std::condition_variable pauseCondition_;
+    std::thread thread_;
     std::list<task_t> periodicTasks_;
+    std::mutex mutex_;
+    std::condition_variable pauseCondition_;
+    std::atomic_bool working_ = true;
+    std::atomic_bool resumed_ = false;
 };
 
 
