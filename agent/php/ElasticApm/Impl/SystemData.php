@@ -41,6 +41,17 @@ class SystemData implements SerializableDataInterface, LoggableInterface
      *
      * The length of this string is limited to 1024.
      *
+     * CPU Architecture.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.4.0/docs/spec/system.json#L6
+     */
+
+    public $architecture = null;
+    /**
+     * @var string|null
+     *
+     * The length of this string is limited to 1024.
+     *
      * @link https://github.com/elastic/apm-server/blob/v7.0.0/docs/spec/system.json#L11
      * Hostname of the system the agent is running on
      *
@@ -84,6 +95,17 @@ class SystemData implements SerializableDataInterface, LoggableInterface
      */
     public $containerId = null;
 
+    /**
+     * @var string|null
+     *
+     * The length of this string is limited to 1024.
+     *
+     * Name of the system platform.
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.4.0/docs/spec/system.json#L26
+     */
+    public $platform = null;
+
     /** @inheritDoc */
     public function jsonSerialize()
     {
@@ -97,6 +119,9 @@ class SystemData implements SerializableDataInterface, LoggableInterface
             $containerSubObject = ['id' => $this->containerId];
             SerializationUtil::addNameValue('container', $containerSubObject, /* ref */ $result);
         }
+
+        SerializationUtil::addNameValueIfNotNull('architecture', $this->architecture, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('platform', $this->platform, /* ref */ $result);
 
         return SerializationUtil::postProcessResult($result);
     }
