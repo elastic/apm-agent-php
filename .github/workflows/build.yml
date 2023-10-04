@@ -15,14 +15,18 @@ jobs:
       fail-fast: false
       matrix:
         arch:
-          - "linux-x86-64"
-          - "linuxmusl-x86-64"
+          - "linux-arm64"
+#          - "linux-x86-64"
+#          - "linuxmusl-x86-64"
     env:
       BUILD_ARCHITECTURE: ${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v3
-      - name: Build
-        run: make -f .ci/Makefile build
+      - uses: pguyot/arm-runner-action@v2      
+        with:
+          base_image: raspios_lite:2022-04-04
+          commands: |
+            run: make -f .ci/Makefile build
       - uses: actions/upload-artifact@v3
         with:
           name: package-parts-${{ matrix.arch }}
