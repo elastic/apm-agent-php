@@ -26,7 +26,7 @@ jobs:
         with:
           cpu: cortex-a53
           base_image: raspios_lite_arm64:latest
-          cpu_info: raspberrypi_zero2_w_arm64_w
+#          cpu_info: raspberrypi_zero2_w_arm64_w
           commands: |
             df -h
             uname -m
