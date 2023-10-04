@@ -30,7 +30,7 @@ jobs:
           commands: |
             df -h
             uname -m
-            sudo apt install docker.io
+            sudo apt install -y docker.io
             make -f .ci/Makefile build
       - uses: actions/upload-artifact@v3
         with:
