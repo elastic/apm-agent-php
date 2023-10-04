@@ -27,7 +27,7 @@ jobs:
           cpu: cortex-a53
           base_image: raspios_lite_arm64:latest
           commands: |
-            run: make -f .ci/Makefile build
+            make -f .ci/Makefile build
       - uses: actions/upload-artifact@v3
         with:
           name: package-parts-${{ matrix.arch }}
