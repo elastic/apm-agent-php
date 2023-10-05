@@ -118,4 +118,4 @@ include(elastic_conan_export)
 
 # attach Elastic conan remote and make it default
 conan_add_remote(NAME ElasticConan URL https://artifactory.elastic.dev/artifactory/api/conan/apm-agent-php-dev INDEX 0)
-conan_update_remote(NAME conancenter INDEX 1)
+conan_update_remote(NAME conancenter URL https://center.conan.io INDEX 1)
