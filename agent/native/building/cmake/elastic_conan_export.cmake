@@ -71,3 +71,20 @@ function(conan_update_remote)
       message(FATAL_ERROR "Conan remote failed='${return_code}'")
     endif()
 endfunction()
+
+
+function(conan_remove_remote)
+    # Update a remote
+    # Argument NAME is required
+    # Example usage:
+    #    conan_remove_remote(NAME bincrafters)
+    set(oneValueArgs NAME)
+    cmake_parse_arguments(CONAN "" "${oneValueArgs}" "" ${ARGN})
+
+    message(STATUS "Conan: Removing ${CONAN_NAME} remote repository")
+    execute_process(COMMAND ${CONAN_CMD} remote remove ${CONAN_NAME}
+                    RESULT_VARIABLE return_code)
+    if(NOT "${return_code}" STREQUAL "0")
+      message(FATAL_ERROR "Conan remote failed='${return_code}'")
+    endif()
+endfunction()
