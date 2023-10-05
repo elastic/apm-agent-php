@@ -41,3 +41,33 @@ function(elastic_conan_alias)
                     COMMAND_ERROR_IS_FATAL ANY
     )
 endfunction()
+
+function(conan_update_remote)
+    # Update a remote
+    # Arguments URL and NAME are required, INDEX, COMMAND and VERIFY_SSL are optional
+    # Example usage:
+    #    conan_add_remote(NAME bincrafters INDEX 1
+    #       URL https://api.bintray.com/conan/bincrafters/public-conan
+    #       VERIFY_SSL True)
+    set(oneValueArgs URL NAME INDEX COMMAND VERIFY_SSL)
+    cmake_parse_arguments(CONAN "" "${oneValueArgs}" "" ${ARGN})
+
+    if(DEFINED CONAN_INDEX)
+        set(CONAN_INDEX_ARG "-i ${CONAN_INDEX}")
+    endif()
+    if(DEFINED CONAN_COMMAND)
+        set(CONAN_CMD ${CONAN_COMMAND})
+    else()
+        conan_check(REQUIRED DETECT_QUIET)
+    endif()
+    set(CONAN_VERIFY_SSL_ARG "True")
+    if(DEFINED CONAN_VERIFY_SSL)
+        set(CONAN_VERIFY_SSL_ARG ${CONAN_VERIFY_SSL})
+    endif()
+    message(STATUS "Conan: Updating ${CONAN_NAME} remote repository (${CONAN_URL}) verify ssl (${CONAN_VERIFY_SSL_ARG})")
+    execute_process(COMMAND ${CONAN_CMD} remote update ${CONAN_NAME} ${CONAN_INDEX_ARG} ${CONAN_URL} ${CONAN_VERIFY_SSL_ARG}
+                    RESULT_VARIABLE return_code)
+    if(NOT "${return_code}" STREQUAL "0")
+      message(FATAL_ERROR "Conan remote failed='${return_code}'")
+    endif()
+endfunction()
