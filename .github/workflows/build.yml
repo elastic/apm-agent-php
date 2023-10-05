@@ -22,16 +22,22 @@ jobs:
       BUILD_ARCHITECTURE: ${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v3
-      - uses: pguyot/arm-runner-action@v2      
+      - uses: docker/setup-qemu-action@v3
         with:
-          cpu: cortex-a53
-          base_image: raspios_lite_arm64:latest
-#          cpu_info: raspberrypi_zero2_w_arm64_w
-          commands: |
-            df -h
-            uname -m
-            sudo apt install -y docker.io
-            make -f .ci/Makefile build
+          platforms: arm64
+      - name: build
+        run: make -f .ci/Makefile build
+
+#       - uses: pguyot/arm-runner-action@v2      
+#         with:
+#           cpu: cortex-a53
+#           base_image: raspios_lite_arm64:latest
+# #          cpu_info: raspberrypi_zero2_w_arm64_w
+#           commands: |
+#             df -h
+#             uname -m
+#             sudo apt install -y docker.io
+#             make -f .ci/Makefile build
       - uses: actions/upload-artifact@v3
         with:
           name: package-parts-${{ matrix.arch }}
