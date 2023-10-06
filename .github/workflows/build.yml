@@ -15,14 +15,21 @@ jobs:
       fail-fast: false
       matrix:
         arch:
+          - "linux-x86-64"
+          - "linuxmusl-x86-64"
           - "linux-arm64"
-#          - "linux-x86-64"
-#          - "linuxmusl-x86-64"
+          - "linuxmusl-arm64"
+        include:
+          - run_qemu:
+              arch:
+                - "linux-arm64"
+                - "linuxmusl-arm64"
     env:
       BUILD_ARCHITECTURE: ${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v3
-      - uses: docker/setup-qemu-action@v3
+      - if: ${{ matrix.run_qemu }}
+        uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64
       - name: build
