@@ -49,10 +49,10 @@ jobs:
           - "linux-arm64"
           - "linuxmusl-arm64"
         include:
-          - run_qemu:
-              arch:
-                - "linux-arm64"
-                - "linuxmusl-arm64"
+          - arch: "linux-arm64"
+            run_qemu: 1
+          - arch: "linuxmusl-arm64"
+            run_qemu: 1
     env:
       PHP_VERSION: ${{ matrix.php-version }}
       BUILD_ARCHITECTURE: ${{ matrix.arch }}
