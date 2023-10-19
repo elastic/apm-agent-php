@@ -42,6 +42,7 @@ public:
 
 TEST_F(InferredSpansTest, TryInterrupt) {
     inferredSpans_.setInterval(1ms);
+    std::this_thread::sleep_for(2ms);
 
     EXPECT_CALL(interruptFuncMock_, interruptFunction()).Times(::testing::Exactly(1));
 
@@ -55,6 +56,7 @@ TEST_F(InferredSpansTest, TryInterrupt) {
 
 TEST_F(InferredSpansTest, TryInterruptOnlyOnce) {
     inferredSpans_.setInterval(1ms);
+    std::this_thread::sleep_for(2ms);
 
     EXPECT_CALL(interruptFuncMock_, interruptFunction()).Times(::testing::Exactly(1));
 
@@ -64,11 +66,14 @@ TEST_F(InferredSpansTest, TryInterruptOnlyOnce) {
 }
 
 TEST_F(InferredSpansTest, DontInterruptBeforeInterval) {
-    inferredSpans_.setInterval(10min);
+    inferredSpans_.setInterval(1ms);
+    std::this_thread::sleep_for(2ms);
 
     ::testing::InSequence s;
     EXPECT_CALL(interruptFuncMock_, interruptFunction()).Times(::testing::Exactly(1));
     inferredSpans_.tryRequestInterrupt(std::chrono::time_point_cast<std::chrono::milliseconds>(InferredSpans::clock_t::now()));
+
+    inferredSpans_.setInterval(10min);
 
     EXPECT_CALL(attachInferredSpansFuncMock_, attachInferredSpansOnPhp(::testing::_, ::testing::_)).Times(::testing::Exactly(1));
     inferredSpans_.attachBacktraceIfInterrupted();
@@ -80,6 +85,7 @@ TEST_F(InferredSpansTest, DontInterruptBeforeInterval) {
 
 TEST_F(InferredSpansTest, InterruptAfterInterval) {
     inferredSpans_.setInterval(5ms);
+    std::this_thread::sleep_for(6ms);
 
     EXPECT_CALL(interruptFuncMock_, interruptFunction()).Times(::testing::Exactly(1));
     inferredSpans_.tryRequestInterrupt(std::chrono::time_point_cast<std::chrono::milliseconds>(InferredSpans::clock_t::now()));
@@ -95,7 +101,8 @@ TEST_F(InferredSpansTest, InterruptAfterInterval) {
 
 TEST_F(InferredSpansTest, DontInterruptAfterIntervalIfSpansNotAttachedYet) {
     inferredSpans_.setInterval(5ms);
- 
+    std::this_thread::sleep_for(6ms);
+
     EXPECT_CALL(interruptFuncMock_, interruptFunction()).Times(::testing::Exactly(1));
     inferredSpans_.tryRequestInterrupt(std::chrono::time_point_cast<std::chrono::milliseconds>(InferredSpans::clock_t::now()));
 

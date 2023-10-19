@@ -17,13 +17,10 @@ public:
     using attachInferredSpansOnPhp_t = std::function<void(time_point_t interruptRequest, time_point_t now)>;
 
     InferredSpans(interruptFunc_t interrupt, attachInferredSpansOnPhp_t attachInferredSpansOnPhp) : interrupt_(interrupt), attachInferredSpansOnPhp_(attachInferredSpansOnPhp) {
-            fprintf(stderr, "constructor last: %ld\n", lastInterruptRequestTick_.time_since_epoch().count());
-
     }
 
     void attachBacktraceIfInterrupted() {
         if (phpSideBacktracePending_.load()) { // avoid triggers from agent side with low interval
-            fprintf(stderr, "attachBacktraceIfInterrupted pending\n");
             return;
         }
 
@@ -32,39 +29,37 @@ public:
 
         if (checkAndResetInterruptFlag()) {
             lock.unlock();
-            fprintf(stderr, "attachBacktraceIfInterrupted true - calling attach\n");
             phpSideBacktracePending_ = true;
             attachInferredSpansOnPhp_(requestInterruptTime, std::chrono::time_point_cast<std::chrono::milliseconds>(clock_t::now()));
             phpSideBacktracePending_ = false;
-        } else {
-            fprintf(stderr, "attachBacktraceIfInterrupted false\n");
-
         }
     }
 
     void tryRequestInterrupt(time_point_t now) {
         if (interruptedRequested_.load()) {
-            fprintf(stderr, "tryRequestInterrupt - interrupt already requested\n");
             return; // it was requested to interrupt in previous interval
         }
 
         std::unique_lock lock(mutex_);
+
         if (now > lastInterruptRequestTick_ + samplingInterval_) {
             lastInterruptRequestTick_ = now;
 
             interruptedRequested_ = true;
             lock.unlock();
             interrupt_(); // set interrupt for user space functions
-            fprintf(stderr, "tryRequestInterrupt- interrupt called\n");
-        } else {
-            fprintf(stderr, "tryRequestInterrupt - now<interval last: %ld, now: %ld\n", lastInterruptRequestTick_.time_since_epoch().count(), now.time_since_epoch().count());
         }
-
     }
 
 
     void setInterval(std::chrono::milliseconds interval) {
+        std::lock_guard lock(mutex_);
         samplingInterval_ = interval;
+    }
+
+    void reset() {
+        std::lock_guard lock(mutex_);
+        lastInterruptRequestTick_ = std::chrono::time_point_cast<time_point_t::duration>(clock_t::now());
     }
 
 private:
@@ -73,9 +68,9 @@ private:
         return interruptedRequested_.compare_exchange_strong(interrupted, false, std::memory_order_release, std::memory_order_acquire);
     }
 
-    std::atomic_bool interruptedRequested_;
+    std::atomic_bool interruptedRequested_ = false;
     std::chrono::milliseconds samplingInterval_ = std::chrono::milliseconds(20);
-    time_point_t lastInterruptRequestTick_{time_point_t::duration::zero()};
+    time_point_t lastInterruptRequestTick_ = std::chrono::time_point_cast<time_point_t::duration>(clock_t::now());
     std::mutex mutex_;
     interruptFunc_t interrupt_;
     attachInferredSpansOnPhp_t attachInferredSpansOnPhp_;
