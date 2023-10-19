@@ -762,6 +762,7 @@ void elasticApmRequestInit()
 
         ELASTIC_APM_LOG_DEBUG("resuming inferred spans thread with sampling interval %zums", interval.count());
         ELASTICAPM_G(globals)->inferredSpans_->setInterval(interval);
+        ELASTICAPM_G(globals)->inferredSpans_->reset();
         ELASTICAPM_G(globals)->periodicTaskExecutor_->setInterval(interval);
         ELASTICAPM_G(globals)->periodicTaskExecutor_->resumePeriodicTasks();
     }
