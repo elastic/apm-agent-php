@@ -35,6 +35,7 @@ jobs:
       - name: build
         run: |
           uname -a
+          echo "Detected CPUs: $(nproc)"
           make -f .ci/Makefile build
 
       - uses: actions/upload-artifact@v3
