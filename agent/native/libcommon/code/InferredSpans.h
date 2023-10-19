@@ -21,6 +21,7 @@ public:
 
     void attachBacktraceIfInterrupted() {
         if (phpSideBacktracePending_.load()) { // avoid triggers from agent side with low interval
+            fprintf(stderr, "attachBacktraceIfInterrupted pending\n");
             return;
         }
 
@@ -29,14 +30,19 @@ public:
 
         if (checkAndResetInterruptFlag()) {
             lock.unlock();
+            fprintf(stderr, "attachBacktraceIfInterrupted true - calling attach\n");
             phpSideBacktracePending_ = true;
             attachInferredSpansOnPhp_(requestInterruptTime, std::chrono::time_point_cast<std::chrono::milliseconds>(clock_t::now()));
             phpSideBacktracePending_ = false;
+        } else {
+            fprintf(stderr, "attachBacktraceIfInterrupted false\n");
+
         }
     }
 
     void tryRequestInterrupt(time_point_t now) {
         if (interruptedRequested_.load()) {
+            fprintf(stderr, "tryRequestInterrupt - interrupt already requested\n");
             return; // it was requested to interrupt in previous interval
         }
 
@@ -47,6 +53,9 @@ public:
             interruptedRequested_ = true;
             lock.unlock();
             interrupt_(); // set interrupt for user space functions
+            fprintf(stderr, "tryRequestInterrupt- interrupt called\n");
+        } else {
+            fprintf(stderr, "tryRequestInterrupt - now<interval\n");
         }
 
     }

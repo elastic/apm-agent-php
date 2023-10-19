@@ -66,6 +66,7 @@ TEST_F(InferredSpansTest, TryInterruptOnlyOnce) {
 TEST_F(InferredSpansTest, DontInterruptBeforeInterval) {
     inferredSpans_.setInterval(10min);
 
+    ::testing::InSequence s;
     EXPECT_CALL(interruptFuncMock_, interruptFunction()).Times(::testing::Exactly(1));
     inferredSpans_.tryRequestInterrupt(std::chrono::time_point_cast<std::chrono::milliseconds>(InferredSpans::clock_t::now()));
 
@@ -73,6 +74,8 @@ TEST_F(InferredSpansTest, DontInterruptBeforeInterval) {
     inferredSpans_.attachBacktraceIfInterrupted();
 
     inferredSpans_.tryRequestInterrupt(std::chrono::time_point_cast<std::chrono::milliseconds>(InferredSpans::clock_t::now()));
+    EXPECT_CALL(attachInferredSpansFuncMock_, attachInferredSpansOnPhp(::testing::_, ::testing::_)).Times(::testing::Exactly(0));
+
 }
 
 TEST_F(InferredSpansTest, InterruptAfterInterval) {
