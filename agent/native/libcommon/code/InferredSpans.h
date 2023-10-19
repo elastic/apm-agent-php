@@ -17,6 +17,8 @@ public:
     using attachInferredSpansOnPhp_t = std::function<void(time_point_t interruptRequest, time_point_t now)>;
 
     InferredSpans(interruptFunc_t interrupt, attachInferredSpansOnPhp_t attachInferredSpansOnPhp) : interrupt_(interrupt), attachInferredSpansOnPhp_(attachInferredSpansOnPhp) {
+            fprintf(stderr, "constructor last: %ld\n", lastInterruptRequestTick_.time_since_epoch().count());
+
     }
 
     void attachBacktraceIfInterrupted() {
@@ -55,7 +57,7 @@ public:
             interrupt_(); // set interrupt for user space functions
             fprintf(stderr, "tryRequestInterrupt- interrupt called\n");
         } else {
-            fprintf(stderr, "tryRequestInterrupt - now<interval\n");
+            fprintf(stderr, "tryRequestInterrupt - now<interval last: %ld, now: %ld\n", lastInterruptRequestTick_.time_since_epoch().count(), now.time_since_epoch().count());
         }
 
     }
@@ -73,7 +75,7 @@ private:
 
     std::atomic_bool interruptedRequested_;
     std::chrono::milliseconds samplingInterval_ = std::chrono::milliseconds(20);
-    time_point_t lastInterruptRequestTick_{};
+    time_point_t lastInterruptRequestTick_{time_point_t::duration::zero()};
     std::mutex mutex_;
     interruptFunc_t interrupt_;
     attachInferredSpansOnPhp_t attachInferredSpansOnPhp_;
