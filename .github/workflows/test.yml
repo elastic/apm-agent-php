@@ -58,19 +58,21 @@ jobs:
       BUILD_ARCHITECTURE: ${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
+        with:
+          name: package-parts-${{ matrix.arch }}
+          path: agent/native/_build/${{ matrix.arch }}-release/ext/
       - if: ${{ matrix.run_qemu }}
         uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64
       - name: Prepare
         run: make -f .ci/Makefile prepare
-      - uses: actions/download-artifact@v3
-        with:
-          name: package-parts-${{ matrix.arch }}
-          path: agent/native/_build/${{ matrix.arch }}-release/ext/
       - name: phpt-unit-tests
-        run: make -f .ci/Makefile run-phpt-tests
-
+        run: |
+          tree agent/native/_build/
+          uname -a
+          make -f .ci/Makefile run-phpt-tests
   static-checks-unit-tests:
     name: static-checks-unit-tests
     runs-on: ubuntu-latest
