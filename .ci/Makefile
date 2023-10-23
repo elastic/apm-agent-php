@@ -39,6 +39,7 @@ prepare:  ## Build docker image for building and testing the project
 	docker build \
 		--build-arg PHP_VERSION=${PHP_VERSION} \
 		--tag $(IMAGE):${PHP_VERSION}$(SUFFIX) \
+		--platform linux/arm64 \
 		-f ${DOCKERFILE} .
 	@echo "::endgroup::"
 
