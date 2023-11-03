@@ -41,6 +41,7 @@ public:
         }
 
         std::unique_lock lock(mutex_);
+
         if (now > lastInterruptRequestTick_ + samplingInterval_) {
             lastInterruptRequestTick_ = now;
 
@@ -48,12 +49,17 @@ public:
             lock.unlock();
             interrupt_(); // set interrupt for user space functions
         }
-
     }
 
 
     void setInterval(std::chrono::milliseconds interval) {
+        std::lock_guard lock(mutex_);
         samplingInterval_ = interval;
+    }
+
+    void reset() {
+        std::lock_guard lock(mutex_);
+        lastInterruptRequestTick_ = std::chrono::time_point_cast<time_point_t::duration>(clock_t::now());
     }
 
 private:
@@ -62,9 +68,9 @@ private:
         return interruptedRequested_.compare_exchange_strong(interrupted, false, std::memory_order_release, std::memory_order_acquire);
     }
 
-    std::atomic_bool interruptedRequested_;
+    std::atomic_bool interruptedRequested_ = false;
     std::chrono::milliseconds samplingInterval_ = std::chrono::milliseconds(20);
-    time_point_t lastInterruptRequestTick_{};
+    time_point_t lastInterruptRequestTick_ = std::chrono::time_point_cast<time_point_t::duration>(clock_t::now());
     std::mutex mutex_;
     interruptFunc_t interrupt_;
     attachInferredSpansOnPhp_t attachInferredSpansOnPhp_;

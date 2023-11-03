@@ -198,6 +198,8 @@ final class MetadataValidator
             self::verifyHostnames($this->expectations->configuredHostname->getValue(), $this->expectations->detectedHostname->getValue(), $this->actual->system);
         }
 
+        TestCaseBase::assertSameExpectedOptional($this->expectations->architecture, $this->actual->system->architecture);
+        TestCaseBase::assertSameExpectedOptional($this->expectations->platform, $this->actual->system->platform);
         TestCaseBase::assertSameExpectedOptional($this->expectations->containerId, $this->actual->system->containerId);
     }
 
