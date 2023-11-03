@@ -6,6 +6,14 @@ ifeq ($(DOCKERFILE),)
 	endif
 endif
 
+DOCKER_PLATFORM := linux/x86_64
+ifeq ($(BUILD_ARCHITECTURE), linux-arm64)
+	DOCKER_PLATFORM := linux/arm64
+else ifeq ($(BUILD_ARCHITECTURE), linuxmusl-arm64)
+	DOCKER_PLATFORM := linux/arm64
+endif
+
+
 SHELL=/bin/bash -o pipefail
 MAKEFLAGS += --no-print-directory
 IMAGE := test-php
@@ -39,7 +47,7 @@ prepare:  ## Build docker image for building and testing the project
 	docker build \
 		--build-arg PHP_VERSION=${PHP_VERSION} \
 		--tag $(IMAGE):${PHP_VERSION}$(SUFFIX) \
-		--platform linux/arm64 \
+		--platform $(DOCKER_PLATFORM) \
 		-f ${DOCKERFILE} .
 	@echo "::endgroup::"
 
