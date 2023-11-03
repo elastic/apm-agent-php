@@ -1,6 +1,8 @@
 ifeq ($(DOCKERFILE),)
 	ifeq ($(BUILD_ARCHITECTURE), linuxmusl-x86-64)
 		DOCKERFILE := Dockerfile.alpine
+	else ifeq ($(BUILD_ARCHITECTURE), linuxmusl-arm64)
+		DOCKERFILE := Dockerfile.alpine
 	else
 		DOCKERFILE := Dockerfile
 	endif
