@@ -634,20 +634,21 @@ void elasticApmGetLastPhpError( zval* return_value )
 }
 
 auto buildPeriodicTaskExecutor() {
-    auto periodicTaskExecutor = std::make_unique<elasticapm::php::PeriodicTaskExecutor>([]() {
-        // block signals for this thread to be handled by main Apache/PHP thread
-        // list of signals from Apaches mpm handlers
-        elasticapm::utils::blockSignal(SIGTERM);
-        elasticapm::utils::blockSignal(SIGHUP);
-        elasticapm::utils::blockSignal(SIGINT);
-        elasticapm::utils::blockSignal(SIGWINCH);
-        elasticapm::utils::blockSignal(SIGUSR1);
-        elasticapm::utils::blockSignal(SIGPROF); // php timeout signal
-    });
-
-    periodicTaskExecutor->addPeriodicTask([inferredSpans = ELASTICAPM_G(globals)->inferredSpans_](elasticapm::php::PeriodicTaskExecutor::time_point_t now) {
-        inferredSpans->tryRequestInterrupt(now);
-    });
+    auto periodicTaskExecutor = std::make_unique<elasticapm::php::PeriodicTaskExecutor>(
+        std::vector<elasticapm::php::PeriodicTaskExecutor::task_t>{
+        [inferredSpans = ELASTICAPM_G(globals)->inferredSpans_](elasticapm::php::PeriodicTaskExecutor::time_point_t now) { inferredSpans->tryRequestInterrupt(now); }
+        },
+        []() {
+            // block signals for this thread to be handled by main Apache/PHP thread
+            // list of signals from Apaches mpm handlers
+            elasticapm::utils::blockSignal(SIGTERM);
+            elasticapm::utils::blockSignal(SIGHUP);
+            elasticapm::utils::blockSignal(SIGINT);
+            elasticapm::utils::blockSignal(SIGWINCH);
+            elasticapm::utils::blockSignal(SIGUSR1);
+            elasticapm::utils::blockSignal(SIGPROF); // php timeout signal
+        }
+    );
 
     ELASTIC_APM_LOG_DEBUG("starting inferred spans thread");
     return periodicTaskExecutor;
