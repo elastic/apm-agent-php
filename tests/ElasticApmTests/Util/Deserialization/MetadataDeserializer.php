@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util\Deserialization;
 
+use Elastic\Apm\Impl\KubernetesData;
 use Elastic\Apm\Impl\Metadata;
 use Elastic\Apm\Impl\NameVersionData;
 use Elastic\Apm\Impl\ProcessData;
@@ -222,6 +223,9 @@ final class MetadataDeserializer
                     case 'platform':
                         $result->platform = self::assertValidKeywordString($value);
                         return true;
+                    case 'kubernetes':
+                        $result->kubernetes = self::deserializeKubernetes($value);
+                        return true;
                     default:
                         return false;
                 }
@@ -243,6 +247,80 @@ final class MetadataDeserializer
                 switch ($key) {
                     case 'id':
                         $result->containerId = self::assertValidKeywordString($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return KubernetesData
+     */
+    private static function deserializeKubernetes($value): KubernetesData
+    {
+        $result = new KubernetesData();
+
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'namespace':
+                        $result->namespace = self::assertValidKeywordString($value);
+                        return true;
+                    case 'pod':
+                        self::deserializeKubernetesPod($value, $result);
+                        return true;
+                    case 'node':
+                        self::deserializeKubernetesNode($value, $result);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+
+        return $result;
+    }
+
+    /**
+     * @param mixed          $value
+     * @param KubernetesData $result
+     */
+    private static function deserializeKubernetesPod($value, KubernetesData $result): void
+    {
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'name':
+                        $result->podName = self::assertValidKeywordString($value);
+                        return true;
+                    case 'uid':
+                        $result->podUid = self::assertValidKeywordString($value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        );
+    }
+
+    /**
+     * @param mixed          $value
+     * @param KubernetesData $result
+     */
+    private static function deserializeKubernetesNode($value, KubernetesData $result): void
+    {
+        DeserializationUtil::deserializeKeyValuePairs(
+            DeserializationUtil::assertDecodedJsonMap($value),
+            function ($key, $value) use ($result): bool {
+                switch ($key) {
+                    case 'name':
+                        $result->nodeName = self::assertValidKeywordString($value);
                         return true;
                     default:
                         return false;

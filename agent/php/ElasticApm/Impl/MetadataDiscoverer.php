@@ -43,6 +43,11 @@ final class MetadataDiscoverer
     // ... the default value: unknown-${service.agent.name}-service ...
     public const DEFAULT_SERVICE_NAME = 'unknown-php-service';
 
+    public const KUBERNETES_NAMESPACE = 'KUBERNETES_NAMESPACE';
+    public const KUBERNETES_POD_NAME = 'KUBERNETES_POD_NAME';
+    public const KUBERNETES_POD_UID = 'KUBERNETES_POD_UID';
+    public const KUBERNETES_NODE_NAME = 'KUBERNETES_NODE_NAME';
+
     /** @var ConfigSnapshot */
     private $config;
 
@@ -183,6 +188,7 @@ final class MetadataDiscoverer
         $result->containerId = $this->discoverContainerId();
         $result->architecture = $this->discoverSystemArchitecture();
         $result->platform = $this->discoverSystemPlatform();
+        $result->kubernetes = $this->discoverKubernetesData();
 
         return $result;
     }
@@ -271,5 +277,37 @@ final class MetadataDiscoverer
     private function discoverSystemPlatform(): string
     {
         return php_uname('s');
+    }
+
+    private function discoverKubernetesData(): ?KubernetesData
+    {
+        $namespace = getenv(self::KUBERNETES_NAMESPACE);
+        $podName = getenv(self::KUBERNETES_POD_NAME);
+        $podUid = getenv(self::KUBERNETES_POD_UID);
+        $nodeName = getenv(self::KUBERNETES_NODE_NAME);
+
+        if ($namespace === false && $podName === false && $podUid === false && $nodeName === false) {
+            return null;
+        }
+
+        $kubernetes = new KubernetesData();
+
+        if (is_string($namespace) && $namespace !== "") {
+            $kubernetes->namespace = Tracer::limitKeywordString($namespace);
+        }
+
+        if (is_string($podName) && $podName !== "") {
+            $kubernetes->podName = Tracer::limitKeywordString($podName);
+        }
+
+        if (is_string($podUid) && $podUid !== "") {
+            $kubernetes->podUid = Tracer::limitKeywordString($podUid);
+        }
+
+        if (is_string($nodeName) && $nodeName !== "") {
+            $kubernetes->nodeName = Tracer::limitKeywordString($nodeName);
+        }
+
+        return $kubernetes;
     }
 }

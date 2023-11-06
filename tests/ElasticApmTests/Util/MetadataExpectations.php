@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\KubernetesData;
 use Elastic\Apm\Impl\NameVersionData;
 
 final class MetadataExpectations extends EventExpectations
@@ -46,6 +47,9 @@ final class MetadataExpectations extends EventExpectations
 
     /** @var Optional<?array<string|bool|int|float|null>> */
     public static $labelsDefault;
+
+    /** @var Optional<?KubernetesData> */
+    public $kubernetes;
 
     /** @var Optional<?string> */
     public $platform;
@@ -97,6 +101,7 @@ final class MetadataExpectations extends EventExpectations
         $this->containerId = new Optional();
         $this->detectedHostname = new Optional();
         $this->labels = self::$labelsDefault;
+        $this->kubernetes = new Optional();
         $this->platform = new Optional();
         $this->serviceEnvironment = new Optional();
         $this->serviceFramework = self::$serviceFrameworkDefault;
