@@ -32,6 +32,8 @@
 #include "basic_macros.h"
 #include "backend_comm_backoff.h"
 
+#include <string_view>
+
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_BACKEND_COMM
 
 struct LibCurlInfo
@@ -435,6 +437,7 @@ ResultCode syncSendEventsToApmServerWithConn( const ConfigSnapshot* config, Conn
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
     long responseCode = 0;
     bool isFailed = true;
+    const char *serverUrlAndQuerySeparator = std::string_view(config->serverUrl).ends_with('/') ? "" : "/";
 
     ELASTIC_APM_ASSERT_VALID_PTR( connectionData );
     ELASTIC_APM_ASSERT( connectionData->curlHandle != NULL, "" );
@@ -445,7 +448,7 @@ ResultCode syncSendEventsToApmServerWithConn( const ConfigSnapshot* config, Conn
     ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_POSTFIELDS, serializedEvents.begin );
     ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_POSTFIELDSIZE, serializedEvents.length );
 
-    snprintfRetVal = snprintf( url, urlBufferSize, "%s/intake/v2/events", config->serverUrl );
+    snprintfRetVal = snprintf( url, urlBufferSize, "%s%sintake/v2/events", config->serverUrl, serverUrlAndQuerySeparator);
     if ( snprintfRetVal < 0 || snprintfRetVal >= urlBufferSize )
     {
         ELASTIC_APM_LOG_ERROR( "Failed to build full URL to APM Server's intake API. snprintfRetVal: %d", snprintfRetVal );
