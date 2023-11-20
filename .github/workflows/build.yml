@@ -5,6 +5,14 @@ name: build
 
 on:
   workflow_call: ~
+  workflow_dispatch:
+    inputs:
+      build_arch:
+        type: choice
+        description: Build architecture
+        options:
+          - x86_64
+          - ARM64
 
 jobs:
   build:
