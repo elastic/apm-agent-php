@@ -28,7 +28,7 @@ jobs:
           - "8.1"
           - "8.2"
     steps:
-    # - uses: actions/checkout@v3
+    # - uses: actions/checkout@v4
     # - name: Fetch and extract latest release of apm-agent-php
     #   run: |
     #     wget https://github.com/elastic/apm-agent-php/releases/latest/download/apm-agent-php-linux-x86-64.tar -O /tmp/apm-agent-php-linux-x86-64.tar
@@ -36,7 +36,7 @@ jobs:
     #     cd agent/native/_build/linux-x86-64-release/ext/
     #     tar --wildcards  --strip-components 5 -xf /tmp/apm-agent-php-linux-x86-64.tar ./opt/elastic/apm-agent-php/extensions/elastic_apm*
     #     cd -
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/download-artifact@v3
       with:
         name: package-parts-linux-x86-64
