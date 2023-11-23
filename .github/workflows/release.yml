@@ -5,6 +5,7 @@ permissions:
   contents: read
 
 on:
+  workflow_dispatch: ~
   push:
     tags: [ "v[0-9]+*" ]
 
