@@ -28,11 +28,8 @@ jobs:
         run: |
           MATRIX=''
           if [ -z "${SELECTED_ARCH}" ]; then
-            echo "Architecture not selected. Running for x86_64 only"
-            MATRIX='
-            {"arch": "linux-x86-64"},
-            {"arch": "linuxmusl-x86-64"},
-            '
+            echo "Architecture not selected. Trying with release env: ${{ env.SELECTED_ARCH_RELEASE }}"
+            MATRIX=${{ env.SELECTED_ARCH_RELEASE }}
           fi
           if [ "${SELECTED_ARCH}" == "x86_64" ] ||  [ "${SELECTED_ARCH}" == "all" ]; then
             echo "${SELECTED_ARCH} selected. Adding x86_64"

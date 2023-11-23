@@ -10,6 +10,7 @@ on:
 
 env:
   BUILD_PACKAGES: build/packages
+  SELECTED_ARCH_RELEASE: all
 
 jobs:
 
