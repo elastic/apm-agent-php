@@ -10,32 +10,61 @@ on:
       build_arch:
         type: choice
         description: Build architecture
+        default: 'x86_64'
         options:
+          - all
           - x86_64
-          - ARM64
+          - arm64
 
 jobs:
+  setup-build-matrix:
+    name: setup-build-matrix
+    runs-on: ubuntu-latest
+    env:
+      SELECTED_ARCH: ${{ inputs.build_arch }}
+    steps:
+      - name: Create build matrix
+        id: setup-matrix-combinations
+        run: |
+          MATRIX=''
+          if [ -z "${SELECTED_ARCH}" ]; then
+            echo "Architecture not selected. Running for x86_64 only"
+            MATRIX='
+            {"arch": "linux-x86-64"},
+            {"arch": "linuxmusl-x86-64"}
+            '
+          fi
+          if [ "${SELECTED_ARCH}" == "x86_64" ] ||  [ "${SELECTED_ARCH}" == "all" ]; then
+            echo "${SELECTED_ARCH} selected. Adding x86_64"
+            MATRIX='
+            ${MATRIX}
+            {"arch": "linux-x86-64"},
+            {"arch": "linuxmusl-x86-64"},
+            '
+          fi
+          if [ "${SELECTED_ARCH}" == "arm64" ] ||  [ "${SELECTED_ARCH}" == "all" ]; then
+            echo "${SELECTED_ARCH} selected. Adding arm64"
+            MATRIX='
+            ${MATRIX}
+            {"arch": "linux-arm64", "run_qemu": 1},
+            {"arch": "linuxmusl-arm64", "run_qemu": 1},
+            '
+          fi
+          echo ::set-output name=matrix-combinations::{\"include\":[$MATRIX]}
+    outputs:
+      matrix-combinations: ${{ steps.setup-matrix-combinations.outputs.matrix-combinations }}
+
   build:
     name: build-agent-library
     runs-on: ubuntu-latest
+    needs: setup-build-matrix
     timeout-minutes: 300
     strategy:
       fail-fast: false
-      matrix:
-        arch:
-          - "linux-x86-64"
-          - "linuxmusl-x86-64"
-          - "linux-arm64"
-          - "linuxmusl-arm64"
-        include:
-          - arch: "linux-arm64"
-            run_qemu: 1
-          - arch: "linuxmusl-arm64"
-            run_qemu: 1
+      matrix: ${{ fromJson(needs.setup-build-matrix.outputs.matrix-combinations) }}
     env:
       BUILD_ARCHITECTURE: ${{ matrix.arch }}
     steps:
-      - uses: actions/checkout@v3
       - if: ${{ matrix.run_qemu }}
         uses: docker/setup-qemu-action@v3
         with:
