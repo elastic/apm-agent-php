@@ -314,6 +314,7 @@ ResultCode resetLoggingStateInForkedChild();
 #define ELASTIC_APM_LOG_CATEGORY_UTIL "Util"
 
 #define ELASTIC_APM_LOG_DIRECT_CRITICAL( fmt, ... ) ELASTIC_APM_LOG_DIRECT( logLevel_critical, fmt, ##__VA_ARGS__ )
+#define ELASTIC_APM_LOG_DIRECT_WARNING( fmt, ... ) ELASTIC_APM_LOG_DIRECT( logLevel_warning, fmt, ##__VA_ARGS__ )
 #define ELASTIC_APM_LOG_DIRECT_INFO( fmt, ... ) ELASTIC_APM_LOG_DIRECT( logLevel_info, fmt, ##__VA_ARGS__ )
 #define ELASTIC_APM_LOG_DIRECT_DEBUG( fmt, ... ) ELASTIC_APM_LOG_DIRECT( logLevel_debug, fmt, ##__VA_ARGS__ )
 

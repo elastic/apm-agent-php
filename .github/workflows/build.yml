@@ -20,7 +20,7 @@ jobs:
     env:
       BUILD_ARCHITECTURE: ${{ matrix.arch }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build
         run: make -f .ci/Makefile build
       - uses: actions/upload-artifact@v3

@@ -40,7 +40,7 @@ jobs:
     env:
       BUCKET_NAME: "apm-agent-php"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v3
         with:
           name: package
@@ -52,7 +52,7 @@ jobs:
         working-directory: build
 
       - name: 'Get service account'
-        uses: hashicorp/vault-action@v2.7.3
+        uses: hashicorp/vault-action@v2.7.4
         with:
           url: ${{ secrets.VAULT_ADDR }}
           roleId: ${{ secrets.VAULT_ROLE_ID }}
@@ -113,7 +113,7 @@ jobs:
       TAG_NAME: ${{ github.ref_name }}
     steps:
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v3
         with:
           name: signed-artifacts
