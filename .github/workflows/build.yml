@@ -50,7 +50,7 @@ jobs:
             {"arch": "linuxmusl-arm64", "run_qemu": 1},
             '
           fi
-          echo "matrix-combinations={\"include\":[$MATRIX]}" >> $GITHUB_OUTPUT
+          echo ::set-output name=matrix-combinations::{\"include\":[$MATRIX]}
     outputs:
       matrix-combinations: ${{ steps.setup-matrix-combinations.outputs.matrix-combinations }}
 
