@@ -11,7 +11,6 @@ on:
 
 env:
   BUILD_PACKAGES: build/packages
-  SELECTED_ARCH_RELEASE: all
 
 jobs:
 
@@ -29,6 +28,8 @@ jobs:
 
   build:
     uses: ./.github/workflows/build.yml
+    with:
+      build_arch: all
 
   build-packages:
     needs:

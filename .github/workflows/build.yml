@@ -4,7 +4,12 @@
 name: build
 
 on:
-  workflow_call: ~
+  workflow_call:
+    inputs:
+      build_arch:
+        required: true
+        type: string
+        default: 'x86_64'
   workflow_dispatch:
     inputs:
       build_arch:
