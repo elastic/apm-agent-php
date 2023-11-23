@@ -31,21 +31,19 @@ jobs:
             echo "Architecture not selected. Running for x86_64 only"
             MATRIX='
             {"arch": "linux-x86-64"},
-            {"arch": "linuxmusl-x86-64"}
+            {"arch": "linuxmusl-x86-64"},
             '
           fi
           if [ "${SELECTED_ARCH}" == "x86_64" ] ||  [ "${SELECTED_ARCH}" == "all" ]; then
             echo "${SELECTED_ARCH} selected. Adding x86_64"
-            MATRIX='
-            ${MATRIX}
+            MATRIX+='
             {"arch": "linux-x86-64"},
             {"arch": "linuxmusl-x86-64"},
             '
           fi
           if [ "${SELECTED_ARCH}" == "arm64" ] ||  [ "${SELECTED_ARCH}" == "all" ]; then
             echo "${SELECTED_ARCH} selected. Adding arm64"
-            MATRIX='
-            ${MATRIX}
+            MATRIX+='
             {"arch": "linux-arm64", "run_qemu": 1},
             {"arch": "linuxmusl-arm64", "run_qemu": 1},
             '
