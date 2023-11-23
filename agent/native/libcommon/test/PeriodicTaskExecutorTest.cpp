@@ -11,30 +11,11 @@ namespace elasticapm::php {
 
 PeriodicTaskExecutor *globalPeriodicTaskExecutor = nullptr;
 
-class PeriodicTaskExecutorTest : public ::testing::Test {
-public:
-	PeriodicTaskExecutorTest() {
-        elasticapm::php::globalPeriodicTaskExecutor = &periodicTaskExecutor_;
-    }
+TEST(PeriodicTaskExecutorTest, AutoShutdown) {
+    PeriodicTaskExecutor periodicTaskExecutor_{{[](PeriodicTaskExecutor::time_point_t tp) {
+        }}};
 
-protected:
-	static void SetUpTestCase() {
-	}
-
-	static void TearDownTestCase() {
-	}
-
-public:
-	PeriodicTaskExecutor periodicTaskExecutor_;
-};
-
-
-TEST_F(PeriodicTaskExecutorTest, AutoShutdown) {
     periodicTaskExecutor_.setInterval(20ms);
-    periodicTaskExecutor_.addPeriodicTask(
-        [](PeriodicTaskExecutor::time_point_t tp) {
-        }
-    );
 
     periodicTaskExecutor_.resumePeriodicTasks();
     std::this_thread::sleep_for(100ms);
@@ -55,18 +36,17 @@ void fh_child() {
 
 }
 
-TEST_F(PeriodicTaskExecutorTest, resumeAfterFork) {
-    periodicTaskExecutor_.setInterval(20ms);
-
+TEST(PeriodicTaskExecutorTest, resumeAfterFork) {
     std::atomic_int counter = 0;
-
-    periodicTaskExecutor_.addPeriodicTask(
-        [&counter](PeriodicTaskExecutor::time_point_t tp) {
+    PeriodicTaskExecutor periodicTaskExecutor_{
+        {[&counter](PeriodicTaskExecutor::time_point_t tp) {
             counter++;
         }
-    );
-
+    }};
     globalPeriodicTaskExecutor = &periodicTaskExecutor_;
+
+    periodicTaskExecutor_.setInterval(20ms);
+
     pthread_atfork(fh_prepare, fh_parent, fh_child);
 
     periodicTaskExecutor_.resumePeriodicTasks();
@@ -83,6 +63,26 @@ TEST_F(PeriodicTaskExecutorTest, resumeAfterFork) {
         exit(0);
     }
 }
+
+TEST(PeriodicTaskExecutorTest, simpleRun) {
+    std::atomic_int counter = 0;
+
+    {
+        PeriodicTaskExecutor periodicTaskExecutor_{
+            {[&counter](PeriodicTaskExecutor::time_point_t tp) {
+                counter++;
+            }
+        }};
+
+        periodicTaskExecutor_.setInterval(10ms);
+        periodicTaskExecutor_.resumePeriodicTasks();
+        std::this_thread::sleep_for(59ms);
+    }
+
+    ASSERT_GE(counter.load(), 5); // should be 5 in ideal world
+}
+
+
 
 }
 

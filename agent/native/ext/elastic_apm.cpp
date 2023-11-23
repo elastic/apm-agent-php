@@ -283,12 +283,20 @@ static PHP_GINIT_FUNCTION(elastic_apm)
     }
 
     ZVAL_UNDEF(&elastic_apm_globals->lastException);
+    new (&elastic_apm_globals->lastErrorData) std::unique_ptr<elasticapm::php::PhpErrorData>;
+    elastic_apm_globals->captureErrors = false;
 }
 
 static PHP_GSHUTDOWN_FUNCTION(elastic_apm) {
     ELASTIC_APM_LOG_DIRECT_DEBUG( "%s: GSHUTDOWN called; parent PID: %d", __FUNCTION__, (int)getParentProcessId() );
     if (elastic_apm_globals->globals) {
         delete elastic_apm_globals->globals;
+    }
+
+    if (elastic_apm_globals->lastErrorData) {
+        ELASTIC_APM_LOG_DIRECT_WARNING( "%s: still holding error", __FUNCTION__);
+        // we need to relese any dangling php error data beacause it is already freed (it was allocated in request pool)
+        elastic_apm_globals->lastErrorData.release();
     }
 }
 

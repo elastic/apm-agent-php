@@ -31,6 +31,8 @@ final class MetadataExpectations extends EventExpectations
     public $agentEphemeralId;
 
     /** @var Optional<?string> */
+    public $architecture;
+    /** @var Optional<?string> */
     public $configuredHostname;
 
     /** @var Optional<?string> */
@@ -44,6 +46,9 @@ final class MetadataExpectations extends EventExpectations
 
     /** @var Optional<?array<string|bool|int|float|null>> */
     public static $labelsDefault;
+
+    /** @var Optional<?string> */
+    public $platform;
 
     /** @var Optional<?string> */
     public $serviceEnvironment;
@@ -87,10 +92,12 @@ final class MetadataExpectations extends EventExpectations
         parent::__construct();
 
         $this->agentEphemeralId = new Optional();
+        $this->architecture = new Optional();
         $this->configuredHostname = new Optional();
         $this->containerId = new Optional();
         $this->detectedHostname = new Optional();
         $this->labels = self::$labelsDefault;
+        $this->platform = new Optional();
         $this->serviceEnvironment = new Optional();
         $this->serviceFramework = self::$serviceFrameworkDefault;
         $this->serviceName = new Optional();

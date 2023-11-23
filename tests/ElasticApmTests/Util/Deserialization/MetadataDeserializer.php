@@ -216,6 +216,12 @@ final class MetadataDeserializer
                     case 'container':
                         self::deserializeContainer($value, $result);
                         return true;
+                    case 'architecture':
+                        $result->architecture = self::assertValidKeywordString($value);
+                        return true;
+                    case 'platform':
+                        $result->platform = self::assertValidKeywordString($value);
+                        return true;
                     default:
                         return false;
                 }

@@ -70,7 +70,7 @@ jobs:
         uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64
-      - name: build
+      - name: Build
         run: |
           uname -a
           echo "Detected CPUs: $(nproc)"
