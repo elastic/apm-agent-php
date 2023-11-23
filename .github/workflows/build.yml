@@ -65,6 +65,7 @@ jobs:
     env:
       BUILD_ARCHITECTURE: ${{ matrix.arch }}
     steps:
+      - uses: actions/checkout@v4
       - if: ${{ matrix.run_qemu }}
         uses: docker/setup-qemu-action@v3
         with:
