@@ -28,10 +28,6 @@ jobs:
         id: setup-matrix-combinations
         run: |
           MATRIX=''
-          if [ -z "${SELECTED_ARCH}" ]; then
-            echo "Architecture not selected. Trying with release env: ${{ env.SELECTED_ARCH_RELEASE }}"
-            MATRIX=${{ env.SELECTED_ARCH_RELEASE }}
-          fi
           if [ "${SELECTED_ARCH}" == "x86_64" ] ||  [ "${SELECTED_ARCH}" == "all" ]; then
             echo "${SELECTED_ARCH} selected. Adding x86_64"
             MATRIX+='
@@ -46,4 +42,6 @@ jobs:
             {"arch": "linuxmusl-arm64", "run_qemu": 1},
             '
           fi
-          echo ::set-output name=matrix-combinations::{\"include\":[$MATRIX]}
+          echo "matrix-combinations={\"include\":[$MATRIX]}"
+
+          echo "matrix-combinations={\"include\":[$MATRIX]}" >> $GITHUB_OUTPUT
