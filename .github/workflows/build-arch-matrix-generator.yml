@@ -11,7 +11,7 @@ on:
         type: string
         default: 'x86_64'
     outputs:
-      include:
+      matrix-combinations:
         description: "Matrix of architectures to build for"
         value: ${{ jobs.setup-build-matrix.outputs.matrix-combinations }}
 
