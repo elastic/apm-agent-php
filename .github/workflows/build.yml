@@ -23,36 +23,7 @@ on:
 
 jobs:
   setup-build-matrix:
-    name: setup-build-matrix
-    runs-on: ubuntu-latest
-    env:
-      SELECTED_ARCH: ${{ inputs.build_arch }}
-    steps:
-      - name: Create build matrix
-        id: setup-matrix-combinations
-        run: |
-          MATRIX=''
-          if [ -z "${SELECTED_ARCH}" ]; then
-            echo "Architecture not selected. Trying with release env: ${{ env.SELECTED_ARCH_RELEASE }}"
-            MATRIX=${{ env.SELECTED_ARCH_RELEASE }}
-          fi
-          if [ "${SELECTED_ARCH}" == "x86_64" ] ||  [ "${SELECTED_ARCH}" == "all" ]; then
-            echo "${SELECTED_ARCH} selected. Adding x86_64"
-            MATRIX+='
-            {"arch": "linux-x86-64"},
-            {"arch": "linuxmusl-x86-64"},
-            '
-          fi
-          if [ "${SELECTED_ARCH}" == "arm64" ] ||  [ "${SELECTED_ARCH}" == "all" ]; then
-            echo "${SELECTED_ARCH} selected. Adding arm64"
-            MATRIX+='
-            {"arch": "linux-arm64", "run_qemu": 1},
-            {"arch": "linuxmusl-arm64", "run_qemu": 1},
-            '
-          fi
-          echo ::set-output name=matrix-combinations::{\"include\":[$MATRIX]}
-    outputs:
-      matrix-combinations: ${{ steps.setup-matrix-combinations.outputs.matrix-combinations }}
+    uses: ./.github/workflows/build-arch-matrix-generator.yml
 
   build:
     name: build-agent-library
