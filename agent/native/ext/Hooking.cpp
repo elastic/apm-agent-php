@@ -58,7 +58,7 @@ void elastic_apm_error_cb(int type, zend_string *error_filename, const uint32_t 
     }
 }
 
-static void elastic_execute_internal(INTERNAL_FUNCTION_PARAMETERS) {
+[[maybe_unused]] static void elastic_execute_internal(INTERNAL_FUNCTION_PARAMETERS) {
 
     zend_try {
         if (Hooking::getInstance().getOriginalExecuteInternal()) {
@@ -89,7 +89,7 @@ static void elastic_interrupt_function(zend_execute_data *execute_data) {
 }
 
 void Hooking::replaceHooks() {
-        zend_execute_internal = elastic_execute_internal;
+        // zend_execute_internal = elastic_execute_internal;
         zend_interrupt_function = elastic_interrupt_function;
         zend_error_cb = elastic_apm_error_cb;
 }
