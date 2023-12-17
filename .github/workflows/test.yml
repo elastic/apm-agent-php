@@ -53,7 +53,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Prepare
         run: make -f .ci/Makefile prepare
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: package-parts-${{ matrix.arch }}
           path: agent/native/_build/${{ matrix.arch }}-release/ext/
@@ -94,7 +94,7 @@ jobs:
           -exec bash -c 'mv {} "build/${PHP_VERSION}-${DOCKERFILE}-$(basename {})"'
           \;
       - if: success() || failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-results
           path: build/*junit.xml

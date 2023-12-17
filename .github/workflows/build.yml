@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build
         run: make -f .ci/Makefile build
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: package-parts-${{ matrix.arch }}
           path: |
