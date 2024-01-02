@@ -54,10 +54,7 @@ final class EnvVarsRawSnapshotSource implements RawSnapshotSourceInterface
         $optionNameToEnvVarValue = [];
 
         foreach ($optionNameToMeta as $optionName => $optionMeta) {
-            $envVarValue = getenv(
-                self::optionNameToEnvVarName($this->envVarNamesPrefix, $optionName),
-                /* local_only: */ true
-            );
+            $envVarValue = getenv(self::optionNameToEnvVarName($this->envVarNamesPrefix, $optionName));
             if ($envVarValue !== false) {
                 $optionNameToEnvVarValue[$optionName] = $envVarValue;
             }
