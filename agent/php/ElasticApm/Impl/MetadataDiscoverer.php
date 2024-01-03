@@ -181,6 +181,8 @@ final class MetadataDiscoverer
         }
 
         $result->containerId = $this->discoverContainerId();
+        $result->architecture = $this->discoverSystemArchitecture();
+        $result->platform = $this->discoverSystemPlatform();
 
         return $result;
     }
@@ -259,5 +261,15 @@ final class MetadataDiscoverer
         }
 
         return $result;
+    }
+
+    private function discoverSystemArchitecture(): string
+    {
+        return php_uname('m');
+    }
+
+    private function discoverSystemPlatform(): string
+    {
+        return php_uname('s');
     }
 }
