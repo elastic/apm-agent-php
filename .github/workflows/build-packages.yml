@@ -14,13 +14,15 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: package-parts-linux-x86-64
-          path: agent/native/_build/linux-x86-64-release/ext
-          path: agent/native/_build/linux-x86-64-release/loader/code
+          path: |
+            agent/native/_build/linux-x86-64-release/ext
+            agent/native/_build/linux-x86-64-release/loader/code
       - uses: actions/download-artifact@v3
         with:
           name: package-parts-linuxmusl-x86-64
-          path: agent/native/_build/linuxmusl-x86-64-release/ext
-          path: agent/native/_build/linuxmusl-x86-64-release/loader/code
+          path: |
+            agent/native/_build/linuxmusl-x86-64-release/ext
+            agent/native/_build/linuxmusl-x86-64-release/loader/code
       - name: package
         run: make -C packaging package
       - name: package info
