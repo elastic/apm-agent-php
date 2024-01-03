@@ -29,6 +29,7 @@ else
 fi
 
 BUILD_EXT_DIR=agent/native/_build/${BUILD_TARGET}-release/ext/
+BUILD_LOADER_DIR=agent/native/_build/${BUILD_TARGET}-release/loader/code/
 
 echo "Fetching agent libraies from ${BUILD_EXT_DIR}"
 echo "Package architecture ${PACKAGE_ARCH}"
@@ -44,6 +45,7 @@ function createPackage () {
 
 mkdir -p /tmp/extensions
 cp ${BUILD_EXT_DIR}/*.so /tmp/extensions/
+cp ${BUILD_LOADER_DIR}/*.so /tmp/extensions/
 
 fpm --input-type dir \
 		--output-type "${TYPE}" \
@@ -85,6 +87,7 @@ function createDebugPackage () {
 
 mkdir -p /tmp/extensions
 cp ${BUILD_EXT_DIR}/*.debug /tmp/extensions/
+cp ${BUILD_LOADER_DIR}/*.debug /tmp/extensions/
 
 fpm --input-type dir \
 		--output-type "${TYPE}" \
@@ -119,6 +122,7 @@ if [ "${TYPE}" = 'tar' ] ; then
 	NAME_BACKUP=${NAME}
 	NAME="${NAME_BACKUP}-linux-x86-64"
 	BUILD_EXT_DIR=agent/native/_build/linux-x86-64-release/ext/
+	BUILD_LOADER_DIR=agent/native/_build/linux-x86-64-release/loader/code/
 	createPackage
 
 	NAME="${NAME_BACKUP}-debugsymbols-linux-x86-64"
@@ -126,6 +130,7 @@ if [ "${TYPE}" = 'tar' ] ; then
 
 	NAME="${NAME_BACKUP}-linuxmusl-x86-64"
 	BUILD_EXT_DIR=agent/native/_build/linuxmusl-x86-64-release/ext/
+	BUILD_LOADER_DIR=agent/native/_build/linuxmusl-x86-64-release/loader/code/
 	createPackage
 
 	NAME="${NAME_BACKUP}-debugsymbols-linuxmusl-x86-64"

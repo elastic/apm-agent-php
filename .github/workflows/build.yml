@@ -29,3 +29,5 @@ jobs:
           path: |
             agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm*.so
             agent/native/_build/${{ matrix.arch }}-release/ext/elastic_apm*.debug
+            agent/native/_build/${{ matrix.arch }}-release/loader/code/elastic_apm_loader.so
+            agent/native/_build/${{ matrix.arch }}-release/loader/code/elastic_apm_loader.debug
