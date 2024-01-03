@@ -1,11 +1,35 @@
 #include "phpdetection.h"
 
+#include <dlfcn.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <dlfcn.h>
+#include <syslog.h>
+#include <unistd.h>
+#include <sys/syscall.h>
 #include <filesystem>
 
+
 #include "elastic_apm_version.h"
+
+#define LOG_TO_SYSLOG_AND_STDERR(fmt, ... ) \
+    do { \
+        fprintf(stderr, \
+            "[elastic_apm_loader][PID: %d]" \
+            "[TID: %d] " \
+            fmt \
+            ,(int)getpid() \
+            ,(int)syscall( SYS_gettid ) \
+            , ##__VA_ARGS__ ); \
+        syslog( \
+            LOG_WARNING, \
+            "[elastic_apm_loader][PID: %d]" \
+            "[TID: %d] " \
+            fmt \
+            , (int)(getpid()) \
+            , (int)(syscall( SYS_gettid )) \
+            , ##__VA_ARGS__ ); \
+    } \
+    while(0);
 
 namespace elasticapm::loader {
 
@@ -88,7 +112,7 @@ __attribute__ ((visibility("default"))) elasticapm::loader::phpdata::zend_module
 
     auto zendVersion = elasticapm::loader::getMajorMinorZendVersion();
     if (zendVersion.empty()) {
-        fprintf(stderr, "Can't find Zend/PHP Engine version\n");
+        LOG_TO_SYSLOG_AND_STDERR( "Can't find Zend/PHP Engine version\n");
         return &elastic_apm_loader_module_entry;
     }
 
@@ -105,12 +129,12 @@ __attribute__ ((visibility("default"))) elasticapm::loader::phpdata::zend_module
     elastic_apm_loader_module_entry.zts = isThreadSafe;
 
     if (!isVersionSupported) {
-        fprintf(stderr, "Zend Engine version %s is not supported by Elastic APM Agent\n", std::string(zendVersion).c_str());
+        LOG_TO_SYSLOG_AND_STDERR( "Zend Engine version %s is not supported by Elastic APM Agent\n", std::string(zendVersion).c_str());
         return &elastic_apm_loader_module_entry;
     }
 
     if (isThreadSafe) {
-        fprintf(stderr, "Thread Safe mode (ZTS) is not supported by Elastic APM Agent\n");
+        LOG_TO_SYSLOG_AND_STDERR( "Thread Safe mode (ZTS) is not supported by Elastic APM Agent\n");
         return &elastic_apm_loader_module_entry; // unsupported thread safe mode
     }
 
@@ -118,7 +142,7 @@ __attribute__ ((visibility("default"))) elasticapm::loader::phpdata::zend_module
     Dl_info dl_info;
     dladdr((void *)get_module, &dl_info);
     if (!dl_info.dli_fname) {
-        fprintf(stderr, "Unable to resolve path to Elastic PHP Agent libraries\n");
+        LOG_TO_SYSLOG_AND_STDERR( "Unable to resolve path to Elastic PHP Agent libraries\n");
         return &elastic_apm_loader_module_entry;
     }
 
@@ -130,13 +154,13 @@ __attribute__ ((visibility("default"))) elasticapm::loader::phpdata::zend_module
 
     void *agentHandle = dlopen(agentLibrary.c_str(), RTLD_LAZY | RTLD_GLOBAL);
     if (!agentHandle) {
-        fprintf(stderr, "Unable to load agent library from path: %s\n", agentLibrary.c_str());
+        LOG_TO_SYSLOG_AND_STDERR( "Unable to load agent library from path: %s\n", agentLibrary.c_str());
         return &elastic_apm_loader_module_entry;
     }
 
     auto agentGetModule = reinterpret_cast<elasticapm::loader::phpdata::zend_module_entry *(*)(void)>(dlsym(agentHandle, "get_module"));
     if (!agentGetModule) {
-        fprintf(stderr, "Unable to resolve agent entry point from library: %s\n", agentLibrary.c_str());
+        LOG_TO_SYSLOG_AND_STDERR( "Unable to resolve agent entry point from library: %s\n", agentLibrary.c_str());
         return &elastic_apm_loader_module_entry;
     }
 
