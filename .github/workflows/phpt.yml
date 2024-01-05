@@ -43,8 +43,6 @@ jobs:
         path: |
           agent/native/_build/linux-x86-64-release/ext/
           agent/native/_build/linux-x86-64-release/loader/code/
-    - name: Display structure of downloaded files
-      run: ls -R
     - name: Run phpt tests from PHP source code
       continue-on-error: true
       run: |
