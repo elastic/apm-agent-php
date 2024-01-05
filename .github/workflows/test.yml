@@ -56,9 +56,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: package-parts-${{ matrix.arch }}
-          path: |
-            agent/native/_build/${{ matrix.arch }}-release/ext/
-            agent/native/_build/${{ matrix.arch }}-release/loader/code/
+          path: agent/native/_build/${{ matrix.arch }}-release/
       - name: Display structure of downloaded files
         run: ls -R
       - name: phpt-unit-tests
