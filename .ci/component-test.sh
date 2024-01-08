@@ -22,7 +22,7 @@ echo "BUILD ARCHITECTURE: $BUILD_ARCHITECTURE"
 AGENT_EXTENSION_DIR=$APP_FOLDER/agent/native/_build/$BUILD_ARCHITECTURE-release/ext
 AGENT_LOADER_DIR=$APP_FOLDER/agent/native/_build/$BUILD_ARCHITECTURE-release/loader/code
 
-# copy loader library
+# copy loader library into extensions dir
 cp ${AGENT_LOADER_DIR}/elastic_apm_loader.so ${AGENT_EXTENSION_DIR}/
 
 AGENT_EXTENSION=$AGENT_EXTENSION_DIR/elastic_apm_loader.so
