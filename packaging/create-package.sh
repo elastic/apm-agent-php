@@ -32,8 +32,6 @@ BUILD_EXT_DIR=agent/native/_build/${BUILD_TARGET}-release/ext
 BUILD_LOADER_DIR=agent/native/_build/${BUILD_TARGET}-release/loader/code
 
 echo "Fetching agent libraies from ${BUILD_EXT_DIR}"
-ls -Rl agent/native/_build/${BUILD_TARGET}-release
-
 echo "Package architecture ${PACKAGE_ARCH}"
 
 

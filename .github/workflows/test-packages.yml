@@ -54,12 +54,12 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: package-parts-linux-x86-64
-          path: agent/native/_build/linux-x86-64-release/ext
+          path: agent/native/_build/linux-x86-64-release
 
       - uses: actions/download-artifact@v3
         with:
           name: package-parts-linuxmusl-x86-64
-          path: agent/native/_build/linuxmusl-x86-64-release/ext
+          path: agent/native/_build/linuxmusl-x86-64-release
 
       - if: ${{ env.TESTING_TYPE == 'lifecycle' }}
         name: lifecycle test
