@@ -114,8 +114,8 @@ elif [ "${TYPE}" == "php-upgrade" ] ; then
 
     ## Install rpm package and configure the agent accordingly
     rpm -ivh $BUILD_PACKAGES/*.rpm
-    if diff --report-identical-files /opt/elastic/apm-agent-php/etc/elastic-apm.ini /tmp/elastic-apm-previous.ini ; then
-        echo 'Configuration file has not been updated and still point to the previous installation.'
+    if ! diff --report-identical-files /opt/elastic/apm-agent-php/etc/elastic-apm.ini /tmp/elastic-apm-previous.ini ; then
+        echo 'Configuration file has been updated but should be identical.'
         exit 1
     fi
     ## Validate agent is enabled
