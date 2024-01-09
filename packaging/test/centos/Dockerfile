@@ -46,7 +46,6 @@ ENV TYPE=rpm
 ENV VERSION=
 ENV GITHUB_RELEASES_URL=
 COPY entrypoint.sh /bin
-RUN ls
 WORKDIR /app
 
 ENTRYPOINT ["/bin/entrypoint.sh"]

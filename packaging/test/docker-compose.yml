@@ -169,7 +169,7 @@ services:
             args:
                 - PHP_VERSION=7.3
     rpm-php72:
-        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-7.2-0.0.1
+        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-7.2-0.0.2
         build:
             context: centos
             dockerfile: Dockerfile
