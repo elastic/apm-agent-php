@@ -38,10 +38,10 @@ make -f .ci/Makefile help
 ```
 
 
-_NOTE_: 
+_NOTE_:
 
 * `PHP_VERSION` can be set to a different PHP version.
-* For testing of Alpine specific binaries you must run "prepare" task with `DOCKERFILE=Dockerfile.alpine` environment variable set to build proper docker image. 
+* For testing of Alpine specific binaries you must run "prepare" task with `DOCKERFILE=Dockerfile.alpine` environment variable set to build proper docker image.
 
 ### Local development with direct calls to cmake inside docker container
 \
@@ -127,7 +127,7 @@ Jenkins build parameters can be used to run build+test CI pipeline with a custom
 ## Building and updating docker images used to build the agent extension
 
 If you want to update images used to build native extension, you need to go into `agent/native/building/dockerized` folder and modify Dockerfile stored in images folder. In this moment, there are two Dockerfiles:
-`Dockerfile_musl` for Linux x86_64 with musl libc implementation and `Dockerfile_glibc` for all other x86_64 distros with glibc implementation. 
+`Dockerfile_musl` for Linux x86_64 with musl libc implementation and `Dockerfile_glibc` for all other x86_64 distros with glibc implementation.
 Then you need to increment image version in `docker-compose.yml`. Remember to update Dockerfiles for all architectures, if needed. To build new images, you just need to call:
 ```bash
 docker-compose build
@@ -154,8 +154,8 @@ If you want to update images used for testing, you need to go into `packaging/te
 |alpine|Testing of apk packages|
 |centos|Testing of rpm packages|
 |ubuntu|Testing of deb packages|
-|ubuntu/apache|Tesing of deb packages with Apache/mod_php| 
-|ubuntu/fpm|Tesing of deb packages with Apache/php-fpm| 
+|ubuntu/apache|Tesing of deb packages with Apache/mod_php|
+|ubuntu/fpm|Tesing of deb packages with Apache/php-fpm|
 
 Then you need to increment image version in `docker-compose.yml`.\
 To build new images, you just need to call:
@@ -177,3 +177,75 @@ If everything works as you expected, you just need to push new image to dockerhu
 docker push elasticobservability/apm-agent-php-dev:packages-test-apk-php-7.2-0.0.1
 ```
 It should be done for all images you modified.
+
+## Building and publishing conan artifacts
+
+First, please remember that you need to perform all steps inside a proper docker container. This will ensure that each package receives the same unique identifier (and package will be used in CI build).
+
+The following are instructions for building and uploading artifacts for the linux-x86-64 architecture
+
+Execution of container. All you need to do here is to use latest container image revision and replace path to your local repository.
+```bash
+docker run -ti -v /your/forked/repository/path/apm-agent-php:/source -w /source/agent/native elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-linux-x86-64-0.0.2 bash
+```
+
+In container environment we need to configure project - it will setup build environment, conan environment and build all required conan dependencies
+```bash
+cmake --preset linux-x86-64-release
+```
+
+Now we need to load python virtual environment created in previous step. This will enable path to conan tool.
+```bash
+source _build/linux-x86-64-release/python_venv/bin/activate
+```
+
+You can list all local conan packages simply by calling:
+```bash
+conan search
+```
+
+it should output listing similar to this:
+```bash
+recipes:
+
+boost/1.82.0
+cmocka/1.1.5
+gtest/1.13.0
+libcurl/8.0.1
+libiconv/1.17
+libssh2/1.11.0
+libunwind/1.6.2
+libxml2/2.9.9
+openssl/3.1.3
+php-headers-72/1.0@elastic/local
+php-headers-73/1.0@elastic/local
+php-headers-74/1.0@elastic/local
+php-headers-80/1.0@elastic/local
+php-headers-81/1.0@elastic/local
+php-headers-82/1.0@elastic/local
+pkgconf/1.9.3
+pkgconf/1.9.3@elastic/local
+sqlite3/3.29.0
+xz_utils/5.4.4
+zlib/1.3
+
+```
+
+Now you need to login into conan as elastic user. Package upload is allowed only for mainteiners.
+```bash
+conan user -r ElasticConan user@elastic.co
+```
+
+Now you can upload package to conan artifactory.
+
+`--all` option will upload all revisions of `php-headers-72` you have stored in your .conan/data folder (keep it in mind if you're sharing conan cache folder between containers). You can remove it, then conan will ask before uploading each version.
+```bash
+conan upload php-headers-72 --all -r=ElasticConan
+```
+
+Now you can check conan artifactory for new packages here:
+https://artifactory.elastic.dev/ui/repos/tree/General/apm-agent-php-dev
+
+and in "raw" format here:
+https://artifactory.elastic.dev/ui/native/apm-agent-php-dev/
+
