@@ -20,24 +20,37 @@ endif::[]
 
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
+[[release-notes-v1.11.0]]
+=== v1.11.0 - 2024/01/04
+==== Features
+* Debug option to collect diagnostic information from PHP worker process {pull}#1065[#1065]
+* Enable background (non-blocking) communication with APM Server for any SAPI by default {pull}#1079[#1079]
+* Sending metadata.system.architecture and platform {pull}#1083[#1083]
+
+==== Bug fixes
+* Improved packaging script to support other architectures and fixed package naming for x86-64 architecture  {pull}#1067[#1067]
+* Fixed exception handling by improving memory allocation and proper exception object copy {pull}#1076[#1076]
+* Fixed building of APM server connection string {pull}#1080[#1080]
+* Allow using environment variables passed via FastCGI for agent configuration {pull}#1113[#1113]
+
 [[release-notes-v1.10.0]]
 === v1.10.0 - 2023/09/12
 [float]
 ==== Features
-* Preview of inferred spans feature. It needs to be enabled manually, please refer to documentation <<config-profiling-inferred-spans-enabled>> {pull}1038[#1038]
+* Preview of inferred spans feature. It needs to be enabled manually, please refer to documentation <<config-profiling-inferred-spans-enabled>> {pull}#1038[#1038]
 
 ==== Bug fixes
-* Detection and logging if agent source code doesn't comply open_basedir limitation {pull}#1044[##1044]
+* Detection and logging if agent source code doesn't comply open_basedir limitation {pull}#1044[#1044]
 
 [[release-notes-v1.9.1]]
 === v1.9.1 - 2023/07/06
 [float]
 ==== Features
-* Added configuration option: GLOBAL_LABELS {pull}1007[#1007]
-* Introduced new C++ build environment {pull}985[985]
+* Added configuration option: GLOBAL_LABELS {pull}#1007[#1007]
+* Introduced new C++ build environment {pull}#985[#985]
 
 ==== Bug fixes
-* Suppress errors and warnings when internally calling opcache_get_status {pull}1013[#1013]
+* Suppress errors and warnings when internally calling opcache_get_status {pull}#1013[#1013]
 
 [[release-notes-v1.9.0]]
 === v1.9.0 - 2023/06/22
