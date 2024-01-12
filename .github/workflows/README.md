@@ -35,6 +35,21 @@ Whenever there is a merge to `main`` or any release branches, the whole workflow
 This process has been fully automated and gets triggered when a tagged release is created.
 The tag release follows the naming convention: `v.<major>.<minor>.<patch>`, where `<major>`, `<minor>` and `<patch>`.
 
+The [release](https://github.com/elastic/apm-agent-php/actions/workflows/release.yml) workflow is the one driving the whole automation.
+
+#### Implementation details
+
+The release workflow uses the Buildkite pipeline called `observability-robots-php-release`, which relies on the Buildkite API token provided by the Service account called `obltmachine`.
+
+The `observability-robots-php-release` uses a Buildkite API token to call the
+relevant GPG signing Buildkite pipeline and retrieve the artifacts.
+Unfortunately, Buildkite does not fully support secretless access to retrieve data between parentstream/downstream pipelines.
+
+As long as `upload-artifact@v3` is used, see https://github.com/cli/cli/issues/5625, it's not
+possible to use the `ghcli` to fetch the artifacts; that's the reason for using a Google bucket for uploading the unsigned artifacts. Afterward, the Buildkite pipeline will fetch
+those artifacts to sign them accordingly.
+
+
 ### OpenTelemetry
 
 A GitHub workflow is responsible for populating what the workflow runs regarding jobs and steps. Those details can be seen [here](https://ela.st/oblt-ci-cd-stats) (**NOTE**: only available for Elasticians).
