@@ -40,11 +40,11 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.package-name }}
+          name: ${{ inputs.package-name }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.BUILD_PACKAGES }}
 
       ## This will help with preparing the signed artifacts that were bundled in a zip file
-      - if: ${{ inputs.package-name == 'signed-artifacts' }}
+      - if: ${{ inputs.package-name == 'signed-artifacts-${{ github.run_id }}-${{ github.run_attempt }}' }}
         name: Unzip signed packages
         run: unzip ${PACKAGE_FILE} && rm ${PACKAGE_FILE}
         working-directory: ${{ env.BUILD_PACKAGES }}
@@ -53,12 +53,12 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: package-parts-linux-x86-64
+          name: package-parts-${{ github.run_id }}-${{ github.run_attempt }}-linux-x86-64
           path: agent/native/_build/linux-x86-64-release/ext
 
       - uses: actions/download-artifact@v4
         with:
-          name: package-parts-linuxmusl-x86-64
+          name: package-parts-${{ github.run_id }}-${{ github.run_attempt }}-linuxmusl-x86-64
           path: agent/native/_build/linuxmusl-x86-64-release/ext
 
       - if: ${{ env.TESTING_TYPE == 'lifecycle' }}
@@ -100,9 +100,9 @@ jobs:
           \;
 
       - if: success() || failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/*junit.xml
           if-no-files-found: error
 
@@ -116,8 +116,8 @@ jobs:
           find . -name "syslog" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
           find . -name "messages" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
       - if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
-          name: syslogs
+          name: syslogs-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/syslog-files/

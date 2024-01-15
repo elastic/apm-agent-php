@@ -13,19 +13,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: package-parts-linux-x86-64
+          name: package-parts-${{ github.run_id }}-${{ github.run_attempt }}-linux-x86-64
           path: agent/native/_build/linux-x86-64-release/ext
       - uses: actions/download-artifact@v4
         with:
-          name: package-parts-linuxmusl-x86-64
+          name: package-parts-${{ github.run_id }}-${{ github.run_attempt }}-linuxmusl-x86-64
           path: agent/native/_build/linuxmusl-x86-64-release/ext
       - name: package
         run: make -C packaging package
       - name: package info
         run: make -C packaging info
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
-          name: package
+          name: package-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             build/packages/*
             !build/packages/**/*.sha512

@@ -55,7 +55,7 @@ jobs:
         run: make -f .ci/Makefile prepare
       - uses: actions/download-artifact@v4
         with:
-          name: package-parts-${{ matrix.arch }}
+          name: package-parts-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.arch }}
           path: agent/native/_build/${{ matrix.arch }}-release/ext/
       - name: phpt-unit-tests
         run: make -f .ci/Makefile run-phpt-tests
@@ -94,9 +94,9 @@ jobs:
           -exec bash -c 'mv {} "build/${PHP_VERSION}-${DOCKERFILE}-$(basename {})"'
           \;
       - if: success() || failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.php-version }}-${{ matrix.dockerfile }}
           path: build/*junit.xml
           if-no-files-found: error
   build-packages:
