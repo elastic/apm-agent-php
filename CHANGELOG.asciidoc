@@ -20,6 +20,12 @@ endif::[]
 
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
+[[release-notes-v1.12.0]]
+=== v1.12.0 - 2024/01/15
+==== Features
+* Removed limitation that required to reinstall the agent after PHP upgrade {pull}#1115[#1115]
+* Fixed "malformed UTF-8 characters" issue {pull}#1120[#1120]
+
 [[release-notes-v1.11.0]]
 === v1.11.0 - 2024/01/04
 ==== Features
