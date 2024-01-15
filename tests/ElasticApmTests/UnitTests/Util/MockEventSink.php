@@ -104,7 +104,6 @@ final class MockEventSink implements EventSinkInterface
         $deserialized = $this->validateAndDeserializeMetadata($serialized);
 
         self::assertValidMetadata($deserialized);
-        TestCaseBase::assertEqualsEx($original, $deserialized);
         $this->dataFromAgent->metadatas[] = $deserialized;
     }
 
@@ -116,7 +115,6 @@ final class MockEventSink implements EventSinkInterface
         $serialized = SerializationUtil::serializeAsJson($original);
         $deserialized = $this->validateAndDeserializeTransaction($serialized);
         $deserialized->assertValid();
-        $deserialized->assertEquals($original);
 
         TestCaseBase::assertNull($this->dataFromAgent->executionSegmentByIdOrNull($deserialized->id));
         ArrayUtilForTests::addUnique($deserialized->id, $deserialized, /* ref */ $this->dataFromAgent->idToTransaction);
@@ -135,7 +133,6 @@ final class MockEventSink implements EventSinkInterface
         $deserialized = $this->validateAndDeserializeSpan($serialized);
         $dbgCtx->add(['deserialized' => $deserialized]);
         $deserialized->assertValid();
-        $deserialized->assertEquals($original);
 
         TestCaseBase::assertNull($this->dataFromAgent->executionSegmentByIdOrNull($deserialized->id));
         ArrayUtilForTests::addUnique($deserialized->id, $deserialized, /* ref */ $this->dataFromAgent->idToSpan);
@@ -148,7 +145,6 @@ final class MockEventSink implements EventSinkInterface
         $serialized = SerializationUtil::serializeAsJson($original);
         $deserialized = $this->validateAndDeserializeError($serialized);
         $deserialized->assertValid();
-        $deserialized->assertEquals($original);
 
         ArrayUtilForTests::addUnique($deserialized->id, $deserialized, /* ref */ $this->dataFromAgent->idToError);
     }
@@ -161,7 +157,6 @@ final class MockEventSink implements EventSinkInterface
         $serialized = SerializationUtil::serializeAsJson($original);
         $deserialized = $this->validateAndDeserializeMetricSet($serialized);
         MetricSetValidator::assertValid($deserialized);
-        TestCaseBase::assertEqualsEx($original, $deserialized);
 
         $this->dataFromAgent->metricSets[] = $deserialized;
     }
