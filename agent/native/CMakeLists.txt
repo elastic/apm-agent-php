@@ -39,6 +39,7 @@ include(elastic_set_default_build_options)
 message(STATUS "Detected ${CMAKE_CXX_COMPILER_ID} compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
 
 include(elastic_conan_installer)
+include(elastic_conan_debugsymbols)
 
 # Install project dependencies
 
@@ -119,5 +120,6 @@ enable_testing()
 
 add_subdirectory(libcommon)
 add_subdirectory(libphpbridge)
+add_subdirectory(loader)
 
 add_subdirectory(ext)

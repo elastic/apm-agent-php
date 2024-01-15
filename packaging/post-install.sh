@@ -189,7 +189,7 @@ function get_extension_file() {
 #    if grep -q -i alpine /etc/os-release; then
 #        SUFFIX=-alpine
 #    fi
-    echo "${EXTENSION_DIR}/elastic_apm-${PHP_API}${SUFFIX}.so"
+    echo "${EXTENSION_DIR}/elastic_apm_loader.so"
 }
 
 ################################################################################
