@@ -258,6 +258,12 @@ void unregisterElasticApmIniEntries( int type, int module_number, IniEntriesRegi
 
 static PHP_GINIT_FUNCTION(elastic_apm)
 {
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    if (elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) != resultSuccess) {
+        return;
+    }
+
     ELASTIC_APM_LOG_DIRECT_DEBUG( "%s: GINIT called; parent PID: %d", __FUNCTION__, (int)getParentProcessId() );
     // memset(&elastic_apm_globals->globalTracer, 0, sizeof(Tracer));
     elastic_apm_globals->globals = nullptr;
@@ -669,6 +675,12 @@ ZEND_END_ARG_INFO()
  */
 PHP_FUNCTION( elastic_apm_ast_instrumentation_pre_hook )
 {
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    if (elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) != resultSuccess) {
+        return;
+    }
+
     tracerPhpPartAstInstrumentationCallPreHook( execute_data, return_value );
 }
 /* }}} */
@@ -679,6 +691,11 @@ ZEND_END_ARG_INFO()
  */
 PHP_FUNCTION( elastic_apm_ast_instrumentation_direct_call )
 {
+    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
+    // which might deadlock in forked child
+    if (elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) != resultSuccess) {
+        return;
+    }
     tracerPhpPartAstInstrumentationDirectCall( execute_data );
 }
 /* }}} */
