@@ -3,14 +3,18 @@ set -e
 
 #
 # Make sure list of PHP versions supported by the Elastic APM PHP Agent is in sync
-# 1) .ci/shared.sh (this file; update ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS below)
-# 2) .ci/Jenkinsfile (the list of PHP versions might appear more than once - search for "list of PHP versions")
-# 3) .github/workflows/test.yml (update jobs -> test -> strategy -> matrix -> php-version)
-# 4) .github/workflows/loop.yml (update jobs -> loop-matrix -> strategy -> matrix -> php-version)
-# 5) .ci/packer_cache.sh (the list of PHP versions might appear more than once - search for "list of PHP versions")
-# 6) packaging/post-install.sh (the list of PHP versions might appear more than once - search for "list of PHP versions")
-# 7) composer.json
-# 8) tests/ElasticApmTests/ComponentTests/GenerateUnpackScriptsTest.php (search for "list of PHP versions")
+# *) .ci/shared.sh (this file; update ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS below)
+# *) .github/workflows/test.yml (update jobs -> test -> strategy -> matrix -> php-version)
+# *) .github/workflows/phpt.yml
+# *) .github/workflows/loop.yml (update jobs -> loop-matrix -> strategy -> matrix -> php-version)
+# *) .ci/packer_cache.sh (the list of PHP versions might appear more than once - search for "list of PHP versions")
+# *) packaging/post-install.sh (the list of PHP versions might appear more than once - search for "list of PHP versions")
+# *) composer.json
+# *) tests/ElasticApmTests/ComponentTests/GenerateUnpackScriptsTest.php (search for "list of PHP versions")
+# *) CMakeList.txt and conan dependencies
+# *) phpdetection.cpp in agent loader
+# *) docker-compose.yml in packaging/test
+
 #
 export ELASTIC_APM_PHP_TESTS_SUPPORTED_PHP_VERSIONS=(7.2 7.3 7.4 8.0 8.1 8.2 8.3)
 
