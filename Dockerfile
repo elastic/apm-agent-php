@@ -1,5 +1,6 @@
 ARG PHP_VERSION=7.2
-FROM php:${PHP_VERSION}-fpm-buster
+ARG SEL_DISTRO=buster
+FROM php:${PHP_VERSION}-fpm-${SEL_DISTRO}
 
 RUN apt-get -qq update \
     && apt-get -qq -y --no-install-recommends install \
