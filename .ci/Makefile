@@ -11,12 +11,18 @@ MAKEFLAGS += --no-print-directory
 IMAGE := test-php
 PHP_VERSION ?= 7.2
 DOCKERFILE ?= Dockerfile
+SEL_DISTRO=buster
 LOOPS ?= 50
 SUFFIX :=
 ifeq ($(DOCKERFILE), Dockerfile.alpine)
     ## This is only required to tag the docker images used for building/testing this project
     SUFFIX := -alpine
 endif
+
+ifneq ($(PHP_VERSION), 7.2)
+	SEL_DISTRO := bullseye
+endif
+
 
 CONAN_USER_HOME:=/tmp/conan_user_home
 MAP_CONAN_HOME_TO_DOCKER_HOST_CMD_LINE_ARG:=
@@ -37,7 +43,7 @@ help: ## Display this help text
 prepare:  ## Build docker image for building and testing the project
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
 	docker build \
-		--build-arg PHP_VERSION=${PHP_VERSION} \
+		--build-arg PHP_VERSION=${PHP_VERSION} --build-arg SEL_DISTRO=${SEL_DISTRO}\
 		--tag $(IMAGE):${PHP_VERSION}$(SUFFIX) \
 		-f ${DOCKERFILE} .
 	@echo "::endgroup::"
