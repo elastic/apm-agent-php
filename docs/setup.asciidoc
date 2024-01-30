@@ -106,7 +106,7 @@ then deploy it on a different machine, you will need to copy both
 the built `elastic_apm-*.so` and the downloaded source files.
 
 [discrete]
-[[setup-limitations]]
+[[limitations]]
 === Limitations
 
 [discrete]
