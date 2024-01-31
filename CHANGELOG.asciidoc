@@ -20,6 +20,14 @@ endif::[]
 
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
+[[release-notes-v1.13.0]]
+=== v1.13.0 - 2024/01/31
+==== Features
+* Added support for PHP 8.3 {pull}1127[#1127]
+
+==== Bug fixes
+* Fixed resetting state for forks {pull}#1125[#1125]
+
 [[release-notes-v1.12.0]]
 === v1.12.0 - 2024/01/15
 ==== Features
