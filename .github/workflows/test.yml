@@ -54,6 +54,7 @@ jobs:
           - "8.0"
           - "8.1"
           - "8.2"
+          - "8.3"
         arch: ${{ fromJson(needs.setup-build-matrix.outputs.matrix-combinations) }}
     env:
       PHP_VERSION: ${{ matrix.php-version }}
@@ -63,7 +64,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: package-parts-${{ matrix.arch }}
-          path: agent/native/_build/${{ matrix.arch }}-release/ext/
+          path: agent/native/_build/${{ matrix.arch }}-release/
       - if: ${{ matrix.run_qemu }}
         uses: docker/setup-qemu-action@v3
         with:
@@ -89,6 +90,7 @@ jobs:
           - "8.0"
           - "8.1"
           - "8.2"
+          - "8.3"
         dockerfile:
           - "Dockerfile"
           - "Dockerfile.alpine"

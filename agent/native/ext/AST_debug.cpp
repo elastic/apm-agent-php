@@ -75,7 +75,7 @@ String zendAstKindToString( zend_ast_kind kind )
             return (#enumMember) \
     /**/
 
-    // Up to date with PHP v8.2.3
+    // Up to date with PHP v8.3.2
     switch ( kind )
     {
         /**
@@ -222,6 +222,11 @@ String zendAstKindToString( zend_ast_kind kind )
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_CONST_ENUM_INIT );
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_ENUM_CASE );
         ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_TYPE_INTERSECTION );
+        #endif
+
+
+        #if PHP_VERSION_ID >= ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 3, 0 ) /* if PHP version from 8.3.0 */
+        ELASTIC_APM_GEN_ENUM_TO_STRING_SWITCH_CASE( ZEND_AST_MODIFIER_LIST );
         #endif
 
         default:

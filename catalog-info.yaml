@@ -1,0 +1,32 @@
+---
+# A Component for the release pipeline
+#
+# yaml-language-server: $schema=https://json.schemastore.org/catalog-info.json
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: apm-agent-php-release
+  description: apm-agent-php-release
+  annotations:
+    backstage.io/source-location: url:https://github.com/elastic/apm-agent-php/blob/main/.github/workflows/release.yml
+    github.com/project-slug: elastic/apm-agent-php
+    github.com/team-slug: elastic/apm-agent-php
+  tags:
+    - buildkite
+    - github
+    - gpg-sign
+    - release
+    - user:obltmachine
+  links:
+    - title: GitHub action
+      url: https://github.com/elastic/apm-agent-php/actions/workflows/release.yml
+spec:
+  type: github-actions
+  owner: group:apm-agent-php
+  lifecycle: production
+  dependsOn:
+    - "component:buildkite-pipeline-observability-robots-php-release"
+    - "component:github-action-buildkite"
+    - "system:buildkite"
+    - "system:github-actions"
+    - "user:obltmachine"

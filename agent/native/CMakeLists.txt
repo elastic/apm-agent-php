@@ -39,10 +39,11 @@ include(elastic_set_default_build_options)
 message(STATUS "Detected ${CMAKE_CXX_COMPILER_ID} compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
 
 include(elastic_conan_installer)
+include(elastic_conan_debugsymbols)
 
 # Install project dependencies
 
-set(_supported_php_versions 72 73 74 80 81 82)
+set(_supported_php_versions 72 73 74 80 81 82 83)
 
 function(get_php_api_from_release php_version ret_val)
     block(SCOPE_FOR VARIABLES)
@@ -52,6 +53,7 @@ function(get_php_api_from_release php_version ret_val)
         set(_php_release_80 20200930)
         set(_php_release_81 20210902)
         set(_php_release_82 20220829)
+        set(_php_release_83 20230831)
 
         set(${ret_val} ${_php_release_${php_version}})
         return(PROPAGATE ${ret_val})
@@ -119,5 +121,6 @@ enable_testing()
 
 add_subdirectory(libcommon)
 add_subdirectory(libphpbridge)
+add_subdirectory(loader)
 
 add_subdirectory(ext)

@@ -25,7 +25,6 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\StackTraceFrame;
-use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\IdValidationUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 
@@ -292,48 +291,5 @@ trait AssertValidTrait
         /** @var int $count */
         TestCaseBase::assertGreaterThanOrEqual($minValue, $count);
         return $count;
-    }
-
-    /**
-     * @param mixed $original
-     * @param mixed $dto
-     */
-    public static function assertEqualOriginalAndDto($original, $dto): void
-    {
-        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
-        $dbgCtx->add(['original type' => DbgUtil::getType($original), 'dto type' => DbgUtil::getType($dto)]);
-
-        if (is_object($dto)) {
-            TestCaseBase::assertIsObject($original);
-            $originalPropNameToVal = get_object_vars($original);
-            $dbgCtx->add(['originalPropNameToVal' => $originalPropNameToVal]);
-            $dbgCtx->pushSubScope();
-            foreach (get_object_vars($dto) as $dtoPropName => $dtoPropVal) {
-                $dbgCtx->clearCurrentSubScope(['dtoPropName' => $dtoPropName, 'dtoPropVal' => $dtoPropVal]);
-                if ($dtoPropVal !== null) {
-                    TestCaseBase::assertArrayHasKey($dtoPropName, $originalPropNameToVal);
-                }
-                if (array_key_exists($dtoPropName, $originalPropNameToVal)) {
-                    self::assertEqualOriginalAndDto($originalPropNameToVal[$dtoPropName], $dtoPropVal);
-                }
-            }
-            $dbgCtx->popSubScope();
-            return;
-        }
-
-        if (is_array($dto)) {
-            TestCaseBase::assertIsArray($original);
-            TestCaseBase::assertSameCount($original, $dto);
-            $dbgCtx->pushSubScope();
-            foreach ($dto as $dtoArrayKey => $dtoArrayVal) {
-                $dbgCtx->clearCurrentSubScope(['dtoArrayKey' => $dtoArrayKey, 'dtoArrayVal' => $dtoArrayVal]);
-                TestCaseBase::assertArrayHasKey($dtoArrayKey, $original);
-                self::assertEqualOriginalAndDto($original[$dtoArrayKey], $dtoArrayVal);
-            }
-            $dbgCtx->popSubScope();
-            return;
-        }
-
-        TestCaseBase::assertSame($original, $dto);
     }
 }

@@ -6,10 +6,15 @@ VERSION?=$(shell grep 'VERSION' ../agent/php/ElasticApm/ElasticApm.php | cut -d=
 OUTPUT:=build/packages
 PHP_AGENT_DIR:=/opt/elastic/apm-agent-php
 PHP_VERSION?=7.2
+SEL_DISTRO?=buster
 GIT_SHA?=$(shell git rev-parse HEAD || echo "unknown")
 RELEASE_VERSION?=
 GITHUB_RELEASES_URL=https://github.com/elastic/apm-agent-php/releases/download
 export FPM_FLAGS=
+
+ifneq ($(PHP_VERSION), 7.2)
+	SEL_DISTRO := bullseye
+endif
 
 .PHONY: help
 .DEFAULT_GOAL := help
@@ -127,7 +132,7 @@ prepare-deb-fpm:  ## Build the docker image for the deb smoke tests for fpm
 prepare-deb:  ## Build the docker image for the deb smoke tests
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
 	cd $(PWD)/packaging/test/ubuntu ;\
-	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . || exit 1 ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) --build-arg SEL_DISTRO=$(SEL_DISTRO) -t $@ . || exit 1 ;\
 	cd -
 	@echo "::endgroup::"
 
@@ -135,7 +140,7 @@ prepare-deb:  ## Build the docker image for the deb smoke tests
 prepare-tar:  ## Build the docker image for the tar smoke tests
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
 	cd $(PWD)/packaging/test/ubuntu ;\
-	docker build --build-arg PHP_VERSION=$(PHP_VERSION) -t $@ . || exit 1 ;\
+	docker build --build-arg PHP_VERSION=$(PHP_VERSION) --build-arg SEL_DISTRO=$(SEL_DISTRO) -t $@ . || exit 1 ;\
 	cd -
 	@echo "::endgroup::"
 
@@ -257,7 +262,7 @@ rpm-php-upgrade-testing: PHP_VERSION=7.2
 rpm-php-upgrade-testing: ## PHP upgrade, from 7.2 to 7.4, testing for the rpm installer
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
 	echo "'$(PHP_VERSION)'"
-	TYPE=php-upgrade PHP_VERSION=$(PHP_VERSION) PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-0.0.1
+	TYPE=php-upgrade PHP_VERSION=$(PHP_VERSION) PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-0.0.2
 	@echo "::endgroup::"
 
 .PHONY: rpm-agent-upgrade-testing

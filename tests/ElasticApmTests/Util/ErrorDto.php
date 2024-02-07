@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Constants;
-use Elastic\Apm\Impl\Error;
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
 
 class ErrorDto
@@ -151,10 +150,5 @@ class ErrorDto
     public static function assertValidId($errorId): string
     {
         return self::assertValidIdEx($errorId, Constants::ERROR_ID_SIZE_IN_BYTES);
-    }
-
-    public function assertEquals(Error $original): void
-    {
-        self::assertEqualOriginalAndDto($original, $this);
     }
 }

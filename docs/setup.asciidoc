@@ -74,22 +74,28 @@ cd apm-agent-php
 export BUILD_ARCHITECTURE=linux-x86-64
 # for linux with musl - libc distributions (Alpine)
 export BUILD_ARCHITECTURE=linuxmusl-x86-64
+# provide a path to php-config tool
+export PHP_CONFIG=php-config
 
 # build extensions
 make -f .ci/Makefile build
 
 # run extension tests
-PHP_CONFIG=php-config PHP_VERSION=`$PHP_CONFIG --version | cut -d'.' -f 1,2` make -f .ci/Makefile run-phpt-tests
+PHP_VERSION=`$PHP_CONFIG --version | cut -d'.' -f 1,2` make -f .ci/Makefile run-phpt-tests
 
-# install 
-PHP_CONFIG=php-config sudo cp agent/native/_build/${BUILD_ARCHITECTURE}-release/ext/elastic_apm-`$PHP_CONFIG --phpapi`.so `$PHP_CONFIG --extension-dir`
+# install agent extensions
+sudo cp agent/native/_build/${BUILD_ARCHITECTURE}-release/ext/elastic_apm-*.so `$PHP_CONFIG --extension-dir`
+
+# install automatic loader
+sudo cp agent/native/_build/${BUILD_ARCHITECTURE}-release/loader/code/elastic_apm_loader.so `$PHP_CONFIG --extension-dir`
+
 ----
 
 Enable the extension by adding the following to your `php.ini` file:
 
 [source,ini]
 ----
-extension=elastic_apm.so
+extension=elastic_apm_loader.so
 elastic_apm.bootstrap_php_part_file=<repo root>/agent/php/bootstrap_php_part.php
 ----
 
@@ -99,6 +105,16 @@ So if you would like to build `elastic_apm-*.so` on one machine and
 then deploy it on a different machine, you will need to copy both
 the built `elastic_apm-*.so` and the downloaded source files.
 
-=== Limitations
+[discrete]
 [[limitations]]
-Please be aware that if the https://www.php.net/manual/en/ini.core.php#ini.open-basedir[open_basedir] option is configured in your php.ini, the installation directory of the agent (by default /opt/elastic/apm-agent-php) must be located within a path included in the https://www.php.net/manual/en/ini.core.php#ini.open-basedir[open_basedir] configuration. Otherwise, the agent will not be loaded correctly.
+=== Limitations
+
+[discrete]
+[[limitation-open_basedir]]
+==== `open_basedir` PHP configuration option
+Please be aware that if the https://www.php.net/manual/en/ini.core.php#ini.open-basedir[`open_basedir`]
+option is configured in your php.ini,
+the installation directory of the agent (by default `/opt/elastic/apm-agent-php`)
+must be located within a path included in the
+https://www.php.net/manual/en/ini.core.php#ini.open-basedir[`open_basedir`] value.
+Otherwise, the agent will not be loaded correctly.

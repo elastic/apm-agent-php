@@ -182,6 +182,8 @@ fi
 if [ -e "${PHP_INI_FILE_PATH}" ] ; then
     if grep -q "${EXTENSION_FILENAME}" "${PHP_INI_FILE_PATH}" ; then
         remove_extension_configuration_to_file "${PHP_INI_FILE_PATH}"
+    elif grep -q "elastic_apm_loader.so" "${PHP_INI_FILE_PATH}" ; then
+        remove_extension_configuration_to_file "${PHP_INI_FILE_PATH}"
     else
         echo '  extension configuration does not exist for the Elastic PHP agent.'
         echo '  skipping ... '

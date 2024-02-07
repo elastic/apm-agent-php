@@ -585,4 +585,19 @@ class PublicApiTest extends TracerUnitTestCaseBase
         self::assertSame('label_value_for_key_123', self::getLabel($reportedTx, '123'));
         self::assertSame('custom_value_for_key_456', self::getTransactionContextCustom($reportedTx, '456'));
     }
+
+    private const INVALID_UTF8_CHARACTER = "\xb0";
+    private const UNICODE_REPLACEMENT_CHARACTER_JSON_ENCODED = '\ufffd';
+
+    public function testMalformedUtf8(): void
+    {
+        // Act
+        $tx = $this->tracer->beginTransaction('test_TX_name_[' . self::INVALID_UTF8_CHARACTER . ']', 'test_TX_type');
+        $tx->end();
+
+        // Assert
+        $reportedTx = $this->mockEventSink->singleTransaction();
+        $this->assertSame('test_TX_name_[' . json_decode('"' . self::UNICODE_REPLACEMENT_CHARACTER_JSON_ENCODED . '"') . ']', $reportedTx->name);
+        $this->assertSame('test_TX_type', $reportedTx->type);
+    }
 }

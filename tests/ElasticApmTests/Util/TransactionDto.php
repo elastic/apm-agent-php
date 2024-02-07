@@ -23,7 +23,6 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
-use Elastic\Apm\Impl\Transaction;
 use ElasticApmTests\Util\Deserialization\DeserializationUtil;
 
 class TransactionDto extends ExecutionSegmentDto
@@ -141,10 +140,5 @@ class TransactionDto extends ExecutionSegmentDto
         if ($this->context !== null) {
             $this->context->assertValid();
         }
-    }
-
-    public function assertEquals(Transaction $original): void
-    {
-        self::assertEqualOriginalAndDto($original, $this);
     }
 }
