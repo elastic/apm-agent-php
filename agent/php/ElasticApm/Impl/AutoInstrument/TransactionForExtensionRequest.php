@@ -420,6 +420,11 @@ final class TransactionForExtensionRequest
         return PHP_SAPI === 'cli';
     }
 
+    private static function sanitizeCliName(string $name): string
+    {
+        return preg_replace('/[^a-zA-Z0-9.:_\-]/', '_', $name) ?: ' ';
+    }
+
     private function discoverCliName(): string
     {
         global $argc, $argv;
@@ -441,7 +446,7 @@ final class TransactionForExtensionRequest
             return self::DEFAULT_NAME;
         }
 
-        $cliScriptName = basename($argv[0]);
+        $cliScriptName = self::sanitizeCliName(basename($argv[0]));
         if (
             ($argc < 2)
             || (count($argv) < 2)
@@ -455,7 +460,7 @@ final class TransactionForExtensionRequest
             return $cliScriptName;
         }
 
-        $txName = $cliScriptName . ' ' . $argv[1];
+        $txName = $cliScriptName . ' ' . self::sanitizeCliName($argv[1]);
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'CLI script is Laravel ' . self::LARAVEL_ARTISAN_COMMAND_SCRIPT . ' command with arguments'
