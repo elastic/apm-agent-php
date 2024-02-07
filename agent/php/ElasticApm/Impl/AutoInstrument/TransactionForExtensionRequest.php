@@ -446,7 +446,7 @@ final class TransactionForExtensionRequest
             return self::DEFAULT_NAME;
         }
 
-        $cliScriptName = basename($argv[0]);
+        $cliScriptName = self::sanitizeCliName(basename($argv[0]));
         if (
             ($argc < 2)
             || (count($argv) < 2)
@@ -457,17 +457,17 @@ final class TransactionForExtensionRequest
                 'Using CLI script name as transaction name',
                 ['cliScriptName' => $cliScriptName, 'argc' => $argc, 'argv' => $argv]
             );
-            return self::sanitizeCliName($cliScriptName);
+            return $cliScriptName;
         }
 
-        $txName = $cliScriptName . ' ' . $argv[1];
+        $txName = $cliScriptName . ' ' . self::sanitizeCliName($argv[1]);
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log(
             'CLI script is Laravel ' . self::LARAVEL_ARTISAN_COMMAND_SCRIPT . ' command with arguments'
             . ' - including the first argument in transaction name',
             ['txName' => $txName, 'argc' => $argc, 'argv' => $argv]
         );
-        return self::sanitizeCliName($txName);
+        return $txName;
     }
 
     /**
