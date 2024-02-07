@@ -420,9 +420,9 @@ final class TransactionForExtensionRequest
         return PHP_SAPI === 'cli';
     }
 
-    private function sanitizeCliName(string $name): string
+    private static function sanitizeCliName(string $name): string
     {
-        return preg_replace('/[^a-zA-Z0-9.:_\-]/', '_', $name) ?: '';
+        return preg_replace('/[^a-zA-Z0-9.:_\-]/', '_', $name) ?: ' ';
     }
 
     private function discoverCliName(): string
@@ -457,7 +457,7 @@ final class TransactionForExtensionRequest
                 'Using CLI script name as transaction name',
                 ['cliScriptName' => $cliScriptName, 'argc' => $argc, 'argv' => $argv]
             );
-            return $this->sanitizeCliName($cliScriptName);
+            return self::sanitizeCliName($cliScriptName);
         }
 
         $txName = $cliScriptName . ' ' . $argv[1];
@@ -467,7 +467,7 @@ final class TransactionForExtensionRequest
             . ' - including the first argument in transaction name',
             ['txName' => $txName, 'argc' => $argc, 'argv' => $argv]
         );
-        return $this->sanitizeCliName($txName);
+        return self::sanitizeCliName($txName);
     }
 
     /**
