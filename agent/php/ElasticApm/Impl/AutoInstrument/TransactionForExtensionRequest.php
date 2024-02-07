@@ -420,8 +420,9 @@ final class TransactionForExtensionRequest
         return PHP_SAPI === 'cli';
     }
 
-    private function sanitizeCliName(string $name): string {
-        return preg_replace('/[^a-zA-Z0-9.:_\-]/', '_', $name);
+    private function sanitizeCliName(string $name): string
+    {
+        return preg_replace('/[^a-zA-Z0-9.:_\-]/', '_', $name) ?: '';
     }
 
     private function discoverCliName(): string
