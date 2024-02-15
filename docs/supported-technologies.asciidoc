@@ -49,6 +49,9 @@ We support automatic instrumentation for the following web frameworks.
 |WordPress
 |5, 6
 
+|CodeIgniter
+|3
+
 |===
 
 [float]
