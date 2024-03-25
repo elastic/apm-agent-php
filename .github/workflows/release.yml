@@ -15,6 +15,7 @@ jobs:
 
   release-started:
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags')
     steps:
       - uses: elastic/apm-pipeline-library/.github/actions/slack-message@current
         with:
@@ -41,7 +42,7 @@ jobs:
       BUCKET_NAME: "apm-agent-php"
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: package
           path: ${{ env.BUILD_PACKAGES }}
@@ -74,6 +75,7 @@ jobs:
           predefinedAcl: "publicRead"
 
       - id: buildkite
+        if: startsWith(github.ref, 'refs/tags')
         name: Run buildkite pipeline
         uses: elastic/apm-pipeline-library/.github/actions/buildkite@current
         with:
@@ -90,9 +92,11 @@ jobs:
             BUNDLE_URL=https://storage.googleapis.com/${{ env.BUCKET_NAME }}/${{ steps.upload-file.outputs.uploaded }}
 
   generate-test-packages-matrix:
+    if: startsWith(github.ref, 'refs/tags')
     uses: ./.github/workflows/generate-matrix.yml
 
   test-packages:
+    if: startsWith(github.ref, 'refs/tags')
     needs:
       - sign
       - generate-test-packages-matrix
@@ -126,12 +130,15 @@ jobs:
           PACKAGE_FILE: "signed-artifacts.zip"
 
       - name: Create draft release
+        if: startsWith(github.ref, 'refs/tags')
         run: make -f .ci/Makefile draft-release
 
       - name: Verify draft release
+        if: startsWith(github.ref, 'refs/tags')
         run: ORIGINAL_PACKAGES_LOCATION=${{ env.BUILD_PACKAGES }} make -f .ci/Makefile download-verify
 
       - name: Publish release
+        if: startsWith(github.ref, 'refs/tags')
         run: make -f .ci/Makefile github-release-ready
 
   notify:
@@ -150,6 +157,7 @@ jobs:
         with:
           needs: ${{ toJSON(needs) }}
       - uses: elastic/apm-pipeline-library/.github/actions/notify-build-status@current
+        if: startsWith(github.ref, 'refs/tags')
         with:
           status: ${{ steps.check.outputs.status }}
           vaultUrl: ${{ secrets.VAULT_ADDR }}
