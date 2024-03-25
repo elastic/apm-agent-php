@@ -43,12 +43,20 @@ jobs:
       - build-packages
     env:
       BUCKET_NAME: "apm-agent-php"
+    permissions:
+      id-token: write
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: package
           path: ${{ env.BUILD_PACKAGES }}
+
+      - name: generate build provenance
+        uses: github-early-access/generate-build-provenance@main
+        with:
+          subject-path: "${{ github.workspace }}/${{ env.BUILD_PACKAGES }}/*"
 
       ## NOTE: The name of the zip should match the name of the folder to be zipped.
       - name: Prepare packages to be signed
