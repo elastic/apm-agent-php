@@ -1,6 +1,6 @@
-FROM ruby:2.7.1-alpine3.12
+FROM ruby:3.3.0-alpine3.18
 
-ENV FPM_VERSION 1.11.0
+ENV FPM_VERSION 1.15.1
 RUN apk add --no-cache \
     alpine-sdk make cpio curl libarchive-tools make php-pear \
     python3 py3-virtualenv py3-setuptools py3-pip \
