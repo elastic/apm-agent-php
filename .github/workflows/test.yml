@@ -121,6 +121,7 @@ jobs:
     uses: ./.github/workflows/test-packages.yml
     with:
       include: ${{ needs.generate-test-packages-matrix.outputs.include }}
+    secrets: inherit
 
   # The very last job to report whether the Workflow passed.
   # This will act as the Branch Protection gatekeeper

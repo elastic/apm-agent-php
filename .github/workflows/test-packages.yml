@@ -43,6 +43,14 @@ jobs:
           name: ${{ inputs.package-name }}
           path: ${{ env.BUILD_PACKAGES }}
 
+      - uses: elastic/apm-pipeline-library/.github/actions/docker-login@current
+        with:
+          registry: docker.elastic.co
+          secret: secret/observability-team/ci/docker-registry/prod
+          url: ${{ secrets.VAULT_ADDR }}
+          roleId: ${{ secrets.VAULT_ROLE_ID }}
+          secretId: ${{ secrets.VAULT_SECRET_ID }}
+
       ## This will help with preparing the signed artifacts that were bundled in a zip file
       - if: ${{ inputs.package-name == 'signed-artifacts' }}
         name: Unzip signed packages
