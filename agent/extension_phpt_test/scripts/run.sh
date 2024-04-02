@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # if you want to run only that one test, execute scipt with test or folder name
-# example: docker-compose run --rm  phpt_82 /scripts/run.sh tests/output
-# example: docker-compose run --rm  phpt_82 /scripts/run.sh tests/output/ob_start_error_005.phpt
+# example: docker compose run --rm  phpt_82 /scripts/run.sh tests/output
+# example: docker compose run --rm  phpt_82 /scripts/run.sh tests/output/ob_start_error_005.phpt
 TEST_OR_DIRECTORY_TO_EXECUTE=$1
 
 PHP_VERSION=`php-config --version`
@@ -24,7 +24,7 @@ elif [ $PHP_VERSION == "8.2" ]; then
 fi
 
 mkdir -m 666 -p /results/${PHP_VERSION}
-echo "Making results directory /results/${PHP_VERSION} resultCode: $?" 
+echo "Making results directory /results/${PHP_VERSION} resultCode: $?"
 
 RESULT_PREFIX=`date -u +"%Y%m%d_%H%M%S-"`
 
