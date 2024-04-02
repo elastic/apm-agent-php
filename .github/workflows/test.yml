@@ -109,6 +109,7 @@ jobs:
       - static-checks-unit-tests
       - phpt-tests
     uses: ./.github/workflows/build-packages.yml
+    secrets: inherit
 
   generate-test-packages-matrix:
     uses: ./.github/workflows/generate-matrix.yml
