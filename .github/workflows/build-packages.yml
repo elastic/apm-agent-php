@@ -19,6 +19,15 @@ jobs:
         with:
           name: package-parts-linuxmusl-x86-64
           path: agent/native/_build/linuxmusl-x86-64-release/
+
+      - uses: elastic/apm-pipeline-library/.github/actions/docker-login@current
+        with:
+          registry: docker.elastic.co
+          secret: secret/observability-team/ci/docker-registry/prod
+          url: ${{ secrets.VAULT_ADDR }}
+          roleId: ${{ secrets.VAULT_ROLE_ID }}
+          secretId: ${{ secrets.VAULT_SECRET_ID }}
+
       - name: package
         run: make -C packaging package
       - name: package info
