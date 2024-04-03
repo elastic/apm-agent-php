@@ -6,6 +6,9 @@ name: build-packages
 on:
   workflow_call: ~
 
+permissions:
+  contents: read
+
 jobs:
   build-packages:
     runs-on: ubuntu-latest
