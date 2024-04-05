@@ -12,7 +12,7 @@ Trademarks: This software listing is packaged by Bitnami. The respective tradema
 
 ```console
 $ curl -sSL https://raw.githubusercontent.com/bitnami/bitnami-docker-magento/master/docker-compose.yml > docker-compose.yml
-$ docker-compose up -d
+$ docker compose up -d
 ```
 
 **Warning**: This quick setup is only intended for development environments. You are encouraged to change the insecure default credentials and check out the available configuration options in the [Environment Variables](#environment-variables) section for a more secure deployment.
@@ -71,7 +71,7 @@ The main folder of this repository contains a functional [`docker-compose.yml`](
 
 ```console
 $ curl -sSL https://raw.githubusercontent.com/bitnami/bitnami-docker-magento/master/docker-compose.yml > docker-compose.yml
-$ docker-compose up -d
+$ docker compose up -d
 ```
 
 ### Using the Docker Command Line
@@ -225,9 +225,9 @@ When the container is executed for the first time, it will execute the files wit
 
 ### Environment variables
 
-When you start the Magento image, you can adjust the configuration of the instance by passing one or more environment variables either on the docker-compose file or on the `docker run` command line. If you want to add a new environment variable:
+When you start the Magento image, you can adjust the configuration of the instance by passing one or more environment variables either on the docker compose file or on the `docker run` command line. If you want to add a new environment variable:
 
- * For docker-compose add the variable name and value under the application section in the [`docker-compose.yml`](https://github.com/bitnami/bitnami-docker-magento/blob/master/docker-compose.yml) file present in this repository:
+ * For docker compose add the variable name and value under the application section in the [`docker-compose.yml`](https://github.com/bitnami/bitnami-docker-magento/blob/master/docker-compose.yml) file present in this repository:
 
 ```yaml
 magento:
@@ -345,7 +345,7 @@ $ docker logs magento
 Or using Docker Compose:
 
 ```console
-$ docker-compose logs magento
+$ docker compose logs magento
 ```
 
 You can configure the containers [logging driver](https://docs.docker.com/engine/admin/logging/overview/) using the `--log-driver` option if you wish to consume the container logs differently. In the default configuration docker uses the `json-file` driver.
@@ -365,7 +365,7 @@ $ docker stop magento
 Or using Docker Compose:
 
 ```console
-$ docker-compose stop magento
+$ docker compose stop magento
 ```
 
 #### Step 2: Run the backup command
@@ -505,7 +505,7 @@ $ docker stop magento
 Or using Docker Compose:
 
 ```console
-$ docker-compose stop magento
+$ docker compose stop magento
 ```
 
 #### Upgrading bundled image components
@@ -523,7 +523,7 @@ $ docker pull bitnami/magento:latest
 Stop the currently running container using the command
 
 ```console
-$ docker-compose stop magento
+$ docker compose stop magento
 ```
 
 ##### Step 3: Take a snapshot of the application state
@@ -535,7 +535,7 @@ Follow the steps in [Backing up your container](#backing-up-your-container) to t
 Remove the currently running container by executing the following command:
 
 ```console
-docker-compose rm -v magento
+docker compose rm -v magento
 ```
 
 ##### Step 5: Run the new image
@@ -543,7 +543,7 @@ docker-compose rm -v magento
 Update the image tag in `docker-compose.yml` and re-create your container with the new image:
 
 ```console
-$ docker-compose up -d
+$ docker compose up -d
 ```
 
 ## Customize this image

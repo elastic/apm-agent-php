@@ -25,7 +25,7 @@ To run the tests, you must first build the agent binaries for the `linux-x86-64-
 
 ```
 cd apm-agent-php/agent/extension_phpt_test
-docker-compose up --build
+docker compose up --build
 ```
 
 It will start up elastic search and apm-server and execute tests for all supported PHP releases.
@@ -38,7 +38,7 @@ In this example we will run all tests with PHP 8.2
 
 ```
 cd apm-agent-php/agent/extension_phpt_test
-docker-compose up elasticsearch apm-server phpt_82
+docker compose up elasticsearch apm-server phpt_82
 ```
 It will start up elastic search and apm-server and execute tests for PHP 8.2.
 
@@ -48,8 +48,8 @@ In this example we will run test with PHP 8.2
 
 ```
 cd apm-agent-php/agent/extension_phpt_test
-docker-compose build phpt_82 elasticsearch apm-server
-docker-compose run --rm  phpt_82 /scripts/run.sh tests/output/ob_start_error_005.phpt
+docker compose build phpt_82 elasticsearch apm-server
+docker compose run --rm  phpt_82 /scripts/run.sh tests/output/ob_start_error_005.phpt
 ```
 
 ### Run bunch of tests from a folder
@@ -58,8 +58,8 @@ In this example we will run test with PHP 8.2
 
 ```
 cd apm-agent-php/agent/extension_phpt_test
-docker-compose build phpt_82 elasticsearch apm-server
-docker-compose run --rm  phpt_82 /scripts/run.sh tests/output
+docker compose build phpt_82 elasticsearch apm-server
+docker compose run --rm  phpt_82 /scripts/run.sh tests/output
 ```
 
 ### Core dump examination with gdb
@@ -68,7 +68,7 @@ In order to diagnose a core dump, you need to run the image together with the mo
 
 ```
 cd apm-agent-php/agent/extension_phpt_test
-docker-compose run -v /path/to/coredumps:/path/to/coredumps phpt_82 /bin/bash
+docker compose run -v /path/to/coredumps:/path/to/coredumps phpt_82 /bin/bash
 ```
 then inside runnning container:
 ```
