@@ -43,5 +43,5 @@ jobs:
         with:
           context: ./packaging/cache/
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: latest
           labels: ${{ steps.meta.outputs.labels }}
