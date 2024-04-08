@@ -104,6 +104,8 @@ jobs:
           path: build/*junit.xml
           if-no-files-found: error
   build-packages:
+    permissions:
+      packages: read
     needs:
       - build
       - static-checks-unit-tests
@@ -115,6 +117,8 @@ jobs:
     uses: ./.github/workflows/generate-matrix.yml
 
   test-packages:
+    permissions:
+      packages: read
     needs:
       - build-packages
       - generate-test-packages-matrix
