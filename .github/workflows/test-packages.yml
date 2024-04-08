@@ -36,6 +36,7 @@ jobs:
       BUILD_PACKAGES: build/packages
       REGISTRY: ghcr.io
     permissions:
+      contents: read
       packages: read
     steps:
       - uses: actions/checkout@v4

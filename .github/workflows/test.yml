@@ -105,6 +105,7 @@ jobs:
           if-no-files-found: error
   build-packages:
     permissions:
+      contents: read
       packages: read
     needs:
       - build
@@ -118,6 +119,7 @@ jobs:
 
   test-packages:
     permissions:
+      contents: read
       packages: read
     needs:
       - build-packages
