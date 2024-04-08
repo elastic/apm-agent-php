@@ -1,5 +1,4 @@
 ---
-
 # Runs the build-packages based on the provided files in test.yml
 name: build-packages
 
@@ -9,6 +8,10 @@ on:
 jobs:
   build-packages:
     runs-on: ubuntu-latest
+    permissions:
+      packages: read
+    env:
+      REGISTRY: ghcr.io
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v3
@@ -20,13 +23,12 @@ jobs:
           name: package-parts-linuxmusl-x86-64
           path: agent/native/_build/linuxmusl-x86-64-release/
 
-      - uses: elastic/apm-pipeline-library/.github/actions/docker-login@current
+      - name: Log in to the Container registry
+        uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20
         with:
-          registry: docker.elastic.co
-          secret: secret/observability-team/ci/docker-registry/prod
-          url: ${{ secrets.VAULT_ADDR }}
-          roleId: ${{ secrets.VAULT_ROLE_ID }}
-          secretId: ${{ secrets.VAULT_SECRET_ID }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: package
         run: make -C packaging package

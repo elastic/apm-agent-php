@@ -1,5 +1,4 @@
 ---
-
 # Runs the test packages based on the provided files in test.yml
 name: test-packages
 
@@ -10,12 +9,12 @@ on:
         required: true
         type: string
       max-parallel:
-        description: 'Set the maximum number of jobs that can run simultaneously in the matrix'
+        description: "Set the maximum number of jobs that can run simultaneously in the matrix"
         default: 20
         required: false
         type: number
       package-name:
-        description: 'The artifact name with the binaries to be tested'
+        description: "The artifact name with the binaries to be tested"
         default: "package"
         required: false
         type: string
@@ -35,6 +34,9 @@ jobs:
       TESTING_TYPE: ${{ matrix.item[2] }}
       ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ join(matrix.item, ',') }}"
       BUILD_PACKAGES: build/packages
+      REGISTRY: ghcr.io
+    permissions:
+      packages: read
     steps:
       - uses: actions/checkout@v4
 
@@ -43,13 +45,12 @@ jobs:
           name: ${{ inputs.package-name }}
           path: ${{ env.BUILD_PACKAGES }}
 
-      - uses: elastic/apm-pipeline-library/.github/actions/docker-login@current
+      - name: Log in to the Container registry
+        uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20
         with:
-          registry: docker.elastic.co
-          secret: secret/observability-team/ci/docker-registry/prod
-          url: ${{ secrets.VAULT_ADDR }}
-          roleId: ${{ secrets.VAULT_ROLE_ID }}
-          secretId: ${{ secrets.VAULT_SECRET_ID }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       ## This will help with preparing the signed artifacts that were bundled in a zip file
       - if: ${{ inputs.package-name == 'signed-artifacts' }}
