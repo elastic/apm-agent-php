@@ -10,8 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       packages: read
-    env:
-      REGISTRY: ghcr.io
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v3
@@ -26,7 +24,7 @@ jobs:
       - name: Log in to the Container registry
         uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v3.1.0
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 

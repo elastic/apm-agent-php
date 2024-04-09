@@ -34,7 +34,6 @@ jobs:
       TESTING_TYPE: ${{ matrix.item[2] }}
       ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ join(matrix.item, ',') }}"
       BUILD_PACKAGES: build/packages
-      REGISTRY: ghcr.io
     permissions:
       contents: read
       packages: read
@@ -49,7 +48,7 @@ jobs:
       - name: Log in to the Container registry
         uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v3.1.0
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
