@@ -47,7 +47,7 @@ jobs:
           path: ${{ env.BUILD_PACKAGES }}
 
       - name: Log in to the Container registry
-        uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20
+        uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v3.1.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
