@@ -1,4 +1,4 @@
-FROM ruby:3.3.0-alpine3.18
+FROM ruby:3.3-alpine
 
 ENV FPM_VERSION 1.15.1
 RUN apk add --no-cache \
