@@ -51,12 +51,21 @@ jobs:
         run: |
           echo "TEST_TAG=$(date +%s)" >> "${GITHUB_ENV}"
 
+      - name: Extract metadata (tags, labels) for Test Container
+        id: test-meta
+        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ env.TEST_TAG }}
+
       - name: Build and export Container image
         uses: docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0 # v5.3.0
         with:
           context: ./packaging/cache/
           load: true
-          tags: ${{ env.TEST_TAG }}
+          tags: ${{ steps.test-meta.outputs.tags }}
+          labels: ${{ steps.test-meta.outputs.labels }}
 
       - name: Package
         run: make IMAGE_TAG=${{ env.TEST_TAG }} -C packaging package
@@ -64,7 +73,7 @@ jobs:
       - name: Package info
         run: make IMAGE_TAG=${{ env.TEST_TAG }} -C packaging info
 
-      - name: Extract metadata (tags, labels) for Docker
+      - name: Extract metadata (tags, labels) for Container
         id: meta
         uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81
         with:
