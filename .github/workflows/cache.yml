@@ -4,6 +4,9 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "0 3 * * 1-5"
+  push:
+    branches:
+      - "feat/use-pre-built-fpm-image"
 
 env:
   DOCKER_BUILDKIT: 1
