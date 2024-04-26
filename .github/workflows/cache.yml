@@ -1,0 +1,87 @@
+---
+name: Build Cached Container Images
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1-5"
+
+env:
+  DOCKER_BUILDKIT: 1
+  IMAGE_NAME: ${{ github.repository }}
+  REGISTRY: ghcr.io
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+
+  publish:
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    permissions:
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: package-parts-linux-x86-64
+          path: agent/native/_build/linux-x86-64-release/
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: package-parts-linuxmusl-x86-64
+          path: agent/native/_build/linuxmusl-x86-64-release/
+
+      - name: Create a unique tag
+        run: |
+          echo "TEST_TAG=$(date +%s)" >> "${GITHUB_ENV}"
+
+      - name: Extract metadata (tags, labels) for Test Container
+        id: test-meta
+        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ env.TEST_TAG }}
+
+      - name: Build and export Container image
+        uses: docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0 # v5.3.0
+        with:
+          context: ./packaging/cache/
+          load: true
+          tags: ${{ steps.test-meta.outputs.tags }}
+          labels: ${{ steps.test-meta.outputs.labels }}
+
+      - name: Package
+        run: make IMAGE_TAG=${{ env.TEST_TAG }} -C packaging package
+
+      - name: Package info
+        run: make IMAGE_TAG=${{ env.TEST_TAG }} -C packaging info
+
+      - name: Extract metadata (tags, labels) for Container
+        id: meta
+        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v3.1.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0 # v5.3.0
+        with:
+          context: ./packaging/cache/
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

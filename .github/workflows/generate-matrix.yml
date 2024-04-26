@@ -10,6 +10,9 @@ on:
         description: "The matrix"
         value: ${{ jobs.generate-matrix.outputs.include }}
 
+permissions:
+  contents: read
+
 jobs:
   generate-matrix:
     timeout-minutes: 5

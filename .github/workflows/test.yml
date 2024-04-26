@@ -104,22 +104,30 @@ jobs:
           path: build/*junit.xml
           if-no-files-found: error
   build-packages:
+    permissions:
+      contents: read
+      packages: read
     needs:
       - build
       - static-checks-unit-tests
       - phpt-tests
     uses: ./.github/workflows/build-packages.yml
+    secrets: inherit
 
   generate-test-packages-matrix:
     uses: ./.github/workflows/generate-matrix.yml
 
   test-packages:
+    permissions:
+      contents: read
+      packages: read
     needs:
       - build-packages
       - generate-test-packages-matrix
     uses: ./.github/workflows/test-packages.yml
     with:
       include: ${{ needs.generate-test-packages-matrix.outputs.include }}
+    secrets: inherit
 
   # The very last job to report whether the Workflow passed.
   # This will act as the Branch Protection gatekeeper
