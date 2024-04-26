@@ -9,7 +9,6 @@ on:
     tags: [ "v[0-9]+*" ]
     branches:
       - main
-      - feature/provenance
 
 env:
   BUILD_PACKAGES: build/packages
