@@ -32,6 +32,9 @@ jobs:
     uses: ./.github/workflows/build.yml
 
   build-packages:
+    permissions:
+      contents: read
+      packages: read
     needs:
       - build
     uses: ./.github/workflows/build-packages.yml
@@ -111,6 +114,9 @@ jobs:
     needs:
       - sign
       - generate-test-packages-matrix
+    permissions:
+      contents: read
+      packages: read
     uses: ./.github/workflows/test-packages.yml
     with:
       include: ${{ needs.generate-test-packages-matrix.outputs.include }}
