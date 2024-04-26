@@ -43,6 +43,7 @@ jobs:
     env:
       BUCKET_NAME: "apm-agent-php"
     permissions:
+      attestations: write
       id-token: write
       contents: write
     steps:
