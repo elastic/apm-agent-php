@@ -280,14 +280,21 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
     registerAtExitLogging();
     registerExceptionHooks();
 
-    curlCode = curl_global_init( CURL_GLOBAL_ALL );
-    if ( curlCode != CURLE_OK )
+    if ( config->disableSend )
     {
-        resultCode = resultFailure;
-        ELASTIC_APM_LOG_ERROR( "curl_global_init failed: %s (%d)", curl_easy_strerror( curlCode ), (int)curlCode );
-        goto finally;
+        ELASTIC_APM_LOG_DEBUG( "disable_send (disableSend) configuration option is set to true - skipping curl_global_init" );
     }
-    tracer->curlInited = true;
+    else
+    {
+        curlCode = curl_global_init( CURL_GLOBAL_ALL );
+        if ( curlCode != CURLE_OK )
+        {
+            resultCode = resultFailure;
+            ELASTIC_APM_LOG_ERROR( "curl_global_init failed: %s (%d)", curl_easy_strerror( curlCode ), (int)curlCode );
+            goto finally;
+        }
+        tracer->curlInited = true;
+    }
 
     astInstrumentationOnModuleInit( config );
 
