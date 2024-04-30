@@ -27,12 +27,14 @@
 #ifndef ELASTIC_APM_MOCK_PHP_DEPS
 #   include <zend_ini.h>
 #endif
+#include <span>
 #include "elastic_apm_assert.h"
 #include "log.h"
 #include "util.h"
 #include "TextOutputStream.h"
 #include "elastic_apm_alloc.h"
 #include "time_util.h"
+#include "basic_macros.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_CONFIG
 
@@ -136,6 +138,8 @@ typedef String (* StreamParsedValueFunc )( const OptionMetadata* optMeta, Parsed
 typedef void (* SetConfigSnapshotFieldFunc )( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, ConfigSnapshot* dst );
 typedef ParsedOptionValue (* GetConfigSnapshotFieldFunc )( const OptionMetadata* optMeta, const ConfigSnapshot* src );
 typedef void (* ParsedOptionValueToZvalFunc )( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, zval* return_value );
+typedef bool (* AreEqualParsedValuesFunc )( const OptionMetadata* optMeta, ParsedOptionValue parsedValue1, ParsedOptionValue parsedValue2 );
+
 struct OptionMetadata
 {
     String name = nullptr;
@@ -150,6 +154,7 @@ struct OptionMetadata
     SetConfigSnapshotFieldFunc setField = nullptr;
     GetConfigSnapshotFieldFunc getField = nullptr;
     ParsedOptionValueToZvalFunc parsedValueToZval = nullptr;
+    AreEqualParsedValuesFunc areEqualParsedValues = nullptr;
     OptionAdditionalMetadata additionalData = {};
 };
 
@@ -279,6 +284,14 @@ static void parsedStringValueToZval( const OptionMetadata* optMeta, ParsedOption
     RETURN_STRING( parsedValue.u.stringValue );
 }
 
+static bool areEqualParsedStringValues( const OptionMetadata* optMeta, ParsedOptionValue parsedValue1, ParsedOptionValue parsedValue2 )
+{
+    return
+        (parsedValue1.u.stringValue == nullptr || parsedValue2.u.stringValue == nullptr)
+            ? (parsedValue1.u.stringValue == parsedValue2.u.stringValue)
+            : strcmp(parsedValue1.u.stringValue, parsedValue2.u.stringValue) == 0;
+}
+
 static ResultCode parseBoolValueImpl( const OptionMetadata* optMeta, ParsedOptionValueType expectedType, String rawValue, /* out */ ParsedOptionValue* parsedValue )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
@@ -335,6 +348,11 @@ static void parsedBoolValueToZval( const OptionMetadata* optMeta, ParsedOptionVa
     RETURN_BOOL( parsedValue.u.boolValue );
 }
 
+static bool areEqualParsedBoolValues( const OptionMetadata* optMeta, ParsedOptionValue parsedValue1, ParsedOptionValue parsedValue2 )
+{
+    return parsedValue1.u.boolValue == parsedValue2.u.boolValue;
+}
+
 static ResultCode parseOptionalBoolValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
 {
     ParsedOptionValue tempParsedValue;
@@ -366,6 +384,14 @@ static void parsedOptionalBoolValueToZval( const OptionMetadata* optMeta, Parsed
     ELASTIC_APM_ASSERT_VALID_PTR( return_value );
 
     RETURN_STRING( optionalBoolToString( parsedValue.u.optionalBoolValue ) );
+}
+
+static bool areEqualParsedOptionalBoolValues( const OptionMetadata* optMeta, ParsedOptionValue parsedValue1, ParsedOptionValue parsedValue2 )
+{
+    return
+        (parsedValue1.u.optionalBoolValue.isSet && parsedValue2.u.optionalBoolValue.isSet)
+        ? (parsedValue1.u.optionalBoolValue.value == parsedValue2.u.optionalBoolValue.value)
+        : (parsedValue1.u.optionalBoolValue.isSet == parsedValue2.u.optionalBoolValue.isSet);
 }
 
 static ResultCode parseDurationValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
@@ -412,6 +438,11 @@ static void parsedDurationValueToZval( const OptionMetadata* optMeta, ParsedOpti
     RETURN_DOUBLE( durationToMilliseconds( parsedValue.u.durationValue ) );
 }
 
+static bool areEqualParsedDurationValues( const OptionMetadata* optMeta, ParsedOptionValue parsedValue1, ParsedOptionValue parsedValue2 )
+{
+    return durationToMilliseconds(parsedValue1.u.durationValue) == durationToMilliseconds(parsedValue2.u.durationValue);
+}
+
 static ResultCode parseSizeValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
@@ -446,6 +477,11 @@ static void parsedSizeValueToZval( const OptionMetadata* optMeta, ParsedOptionVa
     ELASTIC_APM_ASSERT_VALID_PTR( return_value );
 
     RETURN_DOUBLE( sizeToBytes( parsedValue.u.sizeValue ) );
+}
+
+static bool areEqualParsedSizeValues( const OptionMetadata* optMeta, ParsedOptionValue parsedValue1, ParsedOptionValue parsedValue2 )
+{
+    return sizeToBytes(parsedValue1.u.sizeValue) == sizeToBytes(parsedValue2.u.sizeValue);
 }
 
 static
@@ -512,6 +548,11 @@ static void parsedEnumValueToZval( const OptionMetadata* optMeta, ParsedOptionVa
     RETURN_LONG( (long)( parsedValue.u.intValue ) );
 }
 
+static bool areEqualParsedEnumValues( const OptionMetadata* optMeta, ParsedOptionValue parsedValue1, ParsedOptionValue parsedValue2 )
+{
+    return parsedValue1.u.intValue == parsedValue2.u.intValue;
+}
+
 static String streamParsedLogLevel( const OptionMetadata* optMeta, ParsedOptionValue parsedValue, TextOutputStream* txtOutStream )
 {
     ELASTIC_APM_ASSERT_VALID_PTR( optMeta );
@@ -546,6 +587,7 @@ static OptionMetadata buildStringOptionMetadata(
         .setField = setFieldFunc,
         .getField = getFieldFunc,
         .parsedValueToZval = &parsedStringValueToZval,
+        .areEqualParsedValues = &areEqualParsedStringValues,
         .additionalData = {}
     };
 }
@@ -574,6 +616,7 @@ static OptionMetadata buildLoggingRelatedStringOptionMetadata(
                     .setField = setFieldFunc,
                     .getField = getFieldFunc,
                     .parsedValueToZval = &parsedStringValueToZval,
+                    .areEqualParsedValues = &areEqualParsedStringValues,
                     .additionalData = {}
             };
 }
@@ -602,6 +645,7 @@ static OptionMetadata buildBoolOptionMetadata(
         .setField = setFieldFunc,
         .getField = getFieldFunc,
         .parsedValueToZval = &parsedBoolValueToZval,
+        .areEqualParsedValues = &areEqualParsedBoolValues,
         .additionalData = {}
     };
 }
@@ -630,6 +674,7 @@ static OptionMetadata buildOptionalBoolOptionMetadata(
         .setField = setFieldFunc,
         .getField = getFieldFunc,
         .parsedValueToZval = &parsedOptionalBoolValueToZval,
+        .areEqualParsedValues = &areEqualParsedOptionalBoolValues,
         .additionalData = {}
     };
 }
@@ -659,6 +704,7 @@ static OptionMetadata buildDurationOptionMetadata(
         .setField = setFieldFunc,
         .getField = getFieldFunc,
         .parsedValueToZval = &parsedDurationValueToZval,
+        .areEqualParsedValues = &areEqualParsedDurationValues,
         .additionalData = (OptionAdditionalMetadata){ .durationData = (DurationOptionAdditionalMetadata){ .defaultUnits = defaultUnits, .isNegativeValid = isNegativeValid } }
     };
 }
@@ -688,6 +734,7 @@ static OptionMetadata buildDurationOptionMetadata(
         .setField = setFieldFunc,
         .getField = getFieldFunc,
         .parsedValueToZval = &parsedSizeValueToZval,
+        .areEqualParsedValues = &areEqualParsedSizeValues,
         .additionalData = (OptionAdditionalMetadata){ .sizeData = (SizeOptionAdditionalMetadata){ .defaultUnits = defaultUnits } }
     };
 }
@@ -720,6 +767,7 @@ static OptionMetadata buildEnumOptionMetadata(
         .setField = setFieldFunc,
         .getField = getFieldFunc,
         .parsedValueToZval = &parsedEnumValueToZval,
+        .areEqualParsedValues = &areEqualParsedEnumValues,
         .additionalData = (OptionAdditionalMetadata){ .enumData = additionalMetadata }
     };
 }
@@ -803,6 +851,7 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, breakdownMetrics )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, captureErrors )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, devInternal )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, devInternalBackendCommLogVerbose )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, devInternalConfigOnCallStack )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, devInternalCurlInstrumCallCurl )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, devInternalCurlInstrumCreateSpan )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, disableInstrumentations )
@@ -1020,6 +1069,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             buildBoolOptionMetadata,
             devInternalBackendCommLogVerbose,
             ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_BACKEND_COMM_LOG_VERBOSE,
+            /* defaultValue: */ false );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            devInternalConfigOnCallStack,
+            ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_CONFIG_ON_CALL_STACK,
             /* defaultValue: */ false );
 
     ELASTIC_APM_INIT_METADATA(
@@ -1848,3 +1903,67 @@ ResultCode newConfigManager( ConfigManager** pNewCfgManager, bool isLoggingRelat
     deleteConfigManagerAndSetToNull( /* in,out */ &cfgManager );
     goto finally;
 }
+
+bool isOptionValueSameAsDefault(const ConfigManager* cfgManager, OptionId optId)
+{
+    const OptionMetadata* optMeta = &(cfgManager->meta.optionsMeta[optId]);
+    return optMeta->areEqualParsedValues(optMeta, optMeta->defaultValue, optMeta->getField(optMeta, &(cfgManager->current.snapshot)));
+}
+
+struct ConfigMarkerFunc
+{
+    using FuncType = bool (*)(const ConfigManager* configManager, std::span<ConfigMarkerFunc> configMarkerFuncs, AddConfigToCallStackContinuation continuation);
+
+    FuncType value;
+};
+
+#define ELASTIC_APM_MAKE_CONFIG_MARKER_FUNC_NAME(optSnapFieldName) ELASTIC_APM_PP_CONCAT(config_, optSnapFieldName)
+
+static void callFirstMatchingOrContinuation(const ConfigManager* configManager, std::span<ConfigMarkerFunc> configMarkerFuncs, AddConfigToCallStackContinuation continuation)
+{
+    ELASTIC_APM_FOR_EACH_INDEX(i, configMarkerFuncs.size())
+    {
+        if (configMarkerFuncs[i].value(configManager, configMarkerFuncs.last(configMarkerFuncs.size() - (i + 1)), continuation))
+        {
+            return;
+        }
+    }
+
+    continuation();
+}
+
+static bool configMarkerFuncImpl(OptionId optId, const ConfigManager* configManager, std::span<ConfigMarkerFunc> configMarkerFuncs, AddConfigToCallStackContinuation continuation)
+{
+    if (isOptionValueSameAsDefault(configManager, optId))
+    {
+        return false;
+    }
+
+    callFirstMatchingOrContinuation(configManager, configMarkerFuncs, continuation);
+    return true;
+}
+
+#define ELASTIC_APM_DEFINE_CONFIG_MARKER_FUNC(optSnapFieldName) \
+    bool ELASTIC_APM_MAKE_CONFIG_MARKER_FUNC_NAME(optSnapFieldName)(const ConfigManager* configManager, std::span<ConfigMarkerFunc> configMarkerFuncs, AddConfigToCallStackContinuation continuation) \
+    { \
+        return configMarkerFuncImpl(ELASTIC_APM_PP_CONCAT(optionId_, optSnapFieldName), configManager, configMarkerFuncs, continuation); \
+    } \
+    /**/
+
+ELASTIC_APM_DEFINE_CONFIG_MARKER_FUNC(devInternalCurlInstrumCallCurl)
+ELASTIC_APM_DEFINE_CONFIG_MARKER_FUNC(devInternalCurlInstrumCreateSpan)
+ELASTIC_APM_DEFINE_CONFIG_MARKER_FUNC(disableSend)
+
+static std::array g_configMarkerFuncs{
+    ConfigMarkerFunc{ &( ELASTIC_APM_MAKE_CONFIG_MARKER_FUNC_NAME(devInternalCurlInstrumCallCurl) ) },
+    ConfigMarkerFunc{ &( ELASTIC_APM_MAKE_CONFIG_MARKER_FUNC_NAME(devInternalCurlInstrumCreateSpan) ) },
+    ConfigMarkerFunc{ &( ELASTIC_APM_MAKE_CONFIG_MARKER_FUNC_NAME(disableSend) ) }
+};
+
+#undef ELASTIC_APM_MAKE_CONFIG_MARKER_FUNC_NAME
+
+void addConfigToCallStack(const ConfigManager* configManager, AddConfigToCallStackContinuation continuation)
+{
+    callFirstMatchingOrContinuation(configManager, g_configMarkerFuncs,  continuation);
+}
+

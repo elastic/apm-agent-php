@@ -47,6 +47,7 @@ struct ConfigSnapshot
     bool captureErrors = false;
     String devInternal = nullptr;
     bool devInternalBackendCommLogVerbose = false;
+    bool devInternalConfigOnCallStack = false;
     bool devInternalCurlInstrumCallCurl = true;
     bool devInternalCurlInstrumCreateSpan = true;
     String disableInstrumentations = nullptr;
