@@ -593,7 +593,12 @@ final class CurlHandleTracker implements LoggableInterface
      */
     private function curlExecPostHook(int $numberOfStackFramesToSkip, $returnValue): void
     {
-        $this->setContextPostHook();
+        if ($this->tracer->getConfig()->devInternalCurlInstrumCallCurl()) {
+            $this->setContextPostHook();
+        } else {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('dev_internal_curl_instrum_call_curl (devInternalCurlInstrumCallCurl) is set to false - skipping setContextPostHook');
+        }
 
         AutoInstrumentationUtil::endSpan($numberOfStackFramesToSkip + 1, $this->span, /* hasExitedByException */ false, $returnValue);
     }
@@ -615,13 +620,18 @@ final class CurlHandleTracker implements LoggableInterface
         ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Injecting outgoing HTTP request headers for distributed tracing...');
 
-        $setOptRetVal = $this->curlHandle->setOpt(CURLOPT_HTTPHEADER, $headers);
-        if ($setOptRetVal) {
-            ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Successfully injected outgoing HTTP request headers for distributed tracing');
+        if ($this->tracer->getConfig()->devInternalCurlInstrumCallCurl()) {
+            $setOptRetVal = $this->curlHandle->setOpt(CURLOPT_HTTPHEADER, $headers);
+            if ($setOptRetVal) {
+                ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log('Successfully injected outgoing HTTP request headers for distributed tracing');
+            } else {
+                ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+                && $loggerProxy->log('Failed to inject outgoing HTTP request headers for distributed tracing');
+            }
         } else {
-            ($loggerProxy = $logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('Failed to inject outgoing HTTP request headers for distributed tracing');
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('dev_internal_curl_instrum_call_curl (devInternalCurlInstrumCallCurl) is set to false - NOT injecting outgoing HTTP request headers for distributed tracing');
         }
     }
 

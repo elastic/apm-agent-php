@@ -76,6 +76,7 @@ enum OptionId
     optionId_captureErrors,
     optionId_devInternal,
     optionId_devInternalBackendCommLogVerbose,
+    optionId_devInternalCurlInstrumCallCurl,
     optionId_devInternalCurlInstrumCreateSpan,
     optionId_disableInstrumentations,
     optionId_disableSend,
@@ -268,6 +269,7 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
  */
 #define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL "dev_internal"
 #define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_BACKEND_COMM_LOG_VERBOSE "dev_internal_backend_comm_log_verbose"
+#define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_CURL_INSTRUM_CALL_CURL "dev_internal_curl_instrum_call_curl"
 #define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_CURL_INSTRUM_CREATE_SPAN "dev_internal_curl_instrum_create_span"
 
 #define ELASTIC_APM_CFG_OPT_NAME_DISABLE_INSTRUMENTATIONS "disable_instrumentations"
