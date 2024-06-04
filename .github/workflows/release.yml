@@ -88,22 +88,27 @@ jobs:
           destination: "${{ env.BUCKET_NAME }}/${{ github.run_id }}"
           predefinedAcl: "publicRead"
 
-      - id: buildkite
+      - id: buildkite-run
         if: startsWith(github.ref, 'refs/tags')
-        name: Run buildkite pipeline
-        uses: elastic/apm-pipeline-library/.github/actions/buildkite@current
+        uses: elastic/oblt-actions/buildkite/run@v1.5.0
         with:
-          vaultUrl: ${{ secrets.VAULT_ADDR }}
-          vaultRoleId: ${{ secrets.VAULT_ROLE_ID }}
-          vaultSecretId: ${{ secrets.VAULT_SECRET_ID }}
+          token: ${{ secrets.BUILDKITE_TOKEN }}
           pipeline: observability-robots-php-release
-          triggerMessage: "${{ github.repository }}@${{ github.ref_name }} - sign artifacts"
-          waitFor: true
-          printBuildLogs: true
-          artifactName: signed-artifacts
-          artifactPath: "signed-artifacts.zip"
-          buildEnvVars: |
+          wait-for: true
+          env-vars: |
             BUNDLE_URL=https://storage.googleapis.com/${{ env.BUCKET_NAME }}/${{ steps.upload-file.outputs.uploaded }}
+
+      - uses: elastic/oblt-actions/buildkite/download-artifact@v1.5.0
+        with:
+          build-number: ${{ steps.buildkite-run.outputs.number }}
+          path: signed-artifacts.zip
+          pipeline: ${{ steps.buildkite-run.outputs.pipeline }}
+          token: ${{ secrets.BUILDKITE_TOKEN }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-artifacts
+          path: signed-artifacts.zip
 
   generate-test-packages-matrix:
     if: startsWith(github.ref, 'refs/tags')
