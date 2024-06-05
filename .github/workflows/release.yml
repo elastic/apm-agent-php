@@ -9,6 +9,7 @@ on:
     tags: [ "v[0-9]+*" ]
     branches:
       - main
+      - test/release-sign-branches
 
 env:
   BUILD_PACKAGES: build/packages
