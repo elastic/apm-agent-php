@@ -9,6 +9,7 @@ on:
     tags: [ "v[0-9]+*" ]
     branches:
       - main
+      - test/github-secrets
 
 env:
   BUILD_PACKAGES: build/packages
