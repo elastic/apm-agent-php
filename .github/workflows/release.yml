@@ -103,7 +103,10 @@ jobs:
           pipeline: ${{ steps.buildkite-run.outputs.pipeline }}
           token: ${{ secrets.BUILDKITE_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      # this artifact name is used also in some other places,
+      # such as ./.github/workflows/test-packages.yml.
+      # Therefore v4 cannot be used at the moment.
+      - uses: actions/upload-artifact@v3
         with:
           name: signed-artifacts
           path: signed-artifacts.zip
