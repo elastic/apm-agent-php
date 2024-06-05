@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags')
     steps:
-      - uses: elastic/oblt-actions/slack/send@v1.5.0
+      - uses: elastic/oblt-actions/slack/send@v1.8.0
         with:
           bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
           channel-id: "#apm-agent-php"
@@ -88,7 +88,7 @@ jobs:
 
       - id: buildkite-run
         if: startsWith(github.ref, 'refs/tags')
-        uses: elastic/oblt-actions/buildkite/run@v1.5.0
+        uses: elastic/oblt-actions/buildkite/run@v1.8.0
         with:
           token: ${{ secrets.BUILDKITE_TOKEN }}
           pipeline: observability-robots-php-release
@@ -96,7 +96,7 @@ jobs:
           env-vars: |
             BUNDLE_URL=https://storage.googleapis.com/${{ env.BUCKET_NAME }}/${{ steps.upload-file.outputs.uploaded }}
 
-      - uses: elastic/oblt-actions/buildkite/download-artifact@v1.5.0
+      - uses: elastic/oblt-actions/buildkite/download-artifact@v1.8.0
         with:
           build-number: ${{ steps.buildkite-run.outputs.number }}
           path: signed-artifacts.zip
@@ -177,7 +177,7 @@ jobs:
         with:
           needs: ${{ toJSON(needs) }}
       - if: startsWith(github.ref, 'refs/tags')
-        uses: elastic/oblt-actions/slack/notify-result@v1
+        uses: elastic/oblt-actions/slack/notify-result@v1.8.0
         with:
           bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
           channel-id: "#apm-agent-php"
