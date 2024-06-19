@@ -64,21 +64,6 @@ jobs:
         run: zip -r packages.zip packages/
         working-directory: build
 
-      - name: 'Get service account'
-        uses: hashicorp/vault-action@v3.0.0
-        with:
-          url: ${{ secrets.VAULT_ADDR }}
-          roleId: ${{ secrets.VAULT_ROLE_ID }}
-          secretId: ${{ secrets.VAULT_SECRET_ID }}
-          method: approle
-          secrets: |
-            secret/observability-team/ci/apm-agent-php-bucket service-account | SERVICE_ACCOUNT ;
-
-      - name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@v2'
-        with:
-          credentials_json: '${{ env.SERVICE_ACCOUNT }}'
-
       - id: 'upload-file'
         uses: 'google-github-actions/upload-cloud-storage@v2'
         with:
