@@ -73,7 +73,6 @@ jobs:
         with:
           path: "${{ env.BUILD_PACKAGES }}.zip"
           destination: "${{ env.BUCKET_NAME }}/${{ github.run_id }}"
-          predefinedAcl: "publicRead"
 
       - id: buildkite-run
         uses: elastic/oblt-actions/buildkite/run@v1.8.0
