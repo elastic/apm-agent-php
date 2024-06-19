@@ -64,6 +64,8 @@ jobs:
         run: zip -r packages.zip packages/
         working-directory: build
 
+      - uses: elastic/oblt-actions/google/auth@v1.9.3
+
       - id: 'upload-file'
         uses: 'google-github-actions/upload-cloud-storage@v2'
         with:
