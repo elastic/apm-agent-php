@@ -96,6 +96,13 @@ class SystemData implements SerializableDataInterface, LoggableInterface
     public $containerId = null;
 
     /**
+     * @var KubernetesData|null
+     *
+     * @link https://github.com/elastic/apm-server/blob/v7.4.0/docs/spec/system.json#L41
+     */
+    public $kubernetes = null;
+
+    /**
      * @var string|null
      *
      * The length of this string is limited to 1024.
@@ -122,6 +129,7 @@ class SystemData implements SerializableDataInterface, LoggableInterface
 
         SerializationUtil::addNameValueIfNotNull('architecture', $this->architecture, /* ref */ $result);
         SerializationUtil::addNameValueIfNotNull('platform', $this->platform, /* ref */ $result);
+        SerializationUtil::addNameValueIfNotNull('kubernetes', $this->kubernetes, /* ref */ $result);
 
         return SerializationUtil::postProcessResult($result);
     }
