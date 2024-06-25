@@ -91,6 +91,7 @@ final class AllOptionsMetadata
             OptionNames::BREAKDOWN_METRICS                          => new BoolOptionMetadata(/* default */ true),
             OptionNames::CAPTURE_ERRORS                             => new BoolOptionMetadata(/* default */ true),
             OptionNames::DEV_INTERNAL                               => new NullableWildcardListOptionMetadata(),
+            OptionNames::DEV_INTERNAL_CURL_INSTRUM_CREATE_SPAN      => new BoolOptionMetadata(/* default */ true),
             OptionNames::DISABLE_INSTRUMENTATIONS                   => new NullableWildcardListOptionMetadata(),
             OptionNames::DISABLE_SEND                               => new BoolOptionMetadata(/* default */ false),
             OptionNames::ENABLED                                    => new BoolOptionMetadata(/* default */ true),
