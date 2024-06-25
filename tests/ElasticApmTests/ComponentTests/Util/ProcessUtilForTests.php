@@ -75,10 +75,11 @@ final class ProcessUtilForTests
      * @param string                $cmd
      * @param array<string, string> $envVars
      */
-    public static function startBackgroundProcess(string $cmd, array $envVars): void
+    public static function startBackgroundProcess(string $cmd, array $envVars, ?string $fileToRedirectOutput = null): void
     {
+        $redirectOutputTo = $fileToRedirectOutput ?? '/dev/null';
         self::startProcessImpl(
-            OsUtilForTests::isWindows() ? "start /B $cmd > NUL" : "$cmd > /dev/null &",
+            OsUtilForTests::isWindows() ? "start /B $cmd > NUL" : "$cmd > \"$redirectOutputTo\" 2>&1 &",
             $envVars,
             [] /* <- descriptorSpec: */
         );
@@ -100,8 +101,7 @@ final class ProcessUtilForTests
         $descriptorSpec = [];
         $tempOutputFilePath = '';
         if ($shouldCaptureStdOutErr) {
-            $tempOutputFilePath
-                = FileUtilForTests::createTempFile(/* dbgTempFilePurpose */ 'spawn process stdout and stderr');
+            $tempOutputFilePath = FileUtilForTests::createTempFile(/* dbgTempFilePurpose */ 'spawned process stdout and stderr');
             $descriptorSpec[1] = [self::PROC_OPEN_DESCRIPTOR_FILE_TYPE, $tempOutputFilePath, "w"]; // 1 - stdout
             $descriptorSpec[2] = [self::PROC_OPEN_DESCRIPTOR_FILE_TYPE, $tempOutputFilePath, "w"]; // 2 - stderr
         }

@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests\Util;
 
+use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
@@ -30,9 +31,12 @@ use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\ArrayUtilForTests;
+use ElasticApmTests\Util\AssertMessageStack;
+use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\JsonUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\RandomUtilForTests;
+use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -89,6 +93,46 @@ abstract class HttpServerStarter
      */
     protected function startHttpServer(array $portsInUse, int $portsToAllocateCount = 1): HttpServerHandle
     {
+        $fileForSpawnedProcessOutput = FileUtilForTests::createTempFile(/* dbgTempFilePurpose */ 'spawned process stdout + stderr');
+        $isSuccessful = false;
+
+        try {
+            $retVal = $this->startHttpServerImpl($portsInUse, $fileForSpawnedProcessOutput, $portsToAllocateCount);
+            $isSuccessful = true;
+            return $retVal;
+        } finally {
+            $logCtx = ['file path for stdout + stderr' => $fileForSpawnedProcessOutput];
+            $logger = AmbientContextForTests::loggerFactory()->loggerForClass(
+                LogCategoryForTests::TEST_UTIL,
+                __NAMESPACE__,
+                __CLASS__,
+                __FILE__
+            );
+            $logLevel = $isSuccessful ? LogLevel::DEBUG : LogLevel::ERROR;
+            $loggerProxy = $logger->ifLevelEnabled($logLevel, __LINE__, __FUNCTION__);
+            if ($loggerProxy !== null) {
+                if (file_exists($fileForSpawnedProcessOutput)) {
+                    $logCtx['stdout + stderr'] = file_get_contents($fileForSpawnedProcessOutput);
+                    Assert::assertTrue(unlink($fileForSpawnedProcessOutput));
+                } else {
+                    $logCtx['stdout + stderr - FILE NOT FOUND'] = null;
+                }
+                $loggerProxy->log('Failed to start ' . $this->dbgServerDesc . ' HTTP server', $logCtx);
+            }
+        }
+    }
+
+    /**
+     * @param int[] $portsInUse
+     * @param int   $portsToAllocateCount
+     *
+     * @return HttpServerHandle
+     */
+    protected function startHttpServerImpl(array $portsInUse, string $fileForSpawnedProcessOutput, int $portsToAllocateCount): HttpServerHandle
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(compact(['this']));
+
         Assert::assertGreaterThanOrEqual(1, $portsToAllocateCount);
         /** @var ?int $lastTriedPort */
         $lastTriedPort = ArrayUtil::isEmpty($portsInUse) ? null : ArrayUtilForTests::getLastValue($portsInUse);
@@ -123,7 +167,7 @@ abstract class HttpServerStarter
             ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Starting ' . $this->dbgServerDesc . ' HTTP server...');
 
-            ProcessUtilForTests::startBackgroundProcess($cmdLine, $envVars);
+            ProcessUtilForTests::startBackgroundProcess($cmdLine, $envVars, $fileForSpawnedProcessOutput);
 
             $pid = -1;
             if (
@@ -148,7 +192,7 @@ abstract class HttpServerStarter
             && $loggerProxy->log('Failed to start HTTP server');
         }
 
-        throw new RuntimeException('Failed to start ' . $this->dbgServerDesc . ' HTTP server');
+        TestCaseBase::fail('Failed to start ' . $this->dbgServerDesc . ' HTTP server');
     }
 
     /**
