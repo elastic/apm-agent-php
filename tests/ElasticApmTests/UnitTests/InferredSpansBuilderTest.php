@@ -143,6 +143,17 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
         return $stackTrace;
     }
 
+    public function isSpanStackTraceEnabled(SpanDto $span): bool
+    {
+        $dummyTx = $this->tracer->beginTransaction('dummy_temp_TX_name', 'dummy_temp_TX_type');
+        $result =
+            $dummyTx instanceof Transaction
+            && $dummyTx->shouldCollectStackTraceForSpanDuration($span->duration)
+            && (StackTraceUtil::convertLimitConfigToMaxNumberOfFrames($dummyTx->getStackTraceLimitConfig()) !== 0);
+        $dummyTx->discard();
+        return $result;
+    }
+
     public function testOneStackTrace(): void
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx);
@@ -190,8 +201,12 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
         TraceValidator::validate(new TraceActual($this->mockEventSink->idToTransaction(), $this->mockEventSink->idToSpan()));
 
         $expectedStackTraceConvertedToApm = StackTraceUtil::convertClassicToApmFormat($expectedStackTrace, /* maxNumberOfFrames */ null);
-        self::assertNotNull($span->stackTrace);
-        StackTraceExpectations::fromFrames($expectedStackTraceConvertedToApm)->assertMatches($span->stackTrace);
+        if ($this->isSpanStackTraceEnabled($span)) {
+            self::assertNotNull($span->stackTrace);
+            StackTraceExpectations::fromFrames($expectedStackTraceConvertedToApm)->assertMatches($span->stackTrace);
+        } else {
+            self::assertNull($span->stackTrace);
+        }
     }
 
     private function charDiagramFuncNameToStackTraceFrame(string $funcName): ClassicFormatStackTraceFrame
@@ -1358,22 +1373,24 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
                 TestCaseBase::assertNull($span->stackTrace);
                 continue;
             }
-            TestCaseBase::assertNotNull($span->stackTrace);
-
-            if ($expectedMaxNumberOfFrames !== null) {
-                TestCaseBase::assertLessThanOrEqual($expectedMaxNumberOfFrames, count($span->stackTrace));
+            if ($this->isSpanStackTraceEnabled($span)) {
+                self::assertNotNull($span->stackTrace);
+                if ($expectedMaxNumberOfFrames !== null) {
+                    TestCaseBase::assertLessThanOrEqual($expectedMaxNumberOfFrames, count($span->stackTrace));
+                }
+                $dbgCtx->pushSubScope();
+                foreach (RangeUtil::generateUpTo(count($span->stackTrace)) as $stackFrameIndex) {
+                    $dbgCtx->add(['stackFrameIndex' => $stackFrameIndex]);
+                    $currentExpectedClassicFormatFrame = self::genFrameForSpanWithStackDepth($spanIndex, $stackFrameIndex, $stackDepth);
+                    $dbgCtx->add(['currentExpectedClassicFormatFrame' => $currentExpectedClassicFormatFrame]);
+                    $prevExpectedClassicFormatFrame = $stackFrameIndex === 0 ? null : self::genFrameForSpanWithStackDepth($spanIndex, $stackFrameIndex - 1, $stackDepth);
+                    $dbgCtx->add(['prevExpectedClassicFormatFrame' => $prevExpectedClassicFormatFrame]);
+                    StackTraceFrameExpectations::fromClassicFormat($currentExpectedClassicFormatFrame, $prevExpectedClassicFormatFrame)->assertMatches($span->stackTrace[$stackFrameIndex]);
+                }
+                $dbgCtx->popSubScope();
+            } else {
+                self::assertNull($span->stackTrace);
             }
-
-            $dbgCtx->pushSubScope();
-            foreach (RangeUtil::generateUpTo(count($span->stackTrace)) as $stackFrameIndex) {
-                $dbgCtx->add(['stackFrameIndex' => $stackFrameIndex]);
-                $currentExpectedClassicFormatFrame = self::genFrameForSpanWithStackDepth($spanIndex, $stackFrameIndex, $stackDepth);
-                $dbgCtx->add(['currentExpectedClassicFormatFrame' => $currentExpectedClassicFormatFrame]);
-                $prevExpectedClassicFormatFrame = $stackFrameIndex === 0 ? null : self::genFrameForSpanWithStackDepth($spanIndex, $stackFrameIndex - 1, $stackDepth);
-                $dbgCtx->add(['prevExpectedClassicFormatFrame' => $prevExpectedClassicFormatFrame]);
-                StackTraceFrameExpectations::fromClassicFormat($currentExpectedClassicFormatFrame, $prevExpectedClassicFormatFrame)->assertMatches($span->stackTrace[$stackFrameIndex]);
-            }
-            $dbgCtx->popSubScope();
         }
         $dbgCtx->popSubScope();
     }

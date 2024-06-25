@@ -964,7 +964,7 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             buildBoolOptionMetadata,
             astProcessEnabled,
             ELASTIC_APM_CFG_OPT_NAME_AST_PROCESS_ENABLED,
-            /* defaultValue: */ true );
+            /* defaultValue: */ false );
 
     ELASTIC_APM_INIT_METADATA(
             buildBoolOptionMetadata,
