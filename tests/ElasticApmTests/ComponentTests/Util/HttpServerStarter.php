@@ -39,7 +39,6 @@ use ElasticApmTests\Util\RandomUtilForTests;
 use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 use Throwable;
 
 abstract class HttpServerStarter
