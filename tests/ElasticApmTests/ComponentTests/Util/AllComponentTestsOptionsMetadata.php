@@ -87,7 +87,7 @@ final class AllComponentTestsOptionsMetadata
             'group'                                            => new NullableStringOptionMetadata(),
             'is_in_container'                                  => new NullableBoolOptionMetadata(),
             'is_long_run_mode'                                 => new BoolOptionMetadata(false),
-            self::LOG_LEVEL_OPTION_NAME                        => new LogLevelOptionMetadata(LogLevel::TRACE),
+            self::LOG_LEVEL_OPTION_NAME                        => new LogLevelOptionMetadata(LogLevel::INFO),
             'mysql_host'                                       => new NullableStringOptionMetadata(),
             'mysql_port'                                       => new NullableIntOptionMetadata(1, 65535),
             'mysql_user'                                       => new NullableStringOptionMetadata(),
