@@ -93,7 +93,7 @@ final class AllOptionsMetadata
             OptionNames::DEV_INTERNAL                               => new NullableWildcardListOptionMetadata(),
             OptionNames::DISABLE_INSTRUMENTATIONS                   => new NullableWildcardListOptionMetadata(),
             OptionNames::DISABLE_SEND                               => new BoolOptionMetadata(/* default */ false),
-            OptionNames::ENABLED                                    => new BoolOptionMetadata(/* default */ true),
+            OptionNames::ENABLED                                    => new BoolOptionMetadata(/* default */ false),
             OptionNames::ENVIRONMENT                                => new NullableStringOptionMetadata(),
             OptionNames::GLOBAL_LABELS                              => new NullableLabelsOptionMetadata(),
             OptionNames::HOSTNAME                                   => new NullableStringOptionMetadata(),

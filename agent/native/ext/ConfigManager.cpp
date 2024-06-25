@@ -1036,7 +1036,7 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             buildBoolOptionMetadata,
             enabled,
             ELASTIC_APM_CFG_OPT_NAME_ENABLED,
-            /* defaultValue: */ true );
+            /* defaultValue: */ false );
 
     ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,
