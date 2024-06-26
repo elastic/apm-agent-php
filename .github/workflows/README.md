@@ -7,9 +7,6 @@ There are four main stages that run on GitHub actions:
 * Test
 * Package
 
-Some other stages run for every push on the main branches:
-* [Snapshoty](./snapshoty.yml)
-
 ### Scenarios
 
 * Tests should be triggered on branch, tag, and PR basis.

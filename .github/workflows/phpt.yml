@@ -50,10 +50,10 @@ jobs:
         VERSION=${{ matrix.php-version }}
         VERSION_SHORT=${VERSION//./}
         cd agent/extension_phpt_test
-        docker-compose build elasticsearch apm-server phpt_${VERSION_SHORT}
-        docker-compose up -d elasticsearch apm-server
-        docker-compose run phpt_${VERSION_SHORT}
-        docker-compose stop
+        docker compose build elasticsearch apm-server phpt_${VERSION_SHORT}
+        docker compose up -d elasticsearch apm-server
+        docker compose run phpt_${VERSION_SHORT}
+        docker compose stop
 #        exit 0
     - if: success() || failure()
       name: Change results ownership

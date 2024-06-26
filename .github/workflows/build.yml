@@ -21,6 +21,9 @@ on:
           - x86_64
           - arm64
 
+permissions:
+  contents: read
+
 jobs:
   setup-build-matrix:
     uses: ./.github/workflows/build-arch-matrix-generator.yml
