@@ -32,6 +32,8 @@ concurrency:
 jobs:
   build:
     uses: ./.github/workflows/build.yml
+    with:
+      build_arch: all
 
   setup-build-matrix:
     uses: ./.github/workflows/build-arch-matrix-generator.yml
@@ -43,6 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build
+      - setup-build-matrix
     timeout-minutes: 120
     strategy:
       fail-fast: false
