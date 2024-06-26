@@ -6,7 +6,7 @@ on:
       build_arch:
         required: true
         type: string
-        default: 'x86_64'
+        default: 'all'
   pull_request:
     paths-ignore:
       - "**/*.asciidoc"
