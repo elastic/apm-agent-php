@@ -29,7 +29,7 @@ jobs:
 
   phpt-tests:
     name: phpt-tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs:
       - build
     timeout-minutes: 10
@@ -65,7 +65,7 @@ jobs:
 
   static-checks-unit-tests:
     name: static-checks-unit-tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -134,7 +134,7 @@ jobs:
   ci:
     needs:
       - test-packages
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: report
         run: echo "CI workflow passed"
