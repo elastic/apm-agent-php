@@ -38,7 +38,7 @@ jobs:
   setup-build-matrix:
     uses: ./.github/workflows/build-arch-matrix-generator.yml
     with:
-      build_arch: ${{ inputs.build_arch }}
+      build_arch: all
 
   phpt-tests:
     name: phpt-tests
