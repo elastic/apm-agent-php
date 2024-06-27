@@ -25,11 +25,13 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\AutoInstrument\AutoInstrumentationBase;
 use Elastic\Apm\Impl\Config\OptionNames;
+use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\GlobalTracerHolder;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\TransactionContext;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
@@ -419,8 +421,9 @@ class ComponentTestCaseBase extends TestCaseBase
     {
         $result = [];
         $prodCodeLogLevels = $testCaseHandle->getProdCodeLogLevels();
-        Assert::assertNotEmpty($prodCodeLogLevels);
-        $result[self::LOG_LEVEL_FOR_PROD_CODE_KEY] = min($prodCodeLogLevels);
+        $result[self::LOG_LEVEL_FOR_PROD_CODE_KEY] = ArrayUtil::isEmpty($prodCodeLogLevels)
+            ? max(ConfigSnapshot::LOG_LEVEL_STDERR_DEFAULT, ConfigSnapshot::LOG_LEVEL_SYSLOG_DEFAULT)
+            : min($prodCodeLogLevels);
         $result[self::LOG_LEVEL_FOR_TEST_CODE_KEY] = AmbientContextForTests::testConfig()->logLevel;
         /** @var array<string, int> $result */
         return $result;

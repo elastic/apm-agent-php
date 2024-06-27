@@ -93,7 +93,7 @@ abstract class HttpServerStarter
     {
         $fileForSpawnedProcessOutput = FileUtilForTests::createTempFile(/* dbgTempFilePurpose */ 'spawned process stdout + stderr');
         $isSuccessful = false;
-        $processesListBefore = ProcessUtilForTests::dbgGetProcessesList();
+        $processesListBefore = ProcessUtilForTests::dbgGetPhpProcessesList();
 
         try {
             $retVal = $this->startHttpServerImpl($portsInUse, $fileForSpawnedProcessOutput, $portsToAllocateCount);
@@ -129,7 +129,7 @@ abstract class HttpServerStarter
             return;
         }
 
-        $processesListAfter = ProcessUtilForTests::dbgGetProcessesList();
+        $processesListAfter = ProcessUtilForTests::dbgGetPhpProcessesList();
 
         $logCtx = compact('processesListBefore', 'processesListAfter', 'fileForSpawnedProcessOutput');
         $msgPrefix = 'Failed to start ' . $this->dbgServerDesc . ' HTTP server';

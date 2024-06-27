@@ -28,6 +28,7 @@ use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\DataFromAgentPlusRawValidator;
+use ElasticApmTests\Util\MixedMap;
 
 /**
  * @group does_not_require_external_services
@@ -36,26 +37,31 @@ final class ApiKeySecretTokenTest extends ComponentTestCaseBase
 {
     private function apiKeyConfigTestImpl(?string $configuredApiKey, ?string $configuredSecretToken): void
     {
-        $testCaseHandle = $this->getTestCaseHandle();
-        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
-            function (AppCodeHostParams $appCodeParams) use ($configuredApiKey, $configuredSecretToken): void {
-                if ($configuredApiKey !== null) {
-                    $appCodeParams->setAgentOption(OptionNames::API_KEY, $configuredApiKey);
-                }
-                if ($configuredSecretToken !== null) {
-                    $appCodeParams->setAgentOption(OptionNames::SECRET_TOKEN, $configuredSecretToken);
+        self::runAndEscalateLogLevelOnFailure(
+            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, new MixedMap(compact('configuredApiKey', 'configuredSecretToken'))),
+            function () use ($configuredApiKey, $configuredSecretToken): void {
+                $testCaseHandle = $this->getTestCaseHandle();
+                $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+                    function (AppCodeHostParams $appCodeParams) use ($configuredApiKey, $configuredSecretToken): void {
+                        if ($configuredApiKey !== null) {
+                            $appCodeParams->setAgentOption(OptionNames::API_KEY, $configuredApiKey);
+                        }
+                        if ($configuredSecretToken !== null) {
+                            $appCodeParams->setAgentOption(OptionNames::SECRET_TOKEN, $configuredSecretToken);
+                        }
+                    }
+                );
+                $appCodeHost->sendRequest(AppCodeTarget::asRouted([__CLASS__, 'appCodeEmpty']));
+                $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
+                foreach ($dataFromAgent->getAllIntakeApiRequests() as $intakeApiRequest) {
+                    DataFromAgentPlusRawValidator::verifyAuthIntakeApiHttpRequestHeader(
+                        $configuredApiKey,
+                        $configuredSecretToken,
+                        $intakeApiRequest->headers
+                    );
                 }
             }
         );
-        $appCodeHost->sendRequest(AppCodeTarget::asRouted([__CLASS__, 'appCodeEmpty']));
-        $dataFromAgent = $this->waitForOneEmptyTransaction($testCaseHandle);
-        foreach ($dataFromAgent->getAllIntakeApiRequests() as $intakeApiRequest) {
-            DataFromAgentPlusRawValidator::verifyAuthIntakeApiHttpRequestHeader(
-                $configuredApiKey,
-                $configuredSecretToken,
-                $intakeApiRequest->headers
-            );
-        }
     }
 
     public function testDefaultApiKey(): void

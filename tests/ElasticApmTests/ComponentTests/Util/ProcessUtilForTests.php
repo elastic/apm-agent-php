@@ -27,6 +27,7 @@ use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\Assert;
@@ -219,12 +220,20 @@ final class ProcessUtilForTests
     /**
      * @return string[]
      */
-    public static function dbgGetProcessesList(): array
+    public static function dbgGetPhpProcessesList(): array
     {
         if (OsUtilForTests::isWindows()) {
             return ['<' . __FUNCTION__ . ' is NOT IMPLEMENTED YET for Windows>'];
         }
 
-        return self::execCommand('ps -ef --forest');
+        $processesList = self::execCommand('ps -ef --forest');
+
+        $phpProcessesList = [];
+        foreach ($processesList as $processesListLine) {
+            if (TextUtil::contains($processesListLine, 'php')) {
+                $phpProcessesList[] = $processesListLine;
+            }
+        }
+        return $phpProcessesList;
     }
 }

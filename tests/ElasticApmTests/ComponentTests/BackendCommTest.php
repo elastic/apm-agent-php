@@ -60,27 +60,33 @@ final class BackendCommTest extends ComponentTestCaseBase
         if (self::skipIfMainAppCodeHostIsNotHttp()) {
             return;
         }
-        $testCaseHandle = $this->getTestCaseHandle();
-        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
-        $txNames = ['1st_test_TX', '2nd_test_TX'];
-        foreach ($txNames as $txName) {
-            $appCodeHost->sendRequest(
-                AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestNumberOfConnections']),
-                function (AppCodeRequestParams $appCodeRequestParams) use ($txName): void {
-                    $appCodeRequestParams->setAppCodeArgs([self::TRANSACTION_NAME_KEY => $txName]);
-                    $appCodeRequestParams->expectedTransactionName->setValue($txName);
+
+        self::runAndEscalateLogLevelOnFailure(
+            self::buildDbgDescForTest(__CLASS__, __FUNCTION__),
+            function (): void {
+                $testCaseHandle = $this->getTestCaseHandle();
+                $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();
+                $txNames = ['1st_test_TX', '2nd_test_TX'];
+                foreach ($txNames as $txName) {
+                    $appCodeHost->sendRequest(
+                        AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestNumberOfConnections']),
+                        function (AppCodeRequestParams $appCodeRequestParams) use ($txName): void {
+                            $appCodeRequestParams->setAppCodeArgs([self::TRANSACTION_NAME_KEY => $txName]);
+                            $appCodeRequestParams->expectedTransactionName->setValue($txName);
+                        }
+                    );
                 }
-            );
-        }
-        $txCount = count($txNames);
-        $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions($txCount));
-        AssertMessageStack::newScope(/* out */ $dbgCtx, ['connections' => $dataFromAgent->getRaw()->getIntakeApiConnections()]);
-        self::assertCount(1, $dataFromAgent->getRaw()->getIntakeApiConnections());
-        $txIndex = 0;
-        foreach ($dataFromAgent->idToTransaction as $tx) {
-            self::assertSame($txNames[$txIndex], $tx->name);
-            ++$txIndex;
-        }
+                $txCount = count($txNames);
+                $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions($txCount));
+                AssertMessageStack::newScope(/* out */ $dbgCtx, ['connections' => $dataFromAgent->getRaw()->getIntakeApiConnections()]);
+                self::assertCount(1, $dataFromAgent->getRaw()->getIntakeApiConnections());
+                $txIndex = 0;
+                foreach ($dataFromAgent->idToTransaction as $tx) {
+                    self::assertSame($txNames[$txIndex], $tx->name);
+                    ++$txIndex;
+                }
+            }
+        );
     }
 
     private const WAIT_FOR_RECONNECT_COUNT_KEY = 'wait_for_reconnect_count';
