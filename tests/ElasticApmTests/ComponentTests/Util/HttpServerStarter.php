@@ -139,7 +139,9 @@ abstract class HttpServerStarter
         sleep($secondsToSleep);
 
         if ($doesFileForSpawnedProcessOutputExist) {
-            $logCtx['stdout + stderr'] = file_get_contents($fileForSpawnedProcessOutput);
+            $fileForSpawnedProcessOutputGetContents = file_get_contents($fileForSpawnedProcessOutput);
+            $fileForSpawnedProcessOutputCat = ProcessUtilForTests::execCommand('cat "' . $fileForSpawnedProcessOutput . '"');
+            $logCtx = array_merge($logCtx, compact(['fileForSpawnedProcessOutputGetContents', 'fileForSpawnedProcessOutputCat']));
         } else {
             $logCtx['stdout + stderr - FILE NOT FOUND'] = null;
         }

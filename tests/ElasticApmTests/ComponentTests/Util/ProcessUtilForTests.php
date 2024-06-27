@@ -206,18 +206,25 @@ final class ProcessUtilForTests
     /**
      * @return string[]
      */
-    public static function dbgGetProcessesList(): array
+    public static function execCommand(string $cmd): array
     {
-        if (OsUtilForTests::isWindows()) {
-            return ['<' . __FUNCTION__ . ' is NOT IMPLEMENTED YET for Windows>'];
-        }
-
-        $cmd = 'ps -ef --forest';
         exec($cmd, $cmdOutput, $cmdExitCode);
         if ($cmdExitCode !== 0) {
             return ['<Command ' . $cmd . ' exited with code ' . $cmdExitCode . '; output: ' . LoggableToString::convert($cmdOutput) . '>'];
         }
 
         return $cmdOutput;
+    }
+
+    /**
+     * @return string[]
+     */
+    public static function dbgGetProcessesList(): array
+    {
+        if (OsUtilForTests::isWindows()) {
+            return ['<' . __FUNCTION__ . ' is NOT IMPLEMENTED YET for Windows>'];
+        }
+
+        return self::execCommand('ps -ef --forest');
     }
 }
