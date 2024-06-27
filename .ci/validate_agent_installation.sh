@@ -10,7 +10,17 @@ function printInfoAboutEnvironment () {
     env | grep -i elastic | sort || true
 }
 
+function verifyThatLocalHostCanBeListenedOn () {
+    mkdir -p /tmp/test_scripts
+    printf "<?php \n echo 'Test response' . PHP_EOL;\n" > /tmp/test_scripts/test_response.php
+    php --docroot "/tmp/test_scripts" --server localhost:54321 &
+    curl -v http://localhost:54321/test_response.php
+    kill $(pidof "php")
+}
+
 function runComponentTests () {
+    verifyThatLocalHostCanBeListenedOn
+
     local composerCommand=(composer run-script --)
 
     if [ -z "${ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND}" ] || [ "${ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KIND}" == "all" ]; then
