@@ -100,25 +100,41 @@ abstract class HttpServerStarter
             $isSuccessful = true;
             return $retVal;
         } finally {
-            $logCtx = ['file path for stdout + stderr' => $fileForSpawnedProcessOutput];
-            $logger = AmbientContextForTests::loggerFactory()->loggerForClass(
-                LogCategoryForTests::TEST_UTIL,
-                __NAMESPACE__,
-                __CLASS__,
-                __FILE__
-            );
-            $logLevel = $isSuccessful ? LogLevel::DEBUG : LogLevel::ERROR;
-            $loggerProxy = $logger->ifLevelEnabled($logLevel, __LINE__, __FUNCTION__);
-            if ($loggerProxy !== null) {
-                if (file_exists($fileForSpawnedProcessOutput)) {
-                    $logCtx['stdout + stderr'] = file_get_contents($fileForSpawnedProcessOutput);
-                    Assert::assertTrue(unlink($fileForSpawnedProcessOutput));
-                } else {
-                    $logCtx['stdout + stderr - FILE NOT FOUND'] = null;
-                }
-                $loggerProxy->log('Failed to start ' . $this->dbgServerDesc . ' HTTP server', $logCtx);
+            $doesFileForSpawnedProcessOutputExist = file_exists($fileForSpawnedProcessOutput);
+            if (!$isSuccessful) {
+                $this->onFailedToStartHttpServer($fileForSpawnedProcessOutput, $doesFileForSpawnedProcessOutputExist);
+            }
+            if ($doesFileForSpawnedProcessOutputExist) {
+                Assert::assertTrue(unlink($fileForSpawnedProcessOutput));
             }
         }
+    }
+
+    protected function onFailedToStartHttpServer(string $fileForSpawnedProcessOutput, bool $doesFileForSpawnedProcessOutputExist): void
+    {
+        $loggerProxy = AmbientContextForTests::loggerFactory()->loggerForClass(
+            LogCategoryForTests::TEST_UTIL,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        )->ifErrorLevelEnabledNoLine(__FUNCTION__);
+        if ($loggerProxy === null) {
+            return;
+        }
+
+        $logCtx = ['file path for stdout + stderr' => $fileForSpawnedProcessOutput];
+        $msgPrefix = 'Failed to start ' . $this->dbgServerDesc . ' HTTP server';
+
+        $secondsToSleep = 10;
+        $loggerProxy->log(__LINE__, $msgPrefix . ' - about to sleep ' . $secondsToSleep . ' seconds to wait for output to be flushed to file...', $logCtx);
+        sleep($secondsToSleep);
+
+        if ($doesFileForSpawnedProcessOutputExist) {
+            $logCtx['stdout + stderr'] = file_get_contents($fileForSpawnedProcessOutput);
+        } else {
+            $logCtx['stdout + stderr - FILE NOT FOUND'] = null;
+        }
+        $loggerProxy->log(__LINE__, $msgPrefix, $logCtx);
     }
 
     /**
