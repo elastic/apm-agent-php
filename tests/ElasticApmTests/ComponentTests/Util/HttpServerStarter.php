@@ -93,6 +93,7 @@ abstract class HttpServerStarter
     {
         $fileForSpawnedProcessOutput = FileUtilForTests::createTempFile(/* dbgTempFilePurpose */ 'spawned process stdout + stderr');
         $isSuccessful = false;
+        $processesListBefore = ProcessUtilForTests::dbgGetProcessesList();
 
         try {
             $retVal = $this->startHttpServerImpl($portsInUse, $fileForSpawnedProcessOutput, $portsToAllocateCount);
@@ -101,7 +102,7 @@ abstract class HttpServerStarter
         } finally {
             $doesFileForSpawnedProcessOutputExist = file_exists($fileForSpawnedProcessOutput);
             if (!$isSuccessful) {
-                $this->onFailedToStartHttpServer($fileForSpawnedProcessOutput, $doesFileForSpawnedProcessOutputExist);
+                $this->onFailedToStartHttpServer($fileForSpawnedProcessOutput, $doesFileForSpawnedProcessOutputExist, $processesListBefore);
             }
             if ($doesFileForSpawnedProcessOutputExist) {
                 Assert::assertTrue(unlink($fileForSpawnedProcessOutput));
@@ -109,7 +110,14 @@ abstract class HttpServerStarter
         }
     }
 
-    protected function onFailedToStartHttpServer(string $fileForSpawnedProcessOutput, bool $doesFileForSpawnedProcessOutputExist): void
+    /**
+     * @param string   $fileForSpawnedProcessOutput
+     * @param bool     $doesFileForSpawnedProcessOutputExist
+     * @param string[] $processesListBefore
+     *
+     * @return void
+     */
+    private function onFailedToStartHttpServer(string $fileForSpawnedProcessOutput, bool $doesFileForSpawnedProcessOutputExist, array $processesListBefore): void
     {
         $loggerProxy = AmbientContextForTests::loggerFactory()->loggerForClass(
             LogCategoryForTests::TEST_UTIL,
@@ -121,7 +129,9 @@ abstract class HttpServerStarter
             return;
         }
 
-        $logCtx = ['file path for stdout + stderr' => $fileForSpawnedProcessOutput];
+        $processesListAfter = ProcessUtilForTests::dbgGetProcessesList();
+
+        $logCtx = compact('processesListBefore', 'processesListAfter', 'fileForSpawnedProcessOutput');
         $msgPrefix = 'Failed to start ' . $this->dbgServerDesc . ' HTTP server';
 
         $secondsToSleep = 10;
@@ -142,7 +152,7 @@ abstract class HttpServerStarter
      *
      * @return HttpServerHandle
      */
-    protected function startHttpServerImpl(array $portsInUse, string $fileForSpawnedProcessOutput, int $portsToAllocateCount): HttpServerHandle
+    private function startHttpServerImpl(array $portsInUse, string $fileForSpawnedProcessOutput, int $portsToAllocateCount): HttpServerHandle
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         $dbgCtx->add(compact(['this']));
