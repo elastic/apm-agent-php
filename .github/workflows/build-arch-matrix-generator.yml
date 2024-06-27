@@ -1,41 +1,44 @@
 ---
 
-# Runs the build based on the provided files in test.yml
-name: build
+  # Runs the build based on the provided files in test.yml
+  name: build
 
-on:
-  workflow_call:
-    inputs:
-      build_arch:
-        required: true
-        type: string
-        default: 'x86_64'
-    outputs:
-      matrix-combinations:
-        description: "Matrix of architectures to build for"
-        value: ${{ jobs.setup-build-matrix.outputs.matrix-combinations }}
+  on:
+    workflow_call:
+      inputs:
+        build_arch:
+          required: true
+          type: string
+          default: 'x86_64'
+      outputs:
+        matrix-combinations:
+          description: "Matrix of architectures to build for"
+          value: ${{ jobs.setup-build-matrix.outputs.matrix-combinations }}
 
-jobs:
-  setup-build-matrix:
-    name: setup-build-matrix
-    runs-on: ubuntu-latest
-    env:
-      SELECTED_ARCH: ${{ inputs.build_arch }}
-    outputs:
-      matrix-combinations: ${{ steps.setup-matrix-combinations.outputs.matrix-combinations }}
-    steps:
-      - name: Create build matrix
-        id: setup-matrix-combinations
-        run: |
-          MATRIX=''
-          if [ "${SELECTED_ARCH}" == "x86_64" ] ||  [ "${SELECTED_ARCH}" == "all" ]; then
-            echo "${SELECTED_ARCH} selected. Adding x86_64"
-            MATRIX+='{"arch": "linux-x86-64"}, {"arch": "linuxmusl-x86-64"},'
-          fi
-          if [ "${SELECTED_ARCH}" == "arm64" ] ||  [ "${SELECTED_ARCH}" == "all" ]; then
-            echo "${SELECTED_ARCH} selected. Adding arm64"
-            MATRIX+='{"arch": "linux-arm64", "run_qemu": 1},{"arch": "linuxmusl-arm64", "run_qemu": 1},'
-          fi
-          echo "matrix-combinations={\"include\":[$MATRIX]}"
+  jobs:
+    setup-build-matrix:
+      name: setup-build-matrix
+      runs-on: ubuntu-latest
+      env:
+        SELECTED_ARCH: ${{ inputs.build_arch }}
+      outputs:
+        matrix-combinations: ${{ steps.setup-matrix-combinations.outputs.matrix-combinations }}
+      steps:
+        - name: Create build matrix
+          id: setup-matrix-combinations
+          run: |
+            MATRIX=''
+            if [ "${SELECTED_ARCH}" == "x86_64" ] ||  [ "${SELECTED_ARCH}" == "all" ]; then
+              echo "${SELECTED_ARCH} selected. Adding x86_64"
+              MATRIX+='{"arch": "linux-x86-64"}, {"arch": "linuxmusl-x86-64"}'
+            fi
+            if [ "${SELECTED_ARCH}" == "arm64" ] ||  [ "${SELECTED_ARCH}" == "all" ]; then
+              echo "${SELECTED_ARCH} selected. Adding arm64"
+              if [ ! -z "${MATRIX}" ]; then
+                MATRIX+=','
+              fi
+              MATRIX+='{"arch": "linux-arm64", "run_qemu": 1},{"arch": "linuxmusl-arm64", "run_qemu": 1}'
+            fi
+            echo "matrix-combinations={\"include\":[$MATRIX]}"
 
-          echo "matrix-combinations={\"include\":[$MATRIX]}" >> $GITHUB_OUTPUT
+            echo "matrix-combinations={\"include\":[$MATRIX]}" >> $GITHUB_OUTPUT
