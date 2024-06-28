@@ -74,7 +74,7 @@ final class BuiltinHttpServerAppCodeHostStarter extends HttpServerStarter
     {
         Assert::assertCount(1, $ports);
         return InfraUtilForTests::buildAppCodePhpCmd($this->agentConfigSourceBuilder->getPhpIniFile())
-               . " -S localhost:" . $ports[0]
+               . " -S 0.0.0.0:" . $ports[0]
                . ' "' . FileUtilForTests::listToPath([__DIR__, self::APP_CODE_HOST_ROUTER_SCRIPT]) . '"';
     }
 
