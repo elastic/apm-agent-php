@@ -94,7 +94,7 @@ When you update the image version, automatically all required migrations will ru
 
 # Running multiple containers
 
-See `docker-compose-advanced.yml` for a full docker-compose example.
+See `docker-compose-advanced.yml` for a full docker compose example.
 
 ## Mode: default
 

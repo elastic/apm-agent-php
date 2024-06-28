@@ -1,25 +1,25 @@
-From b0c150228d9660d45144f470607bf796e36ba265 Mon Sep 17 00:00:00 2001
-From: Victor Martinez <VictorMartinezRubio@gmail.com>
-Date: Thu, 23 Jul 2020 15:32:54 +0100
-Subject: [PATCH] As suggested in
- https://github.com/jordansissel/fpm/issues/1227
+From 1715ee661dd284401f91b96a694e18f27742bce0 Mon Sep 17 00:00:00 2001
+From: Adrien Mannocci <adrien.mannocci@elastic.co>
+Date: Tue, 26 Mar 2024 16:55:29 +0100
+Subject: [PATCH] fix: correct apk bad format
 
+Signed-off-by: Adrien Mannocci <adrien.mannocci@elastic.co>
 ---
  lib/fpm/package/apk.rb | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/lib/fpm/package/apk.rb b/lib/fpm/package/apk.rb
-index dd69067..9648e7f 100644
+index 596753c..eef881a 100644
 --- a/lib/fpm/package/apk.rb
 +++ b/lib/fpm/package/apk.rb
 @@ -252,7 +252,7 @@ class FPM::Package::APK< FPM::Package
- 
+
            # directories have a magic string inserted into their name
            full_record_path = extension_header[TAR_NAME_OFFSET_START..TAR_NAME_OFFSET_END].delete("\0")
 -          full_record_path = add_paxstring(full_record_path)
-+          # full_record_path = add_paxstring(full_record_path)
- 
++          #full_record_path = add_paxstring(full_record_path)
+
            # hash data contents with sha1, if there is any content.
            if(typeflag == '5')
--- 
-2.24.3 (Apple Git-128)
+--
+2.39.3 (Apple Git-146)

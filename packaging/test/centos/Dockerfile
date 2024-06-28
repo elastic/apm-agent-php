@@ -9,6 +9,7 @@ RUN yum update -y \
             logrotate \
             lsof \
             perl-Digest-SHA \
+            procps \
             rsyslog \
             unzip \
             wget \

@@ -30,12 +30,14 @@ use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use Elastic\Apm\Impl\Util\UrlParts;
 use ElasticApmTests\Util\ArrayUtilForTests;
+use ElasticApmTests\Util\AssertMessageStack;
+use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\JsonUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use ElasticApmTests\Util\RandomUtilForTests;
+use ElasticApmTests\Util\TestCaseBase;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 use Throwable;
 
 abstract class HttpServerStarter
@@ -89,6 +91,74 @@ abstract class HttpServerStarter
      */
     protected function startHttpServer(array $portsInUse, int $portsToAllocateCount = 1): HttpServerHandle
     {
+        $fileForSpawnedProcessOutput = FileUtilForTests::createTempFile(/* dbgTempFilePurpose */ 'spawned process stdout + stderr');
+        $isSuccessful = false;
+        $processesListBefore = ProcessUtilForTests::dbgGetPhpProcessesList();
+
+        try {
+            $retVal = $this->startHttpServerImpl($portsInUse, $fileForSpawnedProcessOutput, $portsToAllocateCount);
+            $isSuccessful = true;
+            return $retVal;
+        } finally {
+            $doesFileForSpawnedProcessOutputExist = file_exists($fileForSpawnedProcessOutput);
+            if (!$isSuccessful) {
+                $this->onFailedToStartHttpServer($fileForSpawnedProcessOutput, $doesFileForSpawnedProcessOutputExist, $processesListBefore);
+            }
+            if ($doesFileForSpawnedProcessOutputExist) {
+                Assert::assertTrue(unlink($fileForSpawnedProcessOutput));
+            }
+        }
+    }
+
+    /**
+     * @param string   $fileForSpawnedProcessOutput
+     * @param bool     $doesFileForSpawnedProcessOutputExist
+     * @param string[] $processesListBefore
+     *
+     * @return void
+     */
+    private function onFailedToStartHttpServer(string $fileForSpawnedProcessOutput, bool $doesFileForSpawnedProcessOutputExist, array $processesListBefore): void
+    {
+        $loggerProxy = AmbientContextForTests::loggerFactory()->loggerForClass(
+            LogCategoryForTests::TEST_UTIL,
+            __NAMESPACE__,
+            __CLASS__,
+            __FILE__
+        )->ifErrorLevelEnabledNoLine(__FUNCTION__);
+        if ($loggerProxy === null) {
+            return;
+        }
+
+        $processesListAfter = ProcessUtilForTests::dbgGetPhpProcessesList();
+
+        $logCtx = compact('processesListBefore', 'processesListAfter', 'fileForSpawnedProcessOutput');
+        $msgPrefix = 'Failed to start ' . $this->dbgServerDesc . ' HTTP server';
+
+        $secondsToSleep = 10;
+        $loggerProxy->log(__LINE__, $msgPrefix . ' - about to sleep ' . $secondsToSleep . ' seconds to wait for output to be flushed to file...', $logCtx);
+        sleep($secondsToSleep);
+
+        if ($doesFileForSpawnedProcessOutputExist) {
+            $fileForSpawnedProcessOutputGetContents = file_get_contents($fileForSpawnedProcessOutput);
+            $fileForSpawnedProcessOutputCat = ProcessUtilForTests::execCommand('cat "' . $fileForSpawnedProcessOutput . '"');
+            $logCtx = array_merge($logCtx, compact(['fileForSpawnedProcessOutputGetContents', 'fileForSpawnedProcessOutputCat']));
+        } else {
+            $logCtx['stdout + stderr - FILE NOT FOUND'] = null;
+        }
+        $loggerProxy->log(__LINE__, $msgPrefix, $logCtx);
+    }
+
+    /**
+     * @param int[] $portsInUse
+     * @param int   $portsToAllocateCount
+     *
+     * @return HttpServerHandle
+     */
+    private function startHttpServerImpl(array $portsInUse, string $fileForSpawnedProcessOutput, int $portsToAllocateCount): HttpServerHandle
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $dbgCtx->add(compact(['this']));
+
         Assert::assertGreaterThanOrEqual(1, $portsToAllocateCount);
         /** @var ?int $lastTriedPort */
         $lastTriedPort = ArrayUtil::isEmpty($portsInUse) ? null : ArrayUtilForTests::getLastValue($portsInUse);
@@ -123,7 +193,7 @@ abstract class HttpServerStarter
             ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('Starting ' . $this->dbgServerDesc . ' HTTP server...');
 
-            ProcessUtilForTests::startBackgroundProcess($cmdLine, $envVars);
+            ProcessUtilForTests::startBackgroundProcess($cmdLine, $envVars, $fileForSpawnedProcessOutput);
 
             $pid = -1;
             if (
@@ -148,7 +218,7 @@ abstract class HttpServerStarter
             && $loggerProxy->log('Failed to start HTTP server');
         }
 
-        throw new RuntimeException('Failed to start ' . $this->dbgServerDesc . ' HTTP server');
+        TestCaseBase::fail('Failed to start ' . $this->dbgServerDesc . ' HTTP server');
     }
 
     /**

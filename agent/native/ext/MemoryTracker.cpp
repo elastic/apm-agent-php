@@ -241,6 +241,10 @@ void removeFromTrackedAllocatedBlocks(
         IntrusiveDoublyLinkedList* allocatedBlocks,
         size_t* possibleActuallyRequestedSize )
 {
+    if (!allocatedBlock) {
+        return;
+    }
+
     EmbeddedTrackingDataHeader* trackingDataHeader = allocatedBlockToTrackingData( allocatedBlock, originallyRequestedSize );
 
     verifyMagic( "prefix", trackingDataHeader->prefixMagic, prefixMagicExpectedValue );
@@ -275,7 +279,7 @@ void memoryTrackerBeforeFree(
     IntrusiveDoublyLinkedList* allocatedBlocks = isPersistent ? &memTracker->allocatedPersistentBlocks : &memTracker->allocatedRequestScopedBlocks;
 
     ELASTIC_APM_ASSERT( *allocated >= originallyRequestedSize
-            , "Attempting to free more %s memory than allocated. Allocated: %" PRIu64 ". Attempting to free: %" PRIu64 
+            , "Attempting to free more %s memory than allocated. Allocated: %" PRIu64 ". Attempting to free: %" PRIu64
             , allocType( isPersistent ), *allocated, (UInt64)originallyRequestedSize );
 
     *possibleActuallyRequestedSize = originallyRequestedSize;

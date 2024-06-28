@@ -130,7 +130,7 @@ If you want to update images used to build native extension, you need to go into
 `Dockerfile_musl` for Linux x86_64 with musl libc implementation and `Dockerfile_glibc` for all other x86_64 distros with glibc implementation.
 Then you need to increment image version in `docker-compose.yml`. Remember to update Dockerfiles for all architectures, if needed. To build new images, you just need to call:
 ```bash
-docker-compose build
+docker compose build
 ```
 It will build images for all supported architectures. As a result you should get summary like this:
 ```bash
@@ -160,7 +160,7 @@ If you want to update images used for testing, you need to go into `packaging/te
 Then you need to increment image version in `docker-compose.yml`.\
 To build new images, you just need to call:
 ```bash
-docker-compose build
+docker compose build
 ```
 It will build and tag images for all test scenarios. As a result you should get summary like this:
 ```bash

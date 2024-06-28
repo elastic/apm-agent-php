@@ -3,5 +3,5 @@
 Setup application with a single command.
 
 ```
-$ docker-compose up
+$ docker compose up
 ```

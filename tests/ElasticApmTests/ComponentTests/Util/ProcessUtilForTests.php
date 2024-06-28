@@ -27,6 +27,7 @@ use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\Util\FileUtilForTests;
 use ElasticApmTests\Util\LogCategoryForTests;
 use PHPUnit\Framework\Assert;
@@ -75,10 +76,11 @@ final class ProcessUtilForTests
      * @param string                $cmd
      * @param array<string, string> $envVars
      */
-    public static function startBackgroundProcess(string $cmd, array $envVars): void
+    public static function startBackgroundProcess(string $cmd, array $envVars, ?string $fileToRedirectOutput = null): void
     {
+        $redirectOutputTo = $fileToRedirectOutput ?? '/dev/null';
         self::startProcessImpl(
-            OsUtilForTests::isWindows() ? "start /B $cmd > NUL" : "$cmd > /dev/null &",
+            OsUtilForTests::isWindows() ? "start /B $cmd > NUL" : "$cmd > \"$redirectOutputTo\" 2>&1 &",
             $envVars,
             [] /* <- descriptorSpec: */
         );
@@ -100,8 +102,7 @@ final class ProcessUtilForTests
         $descriptorSpec = [];
         $tempOutputFilePath = '';
         if ($shouldCaptureStdOutErr) {
-            $tempOutputFilePath
-                = FileUtilForTests::createTempFile(/* dbgTempFilePurpose */ 'spawn process stdout and stderr');
+            $tempOutputFilePath = FileUtilForTests::createTempFile(/* dbgTempFilePurpose */ 'spawned process stdout and stderr');
             $descriptorSpec[1] = [self::PROC_OPEN_DESCRIPTOR_FILE_TYPE, $tempOutputFilePath, "w"]; // 1 - stdout
             $descriptorSpec[2] = [self::PROC_OPEN_DESCRIPTOR_FILE_TYPE, $tempOutputFilePath, "w"]; // 2 - stderr
         }
@@ -201,5 +202,38 @@ final class ProcessUtilForTests
         );
 
         return $exitCode;
+    }
+
+    /**
+     * @return string[]
+     */
+    public static function execCommand(string $cmd): array
+    {
+        exec($cmd, $cmdOutput, $cmdExitCode);
+        if ($cmdExitCode !== 0) {
+            return ['<Command ' . $cmd . ' exited with code ' . $cmdExitCode . '; output: ' . LoggableToString::convert($cmdOutput) . '>'];
+        }
+
+        return $cmdOutput;
+    }
+
+    /**
+     * @return string[]
+     */
+    public static function dbgGetPhpProcessesList(): array
+    {
+        if (OsUtilForTests::isWindows()) {
+            return ['<' . __FUNCTION__ . ' is NOT IMPLEMENTED YET for Windows>'];
+        }
+
+        $processesList = self::execCommand('ps -ef --forest');
+
+        $phpProcessesList = [];
+        foreach ($processesList as $processesListLine) {
+            if (TextUtil::contains($processesListLine, 'php')) {
+                $phpProcessesList[] = $processesListLine;
+            }
+        }
+        return $phpProcessesList;
     }
 }

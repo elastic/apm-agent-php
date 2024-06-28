@@ -1,6 +1,7 @@
 SHELL = /bin/bash
 MAKEFLAGS += --no-print-directory
 IMAGE:=php-packaging
+IMAGE_TAG:=latest
 NAME:=apm-agent-php
 VERSION?=$(shell grep 'VERSION' ../agent/php/ElasticApm/ElasticApm.php | cut -d= -f2 | tr -d " " | sed "s/'\(.*\)'.*/\1/g")
 OUTPUT:=build/packages
@@ -27,7 +28,7 @@ clean: ## Clean the generated packages
 
 .PHONY: prepare
 prepare: ## Build docker image for the packaging
-	docker build -t $(IMAGE) . || exit 1
+	docker build --build-arg IMAGE_TAG=$(IMAGE_TAG) -t $(IMAGE) . || exit 1
 
 .PHONY: build-docker-images
 build-docker-images: prepare prepare-apk prepare-deb prepare-rpm prepare-tar prepare-deb-apache prepare-deb-fpm ## Build all the docker images
