@@ -23,7 +23,14 @@ jobs:
         with:
           name: package-parts-linuxmusl-x86-64
           path: agent/native/_build/linuxmusl-x86-64-release/
-
+      - uses: actions/download-artifact@v3
+        with:
+          name: package-parts-linux-arm64
+          path: agent/native/_build/linux-arm64-release/
+      - uses: actions/download-artifact@v3
+        with:
+            name: package-parts-linuxmusl-arm64
+            path: agent/native/_build/linuxmusl-arm64-release/
       - name: Log in to the Container registry
         uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
         with:
