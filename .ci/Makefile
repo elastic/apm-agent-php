@@ -60,6 +60,21 @@ build:
 		-e CONAN_USER_HOME=$(CONAN_USER_HOME) \
 		elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-$(BUILD_ARCHITECTURE)-0.0.2 \
 		sh -c "cmake --preset $(BUILD_ARCHITECTURE)-release \
+				&& cmake --build --preset $(BUILD_ARCHITECTURE)-release -j$(nproc)"
+	@echo "::endgroup::"
+
+.PHONY: build_and_native_unit_tests
+build_and_native_unit_tests:
+	@echo "::group::$@"  # Helping to group logs in GitHub actions
+	# docker as the current user
+	docker run --rm -t \
+		-u $(CURRENT_UID):$(CURRENT_GID) \
+		-v $(PWD):/source \
+		${MAP_CONAN_HOME_TO_DOCKER_HOST_CMD_LINE_ARG} \
+		-w /source/agent/native \
+		-e CONAN_USER_HOME=$(CONAN_USER_HOME) \
+		elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-$(BUILD_ARCHITECTURE)-0.0.2 \
+		sh -c "cmake --preset $(BUILD_ARCHITECTURE)-release \
 				&& cmake --build --preset $(BUILD_ARCHITECTURE)-release -j$(nproc)\
 				&& ctest --preset $(BUILD_ARCHITECTURE)-release --verbose"
 	@echo "::endgroup::"
