@@ -11,6 +11,8 @@ SEL_DISTRO?=buster
 GIT_SHA?=$(shell git rev-parse HEAD || echo "unknown")
 RELEASE_VERSION?=
 GITHUB_RELEASES_URL=https://github.com/elastic/apm-agent-php/releases/download
+BUILD_ARCH := $(if $(BUILD_ARCH),$(BUILD_ARCH),/tmp)
+
 export FPM_FLAGS=
 
 ifneq ($(PHP_VERSION), 7.2)
@@ -46,7 +48,7 @@ create-%: prepare  ## Create the specific package
 		-e OUTPUT=$(OUTPUT) \
 		-e FPM_FLAGS=${FPM_FLAGS} \
 		-e PHP_AGENT_DIR=${PHP_AGENT_DIR} \
-		-e BUILD_ARCH=x86-64 \
+		-e BUILD_ARCH=$(BUILD_ARCH) \
 		-w /app $(IMAGE)
 	@echo "::endgroup::"
 

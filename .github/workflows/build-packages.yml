@@ -13,31 +13,28 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        BUILD_ARCH: ["x86-64", "arm64"]
+    env:
+      BUILD_ARCH: ${{ matrix.BUILD_ARCH }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v3
         with:
-          name: package-parts-linux-x86-64
-          path: agent/native/_build/linux-x86-64-release/
+          name: package-parts-linux-${{ matrix.BUILD_ARCH }}
+          path: agent/native/_build/linux-${{ matrix.BUILD_ARCH }}-release/
       - uses: actions/download-artifact@v3
         with:
-          name: package-parts-linuxmusl-x86-64
-          path: agent/native/_build/linuxmusl-x86-64-release/
-      - uses: actions/download-artifact@v3
-        with:
-          name: package-parts-linux-arm64
-          path: agent/native/_build/linux-arm64-release/
-      - uses: actions/download-artifact@v3
-        with:
-            name: package-parts-linuxmusl-arm64
-            path: agent/native/_build/linuxmusl-arm64-release/
+          name: package-parts-linuxmusl-${{ matrix.BUILD_ARCH }}
+          path: agent/native/_build/linuxmusl-${{ matrix.BUILD_ARCH }}-release/
       - name: Log in to the Container registry
         uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: package
         run: make -C packaging package
       - name: package info
