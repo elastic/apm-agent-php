@@ -162,11 +162,10 @@ void elasticApmZendThrowExceptionHookImpl(
     resetLastThrown();
 
 #if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
-    zval thrownAsZval;
-    zval* thrownAsPzval = &thrownAsZval;
-    ZVAL_OBJ_COPY( /* dst: */ thrownAsPzval, /* src: */ thrownAsPzobj );
+    ZVAL_OBJ_COPY(&ELASTICAPM_G( lastException ), thrownAsPzobj );
+#else
+    ZVAL_COPY(&ELASTICAPM_G(lastException), thrownAsPzval );
 #endif
-    ZVAL_COPY( /* pZvalDst: */ &ELASTICAPM_G(lastException), /* pZvalSrc: */ thrownAsPzval );
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
 }
@@ -577,7 +576,7 @@ void elasticApmRequestShutdown()
         ELASTIC_APM_LOG_DEBUG( "opcache.preload request detected on shutdown" );
         return;
     }
-	
+
     if (ELASTICAPM_G(globals)->periodicTaskExecutor_) {
         ELASTIC_APM_LOG_DEBUG("pausing inferred spans thread");
         ELASTICAPM_G(globals)->periodicTaskExecutor_->suspendPeriodicTasks();
