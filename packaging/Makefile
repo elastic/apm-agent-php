@@ -11,7 +11,7 @@ SEL_DISTRO?=buster
 GIT_SHA?=$(shell git rev-parse HEAD || echo "unknown")
 RELEASE_VERSION?=
 GITHUB_RELEASES_URL=https://github.com/elastic/apm-agent-php/releases/download
-BUILD_ARCH := $(if $(BUILD_ARCH),$(BUILD_ARCH),/tmp)
+BUILD_ARCH := $(if $(BUILD_ARCH),$(BUILD_ARCH),"x86-64")
 
 export FPM_FLAGS=
 
