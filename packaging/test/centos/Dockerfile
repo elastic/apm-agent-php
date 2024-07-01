@@ -2,6 +2,8 @@ FROM centos:centos7
 ARG PHP_VERSION=7.2
 ENV PHP_VERSION ${PHP_VERSION}
 
+COPY CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo
+
 RUN yum update -y \
     && yum install -y \
             git \
