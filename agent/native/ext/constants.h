@@ -19,6 +19,7 @@
 
 #pragma once
 
+
 #include "basic_macros.h"
 #include "elastic_apm_assert.h"
 

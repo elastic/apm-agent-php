@@ -11,12 +11,14 @@ endif::[]
 === Prerequisites
 
 [discrete]
-==== Operating system
-The agent is currently only available for the Linux operating system.
+==== Operating system and architecture
+We officially support Linux systems (glibc, deb and rpm packages) and Alpine Linux (musl libc - apk packages) for x86_64 (AMD64) processors.
+
+NOTE: Experimentally, we also provide packages for the ARM64 architecture - please note that these packages have not been fully tested.
 
 [discrete]
 ==== PHP
-The agent supports PHP versions 7.2-8.2.
+The agent supports PHP versions 7.2-8.3.
 
 [discrete]
 ==== curl
