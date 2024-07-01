@@ -117,25 +117,23 @@ rm "${OUTPUT}"/*.bck
 }
 
 
-
-
 # create second tar for musl
 if [ "${TYPE}" = 'tar' ] ; then
 	NAME_BACKUP=${NAME}
-	NAME="${NAME_BACKUP}-${BUILD_TARGET}"
-	BUILD_EXT_DIR=agent/native/_build/${BUILD_TARGET}-release/ext/
-	BUILD_LOADER_DIR=agent/native/_build/${BUILD_TARGET}-release/loader/code/
+	NAME="${NAME_BACKUP}-linux-${BUILD_ARCH}"
+	BUILD_EXT_DIR=agent/native/_build/linux-${BUILD_ARCH}-release/ext/
+	BUILD_LOADER_DIR=agent/native/_build/linux-${BUILD_ARCH}-release/loader/code/
 	createPackage
 
-	NAME="${NAME_BACKUP}-debugsymbols-${BUILD_TARGET}"
+	NAME="${NAME_BACKUP}-debugsymbols-linux-${BUILD_ARCH}"
 	createDebugPackage
 
-	NAME="${NAME_BACKUP}-${BUILD_TARGET}"
-	BUILD_EXT_DIR=agent/native/_build/${BUILD_TARGET}-release/ext/
-	BUILD_LOADER_DIR=agent/native/_build/${BUILD_TARGET}-release/loader/code/
+	NAME="${NAME_BACKUP}-linuxmusl-${BUILD_ARCH}"
+	BUILD_EXT_DIR=agent/native/_build/linuxmusl-${BUILD_ARCH}-release/ext/
+	BUILD_LOADER_DIR=agent/native/_build/linuxmusl-${BUILD_ARCH}-release/loader/code/
 	createPackage
 
-	NAME="${NAME_BACKUP}-debugsymbols-${BUILD_TARGET}"
+	NAME="${NAME_BACKUP}-debugsymbols-linuxmusl-${BUILD_ARCH}"
 	createDebugPackage
 else
 	createPackage
