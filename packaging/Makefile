@@ -78,33 +78,57 @@ info: apk-info deb-info rpm-info tar-info  ## Show the package metadata for all 
 .PHONY: apk-info
 apk-info:  ## Show the apk package metadata
 	cd $(PWD) ;\
-	BINARY=$$(ls -1 $(OUTPUT)/*.apk) ;\
+	if [ "$(BUILD_ARCH)" = "arm64" ]; then \
+		BINARY=$$(find $(OUTPUT)/ -type f -name "*aarch64*.apk" -o -name "*arm64*.apk" | head -n 1); \
+	elif [ "$(BUILD_ARCH)" = "x86-64" ]; then \
+		BINARY=$$(find $(OUTPUT)/ -type f -name "*x86_64*.apk" -o -name "*amd64*.apk" | head -n 1); \
+	else \
+		echo "Unsupported BUILD_ARCH: $(BUILD_ARCH)"; \
+		exit 1; \
+	fi; \
+	echo $$BINARY; \
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /sbin/apk $(IMAGE) manifest $$BINARY
 
 .PHONY: deb-info
 deb-info:  ## Show the deb package metadata
 	cd $(PWD) ;\
-	BINARY=$$(ls -1 $(OUTPUT)/*.deb) ;\
+	if [ "$(BUILD_ARCH)" = "arm64" ]; then \
+		BINARY=$$(find $(OUTPUT)/ -type f -name "*aarch64*.deb" -o -name "*arm64*.deb" | head -n 1); \
+	elif [ "$(BUILD_ARCH)" = "x86-64" ]; then \
+		BINARY=$$(find $(OUTPUT)/ -type f -name "*x86_64*.deb" -o -name "*amd64*.deb" | head -n 1); \
+	else \
+		echo "Unsupported BUILD_ARCH: $(BUILD_ARCH)"; \
+		exit 1; \
+	fi; \
+	echo $$BINARY; \
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) --info $$BINARY ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) -c $$BINARY
 
 .PHONY: rpm-info
 rpm-info:  ## Show the rpm package metadata
 	cd $(PWD) ;\
-	BINARY=$$(ls -1 $(OUTPUT)/*.rpm) ;\
+	if [ "$(BUILD_ARCH)" = "arm64" ]; then \
+		BINARY=$$(find $(OUTPUT)/ -type f -name "*aarch64*.rpm" -o -name "*arm64*.rpm" | head -n 1); \
+	elif [ "$(BUILD_ARCH)" = "x86-64" ]; then \
+		BINARY=$$(find $(OUTPUT)/ -type f -name "*x86_64*.rpm" -o -name "*amd64*.rpm" | head -n 1); \
+	else \
+		echo "Unsupported BUILD_ARCH: $(BUILD_ARCH)"; \
+		exit 1; \
+	fi; \
+	echo $$BINARY; \
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qip $$BINARY ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qlp $$BINARY
 
 .PHONY: tar-info
 tar-info:  ## Show the tar package metadata
 	cd $(PWD) ;\
-	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-linux-x86-64*.tar) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-linux-$(BUILD_ARCH)*.tar) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY ;\
-	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-debugsymbols-linux-x86-64.tar) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-debugsymbols-linux-$(BUILD_ARCH).tar) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY ;\
-	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-linuxmusl-x86-64*.tar) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-linuxmusl-$(BUILD_ARCH)*.tar) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY ;\
-	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-debugsymbols-linuxmusl-x86-64.tar) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-debugsymbols-linuxmusl-$(BUILD_ARCH).tar) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY
 
 .PHONY: prepare-apk
