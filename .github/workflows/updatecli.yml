@@ -65,14 +65,16 @@ jobs:
     permissions:
       packages: read
     steps:
-    - uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
 
-    - uses: elastic/oblt-actions/updatecli/run@v1
-      with:
-        command: --experimental manifest show ghcr.io/elastic/oblt-updatecli-policies/apm/apm-data-spec:latest
-      env:
-        GITHUB_TOKEN: ${{ secrets.UPDATECLI_GH_TOKEN }}
+      - uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: elastic/oblt-actions/updatecli/run@v1
+        with:
+          command: --experimental manifest show ghcr.io/elastic/oblt-updatecli-policies/apm/apm-data-spec:latest --values .ci/updatecli/values.d/scm.yml --values .ci/updatecli/values.d/apm-data-spec.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.UPDATECLI_GH_TOKEN }}
