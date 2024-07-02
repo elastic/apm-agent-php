@@ -53,21 +53,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.UPDATECLI_GH_TOKEN }}
 
-  updatecli-manifest:
-    runs-on: ubuntu-latest
-    permissions:
-      packages: read
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
+      - if: failure()
+        uses: elastic/oblt-actions/slack/send@v1
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: elastic/oblt-actions/updatecli/run@v1
-        with:
-          command: --experimental manifest show ghcr.io/elastic/oblt-updatecli-policies/apm/apm-data-spec:latest --values .ci/updatecli/values.d/scm.yml --values .ci/updatecli/values.d/apm-data-spec.yml
-        env:
-          GITHUB_TOKEN: ${{ secrets.UPDATECLI_GH_TOKEN }}
+          bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel-id: "#apm-agent-php"
+          message: ":traffic_cone: updatecli failed for `${{ github.repository }}@${{ github.ref_name }}`, @robots-ci please look what's going on <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|here>"
