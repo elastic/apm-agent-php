@@ -158,49 +158,49 @@ services:
                 - PHP_VERSION=7.2
 
     rpm-php83:
-        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-8.3-0.0.1
+        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-8.3-0.0.3
         build:
             context: centos
             dockerfile: Dockerfile
             args:
                 - PHP_VERSION=8.3
     rpm-php82:
-        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-8.2-0.0.1
+        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-8.2-0.0.3
         build:
             context: centos
             dockerfile: Dockerfile
             args:
                 - PHP_VERSION=8.2
     rpm-php81:
-        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-8.1-0.0.1
+        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-8.1-0.0.3
         build:
             context: centos
             dockerfile: Dockerfile
             args:
                 - PHP_VERSION=8.1
     rpm-php80:
-        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-8.0-0.0.1
+        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-8.0-0.0.3
         build:
             context: centos
             dockerfile: Dockerfile
             args:
                 - PHP_VERSION=8.0
     rpm-php74:
-        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-7.4-0.0.1
+        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-7.4-0.0.3
         build:
             context: centos
             dockerfile: Dockerfile
             args:
                 - PHP_VERSION=7.4
     rpm-php73:
-        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-7.3-0.0.1
+        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-7.3-0.0.3
         build:
             context: centos
             dockerfile: Dockerfile
             args:
                 - PHP_VERSION=7.3
     rpm-php72:
-        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-7.2-0.0.2
+        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-7.2-0.0.3
         build:
             context: centos
             dockerfile: Dockerfile
