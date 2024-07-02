@@ -6,27 +6,27 @@ scms:
     kind: github
     spec:
       user: '{{ requiredEnv "GITHUB_ACTOR" }}'
-      owner: "{{ .github.owner }}"
-      repository: "{{ .github.repository }}"
+      owner: "{{ .scm.owner }}"
+      repository: "{{ .scm.repository }}"
       token: '{{ requiredEnv "GITHUB_TOKEN" }}'
       username: '{{ requiredEnv "GITHUB_ACTOR" }}'
-      branch: "{{ .github.branch }}"
+      branch: "{{ .scm.branch }}"
       commitusingapi: true
   apm:
     kind: github
     spec:
       user: '{{ requiredEnv "GITHUB_ACTOR" }}'
-      owner: "{{ .github.owner }}"
-      repository: "{{ .github.apm_repository }}"
+      owner: "{{ .scm.owner }}"
+      repository: "{{ .scm.apm_repository }}"
       token: '{{ requiredEnv "GITHUB_TOKEN" }}'
       username: '{{ requiredEnv "GITHUB_ACTOR" }}'
-      branch: "{{ .github.branch }}"
+      branch: "{{ .scm.branch }}"
 
 sources:
   sha:
     kind: file
     spec:
-      file: 'https://github.com/{{ .github.owner }}/{{ .github.apm_repository }}/commit/{{ .github.branch }}.patch'
+      file: 'https://github.com/{{ .scm.owner }}/{{ .scm.apm_repository }}/commit/{{ .scm.branch }}.patch'
       matchpattern: "^From\\s([0-9a-f]{40})\\s"
     transformers:
       - findsubmatch:
@@ -36,7 +36,7 @@ sources:
     dependson:
       - sha
     spec:
-      command: gh api /repos/{{ .github.owner }}/{{ .github.apm_repository }}/commits/{{ source "sha" }}/pulls --jq '.[].html_url'
+      command: gh api /repos/{{ .scm.owner }}/{{ .scm.apm_repository }}/commits/{{ source "sha" }}/pulls --jq '.[].html_url'
       environments:
         - name: GITHUB_TOKEN
         - name: PATH
@@ -67,7 +67,7 @@ actions:
         ### Why
         *Changeset*
         * {{ source "pull_request" }}
-        * https://github.com/{{ .github.owner }}/{{ .github.apm_repository }}/commit/{{ source "sha" }}
+        * https://github.com/{{ .scm.owner }}/{{ .scm.apm_repository }}/commit/{{ source "sha" }}
       title: '[Automation] Update JSON specs'
 
 targets:
