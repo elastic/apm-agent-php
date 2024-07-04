@@ -1,0 +1,6 @@
+specs:
+  apm_json_path: "tests/agents/json-specs"
+  apm_gherkin_path: "tests/agents/gherkin-specs"
+apm_agent:
+  gherkin_specs_path: "tests/APM_Agents_shared/gherkin-specs"
+  json_specs_path: "tests/APM_Agents_shared/json-specs"
