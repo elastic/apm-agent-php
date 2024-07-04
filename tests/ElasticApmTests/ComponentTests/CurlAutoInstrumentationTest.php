@@ -65,7 +65,7 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
         $curlHandle = null;
         try {
             $curlHandle = HttpClientUtilForTests::createCurlHandleToSendRequestToAppCode(
-                (new UrlParts())->host(HttpServerHandle::DEFAULT_HOST)->port($serverPort),
+                (new UrlParts())->host(HttpServerHandle::CLIENT_LOCALHOST_ADDRESS)->port($serverPort),
                 $dataPerRequest,
                 self::buildResourcesClientForAppCode()
             );

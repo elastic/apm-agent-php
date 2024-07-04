@@ -86,10 +86,10 @@ final class HttpTransactionTest extends ComponentTestCaseBase
         self::assertNotNull($tx->context->request);
         self::assertSame($httpMethod, $tx->context->request->method);
         self::assertNotNull($tx->context->request->url);
-        self::assertSame(HttpServerHandle::DEFAULT_HOST, $tx->context->request->url->domain);
+        self::assertSame(HttpServerHandle::CLIENT_LOCALHOST_ADDRESS, $tx->context->request->url->domain);
         self::assertNotNull($expectedUrlParts->port);
         $expectedFullUrl
-            = $expectedUrlParts->scheme . '://' . HttpServerHandle::DEFAULT_HOST . ':' . $expectedUrlParts->port . '/';
+            = $expectedUrlParts->scheme . '://' . HttpServerHandle::CLIENT_LOCALHOST_ADDRESS . ':' . $expectedUrlParts->port . '/';
         self::assertSame($expectedFullUrl, $tx->context->request->url->full);
         self::assertSame($expectedFullUrl, $tx->context->request->url->original);
         self::assertSame($expectedUrlParts->scheme, $tx->context->request->url->protocol);
