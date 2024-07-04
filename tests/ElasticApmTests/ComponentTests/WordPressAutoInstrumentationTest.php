@@ -296,23 +296,24 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
      */
     public function testAstProcessOnMockSource(MixedMap $testArgs): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(compact('testArgs'));
+        // Dummy if to effectively disable this test
+        if ($testArgs->getIfKeyExistsElse('dummy non-existent key', null) === null) {
+            self::dummyAssert();
+            return;
+        }
 
-        self::dummyAssert();
-
-        // $subDirName = FileUtilForTests::buildTempSubDirName(__CLASS__, __FUNCTION__);
-        // self::runAndEscalateLogLevelOnFailure(
-        //     self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
-        //     function () use ($subDirName, $testArgs): void {
-        //         $tempOutDir = FileUtilForTests::createTempSubDir($subDirName);
-        //         try {
-        //             $this->implTestAstProcessOnMockSource($tempOutDir, $testArgs);
-        //         } finally {
-        //             FileUtilForTests::deleteTempSubDir($subDirName);
-        //         }
-        //     }
-        // );
+        $subDirName = FileUtilForTests::buildTempSubDirName(__CLASS__, __FUNCTION__);
+        self::runAndEscalateLogLevelOnFailure(
+            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
+            function () use ($subDirName, $testArgs): void {
+                $tempOutDir = FileUtilForTests::createTempSubDir($subDirName);
+                try {
+                    $this->implTestAstProcessOnMockSource($tempOutDir, $testArgs);
+                } finally {
+                    FileUtilForTests::deleteTempSubDir($subDirName);
+                }
+            }
+        );
     }
 
     private static function removeSuffixToBeRemovedByElasticApmTests(string $fileContents): string
