@@ -27,6 +27,7 @@ namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\Impl\AutoInstrument\WordPressAutoInstrumentation;
 use Elastic\Apm\Impl\Config\OptionNames;
+use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\NameVersionData;
 use Elastic\Apm\Impl\StackTraceFrame;
@@ -351,7 +352,8 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
     private static function verifyAstProcessGeneratedFiles(string $astProcessDebugDumpOutDir, string $phpFileRelativePath): void
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['astProcessDebugDumpOutDir' => $astProcessDebugDumpOutDir, 'phpFileRelativePath' => $phpFileRelativePath]);
+        $logCtx = compact('astProcessDebugDumpOutDir', 'phpFileRelativePath');
+        $dbgCtx->add($logCtx);
 
         $logger = self::getLoggerForThisClass()->addAllContext(['astProcessDebugDumpOutDir' => $astProcessDebugDumpOutDir, 'phpFileRelativePath' => $phpFileRelativePath]);
 
@@ -381,7 +383,8 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             self::assertNotFalse($fileContents);
         };
 
-        ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Starting...');
+        $loggerProxyDebug = $logger->ifDebugLevelEnabledNoLine(__FUNCTION__);
+        $loggerProxyDebug && $loggerProxyDebug->log(__LINE__, 'Starting...', $logCtx);
 
         $getGeneratedFileContents(/* isExpectedVariant */ true, /* isAstDebugDump */ true, /* out */ $expectedAstFilePath, /* out */ $expectedAstFileContents);
         self::adaptManuallyInstrumentedGeneratedFile(/* in,out */ $expectedAstFilePath, /* out */ $expectedAstFileContents);
@@ -401,17 +404,25 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             $actualPhpFileContents = '';
         }
 
+        $expectedPhpFileContentsPrefix10 = substr($expectedPhpFileContents, 0, 10);
+        $actualPhpFileContentsPrefix10 = substr($actualPhpFileContents, 0, 10);
+        $loggerProxyDebug && $loggerProxyDebug->log(
+            __LINE__,
+            LoggableToString::convert(compact('astMatches', 'phpMatches', 'expectedAstFilePath', 'actualPhpFilePath', 'expectedPhpFileContentsPrefix10', 'actualPhpFileContentsPrefix10')),
+            $logCtx
+        );
+
         if ($astMatches && $phpMatches) {
             return;
         }
 
-        $logCtx = ['astMatches' => $astMatches];
+        $logCtx['astMatches'] = $astMatches;
         if (AmbientContextForTests::testConfig()->compareAstConvertedBackToSource) {
             $logCtx['phpMatches'] = $phpMatches;
         }
 
-        ($loggerProxy = $logger->ifCriticalLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Actual generated files do not match the expected', $logCtx);
+        ($loggerProxyCritical = $logger->ifCriticalLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxyCritical->log('Actual generated files do not match the expected', $logCtx);
 
         self::logFileContentOnMismatch($expectedAstFilePath, $expectedAstFileContents);
         if (AmbientContextForTests::testConfig()->compareAstConvertedBackToSource) {
@@ -422,11 +433,13 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             self::logFileContentOnMismatch($actualPhpFilePath, $actualPhpFileContents);
         }
 
+        $loggerProxyDebug && $loggerProxyDebug->log(__LINE__, LoggableToString::convert(compact('astMatches')), $logCtx);
+
         if (!$astMatches) {
-            self::assertSame($expectedAstFilePath, $actualAstFilePath);
-        } elseif (AmbientContextForTests::testConfig()->compareAstConvertedBackToSource) {
-            self::assertSame($expectedPhpFilePath, $actualPhpFileContents);
+            self::fail('Expected and actual ASTs do not match' . LoggableToString::convert(compact('expectedAstFilePath', 'actualAstFilePath')));
         }
+
+        self::fail('Expected and actual ASTs converted back to PHP source do not match' . LoggableToString::convert(compact('expectedPhpFilePath', 'actualPhpFileContents')));
     }
 
     public static function appCodeForTestAstProcessOnMockSource(MixedMap $appCodeArgs): void
