@@ -1,4 +1,0 @@
-specs:
-  apm_json_path: "tests/agents/json-specs"
-apm_agent:
-  json_specs_path: "tests/APM_Agents_shared/json-specs"
