@@ -369,7 +369,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             $phpFileRelativePath
         ): void {
             AssertMessageStack::newScope(/* out */ $dbgCtx);
-            $dbgCtx->add(['isExpectedVariant' => $isExpectedVariant, 'isAstDebugDump' => $isAstDebugDump, 'fileFullPath' => $fileFullPath]);
+            $dbgCtx->add(compact('isExpectedVariant', 'isAstDebugDump', 'fileFullPath'));
 
             $outSubDir = self::buildInputOrExpectedOutputVariantSubDir($astProcessDebugDumpOutDir, $isExpectedVariant);
             $fileName = $phpFileRelativePath . '.' . ($isExpectedVariant ? self::BEFORE_AST_PROCESS_FILE_NAME_SUFFIX : self::AFTER_AST_PROCESS_FILE_NAME_SUFFIX);
