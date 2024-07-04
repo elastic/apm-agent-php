@@ -13,18 +13,25 @@ function printInfoAboutEnvironment () {
 function verifyThatLocalHostCanBeListenedOn () {
     set +e
 
+    apt-get update
+    apt-get -y install curl net-tools
+
     mkdir -p /tmp/test_scripts
     printf "<?php \n echo 'Test response' . PHP_EOL;\n" > /tmp/test_scripts/test_response.php
 
     php --docroot "/tmp/test_scripts" --server localhost:54321 &
+    netstat --all --listening --tcp
     curl -v "http://localhost:54321/test_response.php"
     kill $(pidof "php")
 
     php --docroot "/tmp/test_scripts" --server 127.0.0.1:54321 &
+    netstat --all --listening --tcp
     curl -v "http://localhost:54321/test_response.php"
+    curl -v "http://127.0.0.1:54321/test_response.php"
     kill $(pidof "php")
 
     php --docroot "/tmp/test_scripts" --server [::1]:54321 &
+    netstat --all --listening --tcp
     curl -v "http://localhost:54321/test_response.php"
     curl -v "http://[::1]:54321/test_response.php"
     kill $(pidof "php")
