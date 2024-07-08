@@ -46,15 +46,18 @@ final class LogSinkForTests extends SinkBase
         $this->dbgProcessName = $dbgProcessName;
     }
 
-    private static function ensureStdErrIsDefined(): void
+    private static function ensureStdErrIsDefined(): bool
     {
-        if (self::$isStderrDefined !== null) {
-            return;
+        if (self::$isStderrDefined === null) {
+            if (defined('STDERR')) {
+                self::$isStderrDefined = true;
+            } else {
+                define('STDERR', fopen('php://stderr', 'w'));
+                self::$isStderrDefined = defined('STDERR');
+            }
         }
-        if (!defined('STDERR')) {
-            define('STDERR', fopen('php://stderr', 'w'));
-        }
-        self::$isStderrDefined = defined('STDERR');
+
+        return self::$isStderrDefined;
     }
 
     protected function consumePreformatted(
@@ -78,9 +81,7 @@ final class LogSinkForTests extends SinkBase
 
     public static function writeLineToStdErr(string $text): void
     {
-        self::ensureStdErrIsDefined();
-
-        if (self::$isStderrDefined) {
+        if (self::ensureStdErrIsDefined()) {
             fwrite(STDERR, $text . PHP_EOL);
         }
     }
