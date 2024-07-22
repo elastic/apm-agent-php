@@ -82,7 +82,7 @@ final class AllOptionsMetadata
         /** @var array<string, OptionMetadata<mixed>> $value */
         $value = [
             OptionNames::API_KEY                                    => new NullableStringOptionMetadata(),
-            OptionNames::AST_PROCESS_ENABLED                        => new BoolOptionMetadata(/* defaultValue: */ true),
+            OptionNames::AST_PROCESS_ENABLED                        => new BoolOptionMetadata(/* defaultValue: */ false),
             OptionNames::AST_PROCESS_DEBUG_DUMP_CONVERTED_BACK_TO_SOURCE
                                                                     => new BoolOptionMetadata(/* defaultValue: */ true),
             OptionNames::AST_PROCESS_DEBUG_DUMP_FOR_PATH_PREFIX     => new NullableStringOptionMetadata(),

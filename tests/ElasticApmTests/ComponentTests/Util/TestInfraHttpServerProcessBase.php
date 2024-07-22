@@ -167,7 +167,7 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
         $this->reactLoop = Loop::get();
         TestCase::assertNotEmpty(AmbientContextForTests::testConfig()->dataPerProcess->thisServerPorts);
         foreach (AmbientContextForTests::testConfig()->dataPerProcess->thisServerPorts as $port) {
-            $uri = HttpServerHandle::DEFAULT_HOST . ':' . $port;
+            $uri = HttpServerHandle::SERVER_LOCALHOST_ADDRESS . ':' . $port;
             $serverSocket = new SocketServer($uri, /* context */ [], $this->reactLoop);
             $socketIndex = count($this->serverSockets);
             $this->serverSockets[] = $serverSocket;
