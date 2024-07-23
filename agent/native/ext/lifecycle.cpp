@@ -399,12 +399,8 @@ auto buildPeriodicTaskExecutor() {
     return periodicTaskExecutor;
 }
 
-void elasticApmRequestInit()
+void elasticApmRequestInitImpl()
 {
-    if (!ELASTICAPM_G(globals)->sapi_.isSupported()) {
-        return;
-    }
-
     requestCounter++;
 
     Tracer* const tracer = getGlobalTracer();
@@ -545,6 +541,23 @@ void elasticApmRequestInit()
 //             , system_metrics.processMemoryRss   // system.process.memory.rss.bytes
 //             , timePointToEpochMicroseconds( currentTime ) );
 // }
+
+void elasticApmRequestInit()
+{
+    if (!ELASTICAPM_G(globals)->sapi_.isSupported()) {
+        return;
+    }
+
+    const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( getGlobalTracer() );
+    if ( config->devInternalConfigOnCallStack )
+    {
+        addConfigToCallStack( getGlobalTracer()->configManager, &elasticApmRequestInitImpl );
+    }
+    else
+    {
+        elasticApmRequestInitImpl();
+    }
+}
 
 void elasticApmRequestShutdown()
 {
