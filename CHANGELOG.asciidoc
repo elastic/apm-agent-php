@@ -20,6 +20,12 @@ endif::[]
 
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
+[[release-notes-v1.13.1]]
+=== v1.13.1 - 2024/07/23
+==== Features
+* Fixed memory leak in exception handling {pull}1174[#1174]
+* Changed exprerimental part of WordPress instrumentation that is measuring latency impact by plugin to be disabled by default {pull}1181[#1181]
+
 [[release-notes-v1.13.0]]
 === v1.13.0 - 2024/01/31
 ==== Features
