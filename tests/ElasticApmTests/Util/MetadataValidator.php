@@ -201,6 +201,7 @@ final class MetadataValidator
         TestCaseBase::assertSameExpectedOptional($this->expectations->architecture, $this->actual->system->architecture);
         TestCaseBase::assertSameExpectedOptional($this->expectations->platform, $this->actual->system->platform);
         TestCaseBase::assertSameExpectedOptional($this->expectations->containerId, $this->actual->system->containerId);
+        TestCaseBase::assertSameExpectedOptional($this->expectations->kubernetes, $this->actual->system->kubernetes);
     }
 
     public static function verifyHostnames(?string $expectedConfiguredHostname, ?string $expectedDetectedHostname, SystemData $systemData): void
