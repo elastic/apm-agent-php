@@ -4,28 +4,54 @@
 name: build
 
 on:
-  workflow_call: ~
+  workflow_call:
+    inputs:
+      build_arch:
+        required: false
+        type: string
+        default: 'x86_64'
+  workflow_dispatch:
+    inputs:
+      build_arch:
+        type: choice
+        description: Build architecture
+        default: 'x86_64'
+        options:
+          - all
+          - x86_64
+          - arm64
 
 permissions:
   contents: read
 
 jobs:
+  setup-build-matrix:
+    uses: ./.github/workflows/build-arch-matrix-generator.yml
+    with:
+      build_arch: ${{ inputs.build_arch }}
+
   build:
     name: build-agent-library
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    needs: setup-build-matrix
+    timeout-minutes: 300
     strategy:
       fail-fast: false
-      matrix:
-        arch:
-          - "linux-x86-64"
-          - "linuxmusl-x86-64"
+      matrix: ${{ fromJson(needs.setup-build-matrix.outputs.matrix-combinations) }}
     env:
       BUILD_ARCHITECTURE: ${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v4
+      - if: ${{ matrix.run_qemu }}
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
       - name: Build
-        run: make -f .ci/Makefile build
+        run: |
+          uname -a
+          echo "Detected CPUs: $(nproc)"
+          make -f .ci/Makefile build
+
       - uses: actions/upload-artifact@v3
         with:
           name: package-parts-${{ matrix.arch }}

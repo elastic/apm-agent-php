@@ -5,6 +5,7 @@ permissions:
   contents: read
 
 on:
+  workflow_dispatch: ~
   push:
     tags: [ "v[0-9]+*" ]
     branches:
@@ -28,6 +29,8 @@ jobs:
 
   build:
     uses: ./.github/workflows/build.yml
+    with:
+      build_arch: all
 
   build-packages:
     permissions:

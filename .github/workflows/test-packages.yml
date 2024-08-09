@@ -73,6 +73,11 @@ jobs:
           name: package-parts-linuxmusl-x86-64
           path: agent/native/_build/linuxmusl-x86-64-release
 
+      - name: Remove ARM64 artifacts
+        run: |
+          rm ${BUILD_PACKAGES}/apm-agent-php*arm64*
+          rm ${BUILD_PACKAGES}/apm-agent-php*aarch64*
+
       - if: ${{ env.TESTING_TYPE == 'lifecycle' }}
         name: lifecycle test
         run: |
