@@ -20,6 +20,11 @@ endif::[]
 
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
+[[release-notes-v1.13.2]]
+=== v1.13.2 - 2024/08/20
+==== Bug fixes
+* Set various PHP engine hooks only when the relevant feature is enabled {pull}1211[#1211]
+
 [[release-notes-v1.13.1]]
 === v1.13.1 - 2024/07/23
 ==== Features
