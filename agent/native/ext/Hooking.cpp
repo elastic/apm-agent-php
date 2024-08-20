@@ -11,6 +11,10 @@
 #include <memory>
 #include <string_view>
 
+#include "log.h"
+
+#define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_EXT_INFRA
+
 namespace elasticapm::php {
 
 #if PHP_VERSION_ID < 80000
