@@ -88,10 +88,21 @@ static void elastic_interrupt_function(zend_execute_data *execute_data) {
     } zend_end_try();
 }
 
-void Hooking::replaceHooks() {
+void Hooking::replaceHooks(bool cfgCaptureErrors, bool cfgInferredSpansEnabled) {
+    if (cfgInferredSpansEnabled) {
         zend_execute_internal = elastic_execute_internal;
         zend_interrupt_function = elastic_interrupt_function;
+        ELASTIC_APM_LOG_DEBUG( "Replaced zend_execute_internal and zend_interrupt_function hooks" );
+    } else {
+        ELASTIC_APM_LOG_DEBUG( "NOT replacing zend_execute_internal and zend_interrupt_function hooks because capture_errors configuration option is set to false" );
+    }
+
+    if (cfgCaptureErrors) {
         zend_error_cb = elastic_apm_error_cb;
+        ELASTIC_APM_LOG_DEBUG( "Replaced zend_error_cb hook" );
+    } else {
+        ELASTIC_APM_LOG_DEBUG( "NOT replacing zend_error_cb hook because capture_errors configuration option is set to false" );
+    }
 }
 
 }
