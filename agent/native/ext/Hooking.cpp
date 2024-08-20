@@ -94,7 +94,7 @@ void Hooking::replaceHooks(bool cfgCaptureErrors, bool cfgInferredSpansEnabled) 
         zend_interrupt_function = elastic_interrupt_function;
         ELASTIC_APM_LOG_DEBUG( "Replaced zend_execute_internal and zend_interrupt_function hooks" );
     } else {
-        ELASTIC_APM_LOG_DEBUG( "NOT replacing zend_execute_internal and zend_interrupt_function hooks because capture_errors configuration option is set to false" );
+        ELASTIC_APM_LOG_DEBUG( "NOT replacing zend_execute_internal and zend_interrupt_function hooks because profiling_inferred_spans_enabled configuration option is set to false" );
     }
 
     if (cfgCaptureErrors) {
