@@ -140,7 +140,7 @@ typedef void (* ZendThrowExceptionHook )(
 );
 
 // static bool elasticApmZendErrorCallbackSet = false;
-static bool elasticApmZendThrowExceptionHookSet = false;
+static bool elasticApmZendThrowExceptionHookReplaced = false;
 static ZendThrowExceptionHook originalZendThrowExceptionHook = NULL;
 
 void resetLastThrown() {
@@ -186,17 +186,12 @@ void elasticApmZendThrowExceptionHook(
 #endif
 )
 {
-    Tracer* const tracer = getGlobalTracer();
-    const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
-    if (config->captureErrors) {
-        elasticApmZendThrowExceptionHookImpl( thrownObj );
-    }
+    elasticApmZendThrowExceptionHookImpl( thrownObj );
 
     if (originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook) {
         ELASTIC_APM_LOG_CRITICAL( "originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook" );
         return;
     }
-
 
     if ( originalZendThrowExceptionHook != NULL )
     {
@@ -205,22 +200,28 @@ void elasticApmZendThrowExceptionHook(
 }
 
 
-static void registerExceptionHooks() {
-    if (!elasticApmZendThrowExceptionHookSet) {
-        originalZendThrowExceptionHook = zend_throw_exception_hook;
-        zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
-        elasticApmZendThrowExceptionHookSet = true;
-        ELASTIC_APM_LOG_DEBUG( "Set zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
-                            , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
-                            , elasticApmZendThrowExceptionHook );
-    } else {
-        ELASTIC_APM_LOG_WARNING( "zend_erzend_throw_exception_hook already set: %p. Original: %p, Elastic: %p", zend_throw_exception_hook, originalZendThrowExceptionHook, elasticApmZendThrowExceptionHook );
+static void registerExceptionHooks(const ConfigSnapshot& config) {
+    if (!config.captureErrors) {
+        ELASTIC_APM_LOG_DEBUG( "NOT replacing zend_throw_exception_hook hook because capture_errors configuration option is set to false" );
+        return;
     }
+
+    if (elasticApmZendThrowExceptionHookReplaced) {
+        ELASTIC_APM_LOG_WARNING( "zend_throw_exception_hook already replaced: %p. Original: %p, Elastic: %p", zend_throw_exception_hook, originalZendThrowExceptionHook, elasticApmZendThrowExceptionHook );
+        return;
+    }
+
+    originalZendThrowExceptionHook = zend_throw_exception_hook;
+    zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
+    elasticApmZendThrowExceptionHookReplaced = true;
+    ELASTIC_APM_LOG_DEBUG( "Replaced zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
+                           , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
+                           , elasticApmZendThrowExceptionHook );
 }
 
 
 static void unregisterExceptionHooks() {
-    if (elasticApmZendThrowExceptionHookSet) {
+    if (elasticApmZendThrowExceptionHookReplaced) {
         ZendThrowExceptionHook zendThrowExceptionHookBeforeRestore = zend_throw_exception_hook;
         zend_throw_exception_hook = originalZendThrowExceptionHook;
         ELASTIC_APM_LOG_DEBUG( "Restored zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook: %p) -> %p"
@@ -277,7 +278,7 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
 
     registerCallbacksToLogFork();
     registerAtExitLogging();
-    registerExceptionHooks();
+    registerExceptionHooks(*config);
 
     curlCode = curl_global_init( CURL_GLOBAL_ALL );
     if ( curlCode != CURLE_OK )
@@ -290,7 +291,7 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
 
     astInstrumentationOnModuleInit( config );
 
-    elasticapm::php::Hooking::getInstance().replaceHooks();
+    elasticapm::php::Hooking::getInstance().replaceHooks(config->captureErrors, config->profilingInferredSpansEnabled);
 
     if (php_check_open_basedir_ex(config->bootstrapPhpPartFile, false) != 0) {
         ELASTIC_APM_LOG_WARNING(
