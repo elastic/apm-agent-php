@@ -186,9 +186,6 @@ void elasticApmZendThrowExceptionHook(
 #endif
 )
 {
-    Tracer* const tracer = getGlobalTracer();
-    const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
-
     elasticApmZendThrowExceptionHookImpl( thrownObj );
 
     if (originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook) {
@@ -281,7 +278,7 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
 
     registerCallbacksToLogFork();
     registerAtExitLogging();
-    registerExceptionHooks(config);
+    registerExceptionHooks(*config);
 
     curlCode = curl_global_init( CURL_GLOBAL_ALL );
     if ( curlCode != CURLE_OK )
