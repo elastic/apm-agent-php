@@ -11,7 +11,6 @@
 
 namespace elasticapm::php {
 
-
 class PeriodicTaskExecutor : public ForkableInterface {
 private:
     auto getThreadWorkerFunction() {
@@ -30,7 +29,6 @@ public:
 
     ~PeriodicTaskExecutor() {
         shutdown();
-
         if (thread_.joinable()) {
             thread_.join();
         }
@@ -62,12 +60,17 @@ public:
 
     void prefork() final {
         shutdown();
-        thread_.join();
+        if (thread_.joinable()) {
+            thread_.join();
+        }
     }
 
     void postfork([[maybe_unused]] bool child) final {
         working_ = true;
+
+        mutex_.lock();
         thread_ = std::thread(getThreadWorkerFunction());
+        mutex_.unlock();
         pauseCondition_.notify_all();
     }
 
@@ -107,8 +110,8 @@ private:
     std::chrono::milliseconds sleepInterval_ = std::chrono::milliseconds(20);
     std::vector<task_t> periodicTasks_;
     worker_init_t workerInit_;
-    std::thread thread_;
     std::mutex mutex_;
+    std::thread thread_;
     std::condition_variable pauseCondition_;
     bool working_ = true;
     bool resumed_ = false;
