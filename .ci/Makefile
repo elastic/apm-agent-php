@@ -1,10 +1,20 @@
 ifeq ($(DOCKERFILE),)
 	ifeq ($(BUILD_ARCHITECTURE), linuxmusl-x86-64)
 		DOCKERFILE := Dockerfile.alpine
+	else ifeq ($(BUILD_ARCHITECTURE), linuxmusl-arm64)
+		DOCKERFILE := Dockerfile.alpine
 	else
 		DOCKERFILE := Dockerfile
 	endif
 endif
+
+DOCKER_PLATFORM := linux/x86_64
+ifeq ($(BUILD_ARCHITECTURE), linux-arm64)
+	DOCKER_PLATFORM := linux/arm64
+else ifeq ($(BUILD_ARCHITECTURE), linuxmusl-arm64)
+	DOCKER_PLATFORM := linux/arm64
+endif
+
 
 SHELL=/bin/bash -o pipefail
 MAKEFLAGS += --no-print-directory
@@ -45,6 +55,7 @@ prepare:  ## Build docker image for building and testing the project
 	docker build \
 		--build-arg PHP_VERSION=${PHP_VERSION} --build-arg SEL_DISTRO=${SEL_DISTRO}\
 		--tag $(IMAGE):${PHP_VERSION}$(SUFFIX) \
+		--platform $(DOCKER_PLATFORM) \
 		-f ${DOCKERFILE} .
 	@echo "::endgroup::"
 
@@ -59,8 +70,8 @@ build:
 		-w /source/agent/native \
 		-e CONAN_USER_HOME=$(CONAN_USER_HOME) \
 		elasticobservability/apm-agent-php-dev:native-build-gcc-12.2.0-$(BUILD_ARCHITECTURE)-0.0.2 \
-		sh -c "cmake --preset $(BUILD_ARCHITECTURE)-release \
-				&& cmake --build --preset $(BUILD_ARCHITECTURE)-release -j$(nproc)\
+		sh -c "cmake --preset $(BUILD_ARCHITECTURE)-release  \
+				&& cmake --build --preset $(BUILD_ARCHITECTURE)-release \
 				&& ctest --preset $(BUILD_ARCHITECTURE)-release --verbose"
 	@echo "::endgroup::"
 
