@@ -21,11 +21,11 @@ jobs:
       BUILD_ARCH: ${{ matrix.BUILD_ARCH }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: package-parts-linux-${{ matrix.BUILD_ARCH }}
           path: agent/native/_build/linux-${{ matrix.BUILD_ARCH }}-release/
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: package-parts-linuxmusl-${{ matrix.BUILD_ARCH }}
           path: agent/native/_build/linuxmusl-${{ matrix.BUILD_ARCH }}-release/
