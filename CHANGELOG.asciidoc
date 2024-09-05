@@ -20,10 +20,16 @@ endif::[]
 
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
+[[release-notes-v1.14.1]]
+=== v1.14.1 - 2024/09/05
+==== Bug fixes
+* Fixed calling post hook if instrumented functions throws {pull}1223[#1223]
+
 [[release-notes-v1.14.0]]
 === v1.14.0 - 2024/08/28
 ==== Features
 * Experimental support for ARM64 architecture
+
 ==== Bug fixes
 * Fixed issue causing forked process to hang or crash {pull}1213[#1213]
 
