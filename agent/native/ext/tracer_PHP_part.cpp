@@ -17,13 +17,13 @@
  * under the License.
  */
 
-#include "tracer_PHP_part.h"
-#include "log.h"
+#include "ConfigSnapshot.h"
+#include "Exceptions.h"
 #include "Tracer.h"
-#include "util_for_PHP.h"
 #include "basic_macros.h"
 #include "elastic_apm_API.h"
-#include "ConfigSnapshot.h"
+#include "log.h"
+#include "util_for_PHP.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_C_TO_PHP
 
@@ -267,6 +267,8 @@ void tracerPhpPartInternalFuncCallPostHook( uint32_t dbgInterceptRegistrationId,
     ResultCode resultCode;
     zval phpPartArgs[ 2 ];
 
+    elasticapm::php::AutomaticExceptionStateRestorer restorer;
+
     if (!canInvokeTracerPhpPart()) {
         if (switchTracerPhpPartStateToFailed( /* reason */ "Unexpected current tracer PHP part state", __FUNCTION__ )) {
             ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
@@ -274,6 +276,7 @@ void tracerPhpPartInternalFuncCallPostHook( uint32_t dbgInterceptRegistrationId,
             ELASTIC_APM_SET_RESULT_CODE_TO_SUCCESS_AND_GOTO_FINALLY();
         }
     }
+
 
     // The first argument to PHP part's interceptedCallPostHook() is $hasExitedByException (bool)
     ZVAL_FALSE( &( phpPartArgs[ 0 ] ) );
