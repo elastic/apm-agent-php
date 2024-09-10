@@ -21,11 +21,11 @@ jobs:
       BUILD_ARCH: ${{ matrix.BUILD_ARCH }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: package-parts-linux-${{ matrix.BUILD_ARCH }}
           path: agent/native/_build/linux-${{ matrix.BUILD_ARCH }}-release/
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: package-parts-linuxmusl-${{ matrix.BUILD_ARCH }}
           path: agent/native/_build/linuxmusl-${{ matrix.BUILD_ARCH }}-release/
@@ -39,9 +39,9 @@ jobs:
         run: make -C packaging package
       - name: package info
         run: make -C packaging info
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
-          name: package
+          name: package-${{ matrix.BUILD_ARCH }}
           path: |
             build/packages/*
             !build/packages/**/*.sha512
