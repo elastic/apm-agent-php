@@ -52,9 +52,9 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@4
         with:
-          name: package
+          pattern: package-*
           path: ${{ env.BUILD_PACKAGES }}
 
       - name: generate build provenance
@@ -96,7 +96,7 @@ jobs:
       # this artifact name is used also in some other places,
       # such as ./.github/workflows/test-packages.yml.
       # Therefore v4 cannot be used at the moment.
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: signed-artifacts
           path: signed-artifacts.zip
@@ -131,7 +131,7 @@ jobs:
     steps:
 
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: signed-artifacts
           path: ${{ env.BUILD_PACKAGES }}
