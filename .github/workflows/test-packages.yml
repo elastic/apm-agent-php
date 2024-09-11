@@ -49,7 +49,7 @@ jobs:
           path: ${{ env.BUILD_PACKAGES }}
 
       - uses: actions/download-artifact@v4
-        if: ${{ ! intpus.package-name }}
+        if: ${{ ! inputs.package-name }}
         with:
           pattern: 'package*'
           merge-multiple: true
