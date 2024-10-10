@@ -43,7 +43,7 @@ final class ExpectedEventCounts implements LoggableInterface
     {
         $this->perDataKind = [];
         $this->errors(0);
-        $this->setValueForKind(ApmDataKind::metadata(), 1);
+        $this->metadatas(1);
         $this->metricSets(0);
         $this->spans(0);
         $this->transactions(1);
@@ -63,6 +63,11 @@ final class ExpectedEventCounts implements LoggableInterface
     {
         $this->perDataKind[$apmDataKind->asString()] = $count;
         return $this;
+    }
+
+    public function metadatas(int $count): self
+    {
+        return $this->setValueForKind(ApmDataKind::metadata(), $count);
     }
 
     public function errors(int $count): self
