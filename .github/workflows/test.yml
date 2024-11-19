@@ -45,7 +45,7 @@ jobs:
     needs:
       - build
       - setup-build-matrix
-    runs-on: ${{ matrix.run_qemu && 'observability-linux-2-arm64' || 'ubuntu-latest' }}
+    runs-on: ${{ matrix.data.run_qemu && 'observability-linux-2-arm64' || 'ubuntu-latest' }}
     timeout-minutes: 120
     strategy:
       fail-fast: false
