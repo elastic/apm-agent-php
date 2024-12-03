@@ -2,8 +2,8 @@ scm:
   enabled: true
   owner: elastic
   repository: apm-agent-php
-  apm_repository: apm
   branch: main
+  commitusingapi: true
   # begin update-compose policy values
   user: obltmachine
   email: obltmachine@users.noreply.github.com
