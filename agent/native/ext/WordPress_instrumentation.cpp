@@ -87,14 +87,14 @@ void wordPressInstrumentationOnRequestShutdown()
 }
 
 static
-ResultCode insertPreHookForFunctionWithHookNameCallbackParams( zend_ast_decl* astDecl )
+ResultCode insertPreHookForFunctionWithHookNameCallbackParams( zend_ast_decl *parentClass, zend_ast_decl* astDecl )
 {
     // standalone function:
     //      function _wp_filter_build_unique_id( $hook_name, $callback, $priority )
     // class WP_Hook method
     //      public function add_filter( $hook_name, $callback, $priority, $accepted_args )
     ArgCaptureSpec argCaptureSpecArr[] = { /* capture $hook_name by value */ captureArgByValue, /* capture $callback by reference */ captureArgByRef };
-    return insertAstForFunctionPreHook( astDecl, ELASTIC_APM_MAKE_ARRAY_VIEW_FROM_STATIC( ArgCaptureSpecArrayView, argCaptureSpecArr ) );
+    return insertAstForFunctionPreHook(parentClass, astDecl, ELASTIC_APM_MAKE_ARRAY_VIEW_FROM_STATIC( ArgCaptureSpecArrayView, argCaptureSpecArr ) );
 }
 
 static StringView g_globalNamespace = ELASTIC_APM_STRING_LITERAL_TO_VIEW( "" );
@@ -116,7 +116,7 @@ ResultCode wordPressInstrumentationTransformFile_plugin_php( zend_ast* ast )
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( insertPreHookForFunctionWithHookNameCallbackParams( *p_wp_filter_build_unique_id_astFuncDecl ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( insertPreHookForFunctionWithHookNameCallbackParams( nullptr, *p_wp_filter_build_unique_id_astFuncDecl ) );
     // It's important to record if we instrumented _wp_filter_build_unique_id successfully.
     // _wp_filter_build_unique_id instrumentation alone cannot make application work incorrectly
     // because it checks if $callback is an instance our WordPressFilterCallbackWrapper class before unwrapping it.
@@ -159,7 +159,7 @@ ResultCode wordPressInstrumentationTransformFile_class_wp_hook_php( zend_ast* as
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( insertPreHookForFunctionWithHookNameCallbackParams( *p_add_filter_astMethod ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( insertPreHookForFunctionWithHookNameCallbackParams(WP_Hook_astClassDecl, *p_add_filter_astMethod ) );
 
     resultCode = resultSuccess;
     finally:
