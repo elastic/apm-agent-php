@@ -1,5 +1,13 @@
 version: "3"
 services:
+    deb-fpm-php84:
+        image: elasticobservability/apm-agent-php-dev:packages-test-deb-fpm-php-8.4-0.0.1
+        build:
+            context: ubuntu
+            dockerfile: fpm/Dockerfile
+            args:
+                - PHP_VERSION=8.4
+                - SEL_DISTRO=bullseye
     deb-fpm-php83:
         image: elasticobservability/apm-agent-php-dev:packages-test-deb-fpm-php-8.3-0.0.1
         build:
@@ -54,6 +62,14 @@ services:
 
 
 
+    deb-apache-php84:
+        image: elasticobservability/apm-agent-php-dev:packages-test-deb-apache-php-8.4-0.0.1
+        build:
+            context: ubuntu
+            dockerfile: apache/Dockerfile
+            args:
+                - PHP_VERSION=8.4
+                - SEL_DISTRO=bullseye
     deb-apache-php83:
         image: elasticobservability/apm-agent-php-dev:packages-test-deb-apache-php-8.3-0.0.1
         build:
@@ -106,6 +122,14 @@ services:
                 - PHP_VERSION=7.2
 
 
+    deb-php84:
+        image: elasticobservability/apm-agent-php-dev:packages-test-deb-php-8.4-0.0.1
+        build:
+            context: ubuntu
+            dockerfile: Dockerfile
+            args:
+                - PHP_VERSION=8.4
+                - SEL_DISTRO=bullseye
     deb-php83:
         image: elasticobservability/apm-agent-php-dev:packages-test-deb-php-8.3-0.0.1
         build:
@@ -157,6 +181,13 @@ services:
             args:
                 - PHP_VERSION=7.2
 
+    rpm-php84:
+        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-8.4-0.0.3
+        build:
+            context: centos
+            dockerfile: Dockerfile
+            args:
+                - PHP_VERSION=8.4
     rpm-php83:
         image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-8.3-0.0.3
         build:
@@ -207,6 +238,13 @@ services:
             args:
                 - PHP_VERSION=7.2
 
+    apk-php83:
+        image: elasticobservability/apm-agent-php-dev:packages-test-apk-php-8.4-0.0.1
+        build:
+            context: alpine
+            dockerfile: Dockerfile
+            args:
+                - PHP_VERSION=8.4
     apk-php83:
         image: elasticobservability/apm-agent-php-dev:packages-test-apk-php-8.3-0.0.1
         build:

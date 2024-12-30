@@ -58,6 +58,7 @@ jobs:
           - "8.1"
           - "8.2"
           - "8.3"
+          - "8.4"
         data: ${{ fromJson(needs.setup-build-matrix.outputs.matrix-combinations).include }}
     env:
       PHP_VERSION: ${{ matrix.php-version }}
@@ -94,6 +95,7 @@ jobs:
           - "8.1"
           - "8.2"
           - "8.3"
+          - "8.4"
         dockerfile:
           - "Dockerfile"
           - "Dockerfile.alpine"

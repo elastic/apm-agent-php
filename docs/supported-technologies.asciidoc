@@ -21,7 +21,7 @@ Experimentally, we also provide packages for the ARM64 architecture - please not
 [[supported-php-versions]]
 === PHP versions
 
-The agent supports PHP versions 7.2-8.3.
+The agent supports PHP versions 7.2-8.4.
 
 [float]
 [[unsupported-php-sapis]]
