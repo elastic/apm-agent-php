@@ -5,11 +5,15 @@
 #include <main/SAPI.h>
 #include <Zend/zend_modules.h>
 #include <Zend/zend_extensions.h>
+#include <Zend/zend_string.h>
 
 namespace elasticapm::php {
 
 using namespace std::string_view_literals;
 
+bool PhpBridge::isExtensionLoaded(std::string_view extensionName) const {
+    return zend_hash_str_find(&module_registry, extensionName.data(), extensionName.length()) != nullptr;
+}
 static int getModuleData(zval *item, void *arg) {
     zend_module_entry *module = (zend_module_entry *)Z_PTR_P(item);
 
@@ -64,7 +68,7 @@ std::string PhpBridge::getPhpInfo() const {
 
     std::string output;
     phpInfoTempBuffer = &output;
-    
+
     auto orig_php_info_as_text = sapi_module.phpinfo_as_text;
     sapi_module.phpinfo_as_text = 1;
 

@@ -414,12 +414,19 @@ void elasticApmRequestInit()
     enableAccessToServerGlobal();
     bool preloadDetected = requestCounter == 1 ? detectOpcachePreload() : false;
 
-    if (config && config->debugDiagnosticsFile && !preloadDetected && requestCounter <= 2) {
+    if (!preloadDetected && requestCounter <= 2) {
         if (ELASTICAPM_G(globals)->sharedMemory_->shouldExecuteOneTimeTaskAmongWorkers()) {
-            try {
-                elasticapm::utils::storeDiagnosticInformation(elasticapm::utils::getParameterizedString(config->debugDiagnosticsFile), *(ELASTICAPM_G(globals)->bridge_));
-            } catch (std::exception const &e) {
-                ELASTIC_APM_LOG_WARNING( "Unable to write agent diagnostics: %s", e.what() );
+            using namespace std::string_view_literals;
+            if ( ELASTICAPM_G( globals )->bridge_->isExtensionLoaded( "xdebug"sv ) ) {
+                ELASTIC_APM_LOG_WARNING( "Xdebug is loaded, which is not supported by the Elastic APM Agent. This may lead to stability or memory issues");
+            }
+
+            if (config && config->debugDiagnosticsFile) {
+                try {
+                    elasticapm::utils::storeDiagnosticInformation(elasticapm::utils::getParameterizedString(config->debugDiagnosticsFile), *(ELASTICAPM_G(globals)->bridge_));
+                } catch (std::exception const &e) {
+                    ELASTIC_APM_LOG_WARNING( "Unable to write agent diagnostics: %s", e.what() );
+                }
             }
         }
     }

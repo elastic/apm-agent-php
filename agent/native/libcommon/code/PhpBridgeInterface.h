@@ -22,7 +22,7 @@ public:
     virtual std::string getPhpInfo() const = 0;
 
     virtual std::string_view getPhpSapiName() const = 0;
-
+    virtual bool isExtensionLoaded(std::string_view extensionName) const = 0;
 };
 
 }
