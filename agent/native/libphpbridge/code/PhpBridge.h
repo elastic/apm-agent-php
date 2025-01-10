@@ -17,6 +17,7 @@ public:
     std::string getPhpInfo() const final;
 
     std::string_view getPhpSapiName() const final;
+    bool isExtensionLoaded(std::string_view extensionName) const final;
 
 protected:
     zend_class_entry *findClassEntry(std::string_view className) const;
