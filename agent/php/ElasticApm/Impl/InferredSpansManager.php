@@ -205,11 +205,14 @@ final class InferredSpansManager implements LoggableInterface
         ($assertProxy = Assert::ifEnabled())
         && $assertProxy->that($this->onCurrentSpanChangedCallback === null)
         && $assertProxy->withContext('$this->onCurrentSpanChangedCallback === null', ['this' => $this]);
-        $this->currentTransaction->onCurrentSpanChanged->add(
-            $this->onCurrentSpanChangedCallback = function (?Span $span): void {
-                $this->onCurrentSpanChanged($span);
-            }
-        );
+
+        if ($this->currentTransaction !== null) {
+            $this->currentTransaction->onCurrentSpanChanged->add(
+                $this->onCurrentSpanChangedCallback = function (?Span $span): void {
+                    $this->onCurrentSpanChanged($span);
+                }
+            );
+        }
 
         $this->builder = new InferredSpansBuilder($this->tracer);
         $this->state = self::STATE_RUNNING;

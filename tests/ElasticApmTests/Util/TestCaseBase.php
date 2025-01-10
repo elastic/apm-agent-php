@@ -85,7 +85,7 @@ class TestCaseBase extends TestCase
         string $class,
         callable $execute,
         string $message = '',
-        callable $inspect = null
+        ?callable $inspect = null
     ): void {
         try {
             $execute();
@@ -140,6 +140,7 @@ class TestCaseBase extends TestCase
             return is_float($value) || is_int($value);
         };
         if ($isNumeric($expected) && $isNumeric($actual) && (is_float($expected) !== is_float($actual))) {
+            /** @phpstan-ignore-next-line */
             self::assertSame(floatval($expected), floatval($actual), $message);
         } else {
             self::assertSame($expected, $actual, $message);
