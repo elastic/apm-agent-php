@@ -39,7 +39,7 @@ final class StackTraceFrameExpectations extends ExpectationsBase
     public $function;
 
     /** @var bool */
-    public $isFunctionNameRegex = false;
+    public $isFunctionRegex = false;
 
     /** @var Optional<int> */
     public $lineno;
@@ -123,11 +123,13 @@ final class StackTraceFrameExpectations extends ExpectationsBase
             $result = self::fromClassMethodUnknownLocation($class, $isStatic, ($namespace === null ? '' : ($namespace . '\\')) . '{closure}');
         } else {
             $result = self::fromClassMethodUnknownLocation($class, $isStatic, '{closure:' . $class . '::__METHOD__():__LINE__}');
-            $regex = self::convertFunctionNameToRegPattern($result->function->getValue());
-            $regex = str_replace('__METHOD__', '[a-zA-Z0-9]+', $regex);
-            $regex = str_replace('__LINE__', '[0-9]+', $regex);
-            $result->function->setValue($regex);
-            $result->isFunctionNameRegex = true;
+            $expectedFunc = $result->function->getValue();
+            TestCaseBase::assertNotNull($expectedFunc);
+            $expectedFuncRegex = self::convertFunctionNameToRegPattern($expectedFunc);
+            $expectedFuncRegex = str_replace('__METHOD__', '[a-zA-Z0-9]+', $expectedFuncRegex);
+            $expectedFuncRegex = str_replace('__LINE__', '[0-9]+', $expectedFuncRegex);
+            $result->function->setValue($expectedFuncRegex);
+            $result->isFunctionRegex = true;
         }
 
         $result->filename->setValue($fileName);
@@ -169,9 +171,16 @@ final class StackTraceFrameExpectations extends ExpectationsBase
         $dbgCtx->add(['this' => $this]);
 
         TestCaseBase::assertSameExpectedOptional($this->filename, $actual->filename);
-        if ($this->isFunctionNameRegex) {
+        if ($this->isFunctionRegex) {
             if ($this->function->isValueSet()) {
-                TestCaseBase::assertMatchesRegularExpression($this->function->getValue(), $actual->function);
+                $expectedFuncRegex = $this->function->getValue();
+                $actualFunc = $actual->function;
+                if ($expectedFuncRegex === null) {
+                    TestCaseBase::assertNull($actualFunc);
+                } else {
+                    TestCaseBase::assertNotNull($actualFunc);
+                    TestCaseBase::assertMatchesRegularExpression($expectedFuncRegex, $actualFunc);
+                }
             }
         } else {
             TestCaseBase::assertSameExpectedOptional($this->function, $actual->function);
