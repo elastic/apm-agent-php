@@ -38,6 +38,9 @@ final class StackTraceFrameExpectations extends ExpectationsBase
     /** @var Optional<?string> */
     public $function;
 
+    /** @var bool */
+    public $isFunctionRegex = false;
+
     /** @var Optional<int> */
     public $lineno;
 
@@ -101,9 +104,35 @@ final class StackTraceFrameExpectations extends ExpectationsBase
         return $result;
     }
 
+    private static function convertFunctionNameToRegPattern(string $text): string
+    {
+        $result = $text;
+        $result = str_replace('\\', '\\\\', $result);
+        $result = str_replace('{', '\\{', $result);
+        $result = str_replace('}', '\\}', $result);
+        $result = str_replace('(', '\\(', $result);
+        $result = str_replace(')', '\\)', $result);
+        return '/^' . $result . '$/';
+    }
+
     public static function fromClosure(string $fileName, int $lineNumber, ?string $namespace, string $class, bool $isStatic): self
     {
-        $result = self::fromClassMethodUnknownLocation($class, $isStatic, ($namespace === null ? '' : ($namespace . '\\')) . '{closure}');
+        // Before PHP 8.4: ElasticApmTests\\TestsSharedCode\\SpanStackTraceTestSharedCode::ElasticApmTests\\TestsSharedCode\\{closure}
+        // PHP 8.4:        ElasticApmTests\\TestsSharedCode\\SpanStackTraceTestSharedCode::{closure:ElasticApmTests\\TestsSharedCode\\SpanStackTraceTestSharedCode::allSpanCreatingApis():207}
+        if (PHP_VERSION_ID < 80400) {
+            $result = self::fromClassMethodUnknownLocation($class, $isStatic, ($namespace === null ? '' : ($namespace . '\\')) . '{closure}');
+        } else {
+            $result = self::fromClassMethodUnknownLocation($class, $isStatic, '{closure:__CLASS__::__METHOD__():__LINE__}');
+            $expectedFunc = $result->function->getValue();
+            TestCaseBase::assertNotNull($expectedFunc);
+            $expectedFuncRegex = self::convertFunctionNameToRegPattern($expectedFunc);
+            $expectedFuncRegex = str_replace('__CLASS__', '[a-zA-Z0-9\\\\]+', $expectedFuncRegex);
+            $expectedFuncRegex = str_replace('__METHOD__', '[a-zA-Z0-9]+', $expectedFuncRegex);
+            $expectedFuncRegex = str_replace('__LINE__', '[0-9]+', $expectedFuncRegex);
+            $result->function->setValue($expectedFuncRegex);
+            $result->isFunctionRegex = true;
+        }
+
         $result->filename->setValue($fileName);
         $result->lineno->setValue($lineNumber);
         return $result;
@@ -143,7 +172,20 @@ final class StackTraceFrameExpectations extends ExpectationsBase
         $dbgCtx->add(['this' => $this]);
 
         TestCaseBase::assertSameExpectedOptional($this->filename, $actual->filename);
-        TestCaseBase::assertSameExpectedOptional($this->function, $actual->function);
+        if ($this->isFunctionRegex) {
+            if ($this->function->isValueSet()) {
+                $expectedFuncRegex = $this->function->getValue();
+                $actualFunc = $actual->function;
+                if ($expectedFuncRegex === null) {
+                    TestCaseBase::assertNull($actualFunc);
+                } else {
+                    TestCaseBase::assertNotNull($actualFunc);
+                    TestCaseBase::assertMatchesRegularExpression($expectedFuncRegex, $actualFunc);
+                }
+            }
+        } else {
+            TestCaseBase::assertSameExpectedOptional($this->function, $actual->function);
+        }
         TestCaseBase::assertSameExpectedOptional($this->lineno, $actual->lineno);
     }
 }

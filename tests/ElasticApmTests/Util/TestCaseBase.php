@@ -1133,6 +1133,23 @@ class TestCaseBase extends TestCase
         }
     }
 
+    /**
+     * @inheritDoc
+     */
+    public static function assertMatchesRegularExpression(string $pattern, string $string, string $message = ''): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        try {
+            $pregMatchRetVal =  preg_match($pattern, $string);
+            $dbgCtx->add(compact('pregMatchRetVal'));
+            Assert::assertTrue($pregMatchRetVal > 0, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
     public static function assertDirectoryDoesNotExist(string $directory, string $message = ''): void
     {
         /**
