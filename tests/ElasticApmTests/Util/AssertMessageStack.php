@@ -39,7 +39,7 @@ use ReflectionParameter;
 final class AssertMessageStack implements LoggableInterface
 {
     /** @var bool */
-    private static $isEnabled = true;
+    private static $isEnabled = false;
 
     /** @var ?AssertMessageStack */
     private static $singleton = null;

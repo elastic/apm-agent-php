@@ -122,10 +122,11 @@ final class StackTraceFrameExpectations extends ExpectationsBase
         if (PHP_VERSION_ID < 80400) {
             $result = self::fromClassMethodUnknownLocation($class, $isStatic, ($namespace === null ? '' : ($namespace . '\\')) . '{closure}');
         } else {
-            $result = self::fromClassMethodUnknownLocation($class, $isStatic, '{closure:' . $class . '::__METHOD__():__LINE__}');
+            $result = self::fromClassMethodUnknownLocation($class, $isStatic, '{closure:__CLASS__::__METHOD__():__LINE__}');
             $expectedFunc = $result->function->getValue();
             TestCaseBase::assertNotNull($expectedFunc);
             $expectedFuncRegex = self::convertFunctionNameToRegPattern($expectedFunc);
+            $expectedFuncRegex = str_replace('__CLASS__', '[a-zA-Z0-9\\\\]+', $expectedFuncRegex);
             $expectedFuncRegex = str_replace('__METHOD__', '[a-zA-Z0-9]+', $expectedFuncRegex);
             $expectedFuncRegex = str_replace('__LINE__', '[0-9]+', $expectedFuncRegex);
             $result->function->setValue($expectedFuncRegex);
