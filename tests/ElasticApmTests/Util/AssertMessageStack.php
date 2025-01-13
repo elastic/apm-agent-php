@@ -39,7 +39,7 @@ use ReflectionParameter;
 final class AssertMessageStack implements LoggableInterface
 {
     /** @var bool */
-    private static $isEnabled = false;
+    private static $isEnabled = true;
 
     /** @var ?AssertMessageStack */
     private static $singleton = null;
@@ -185,6 +185,11 @@ final class AssertMessageStack implements LoggableInterface
             $result[($totalIndex++) . ' out of ' . $totalCount . ': ' . $nameCtxPair->first] = $nameCtxPair->second;
         }
         return $result;
+    }
+
+    public static function clearContextsStack(): void
+    {
+        self::ensureSingleton()->scopesStack = [];
     }
 
     public function toLog(LogStreamInterface $stream): void
