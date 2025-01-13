@@ -1138,8 +1138,12 @@ class TestCaseBase extends TestCase
      */
     public static function assertMatchesRegularExpression(string $pattern, string $string, string $message = ''): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
         try {
-            Assert::assertMatchesRegularExpression($pattern, $string, $message);
+            $pregMatchRetVal =  preg_match($pattern, $string);
+            $dbgCtx->add(compact('pregMatchRetVal'));
+            Assert::assertTrue($pregMatchRetVal > 0, $message);
         } catch (AssertionFailedError $ex) {
             self::addMessageStackToException($ex);
             throw $ex;
