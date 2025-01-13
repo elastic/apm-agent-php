@@ -238,7 +238,7 @@ services:
             args:
                 - PHP_VERSION=7.2
 
-    apk-php83:
+    apk-php84:
         image: elasticobservability/apm-agent-php-dev:packages-test-apk-php-8.4-0.0.1
         build:
             context: alpine
