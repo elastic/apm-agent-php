@@ -1133,6 +1133,19 @@ class TestCaseBase extends TestCase
         }
     }
 
+    /**
+     * @inheritDoc
+     */
+    public static function assertMatchesRegularExpression(string $pattern, string $string, string $message = ''): void
+    {
+        try {
+            Assert::assertMatchesRegularExpression($pattern, $string, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
     public static function assertDirectoryDoesNotExist(string $directory, string $message = ''): void
     {
         /**
