@@ -749,6 +749,7 @@ class TestCaseBase extends TestCase
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         self::assertGreaterThanOrEqual($expectedMinCount, count($haystack));
+        $dbgCtx->pop();
     }
 
     /**
@@ -821,6 +822,8 @@ class TestCaseBase extends TestCase
             self::addMessageStackToException($ex);
             throw $ex;
         }
+
+        $dbgCtx->pop();
     }
 
     /**

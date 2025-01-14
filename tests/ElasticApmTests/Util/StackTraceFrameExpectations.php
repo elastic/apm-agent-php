@@ -187,5 +187,7 @@ final class StackTraceFrameExpectations extends ExpectationsBase
             TestCaseBase::assertSameExpectedOptional($this->function, $actual->function);
         }
         TestCaseBase::assertSameExpectedOptional($this->lineno, $actual->lineno);
+
+        $dbgCtx->pop();
     }
 }

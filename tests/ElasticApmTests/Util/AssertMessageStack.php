@@ -145,12 +145,12 @@ final class AssertMessageStack implements LoggableInterface
         return $result;
     }
 
-    public function autoPopScope(AssertMessageStackScopeData $expectedTopData): void
+    public function popTopScope(AssertMessageStackScopeData $expectedTopScope): void
     {
-        $dbgCtx = ['this' => $this, 'expectedTopData' => $expectedTopData];
+        $actualTopScope = $this->scopesStack[count($this->scopesStack) - 1];
+        $dbgCtx = compact('actualTopScope', 'expectedTopScope', 'this');
         Assert::assertNotEmpty($this->scopesStack, LoggableToString::convert($dbgCtx));
-        $actualTopData = $this->scopesStack[count($this->scopesStack) - 1];
-        Assert::assertSame($expectedTopData, $actualTopData, LoggableToString::convert($dbgCtx));
+        Assert::assertSame($expectedTopScope, $actualTopScope, LoggableToString::convert($dbgCtx));
         array_pop(/* ref */ $this->scopesStack);
     }
 
@@ -187,9 +187,10 @@ final class AssertMessageStack implements LoggableInterface
         return $result;
     }
 
-    public static function clearContextsStack(): void
+    public static function reset(): void
     {
         self::ensureSingleton()->scopesStack = [];
+        AssertMessageStackScopeData::$nextId = 1;
     }
 
     public function toLog(LogStreamInterface $stream): void

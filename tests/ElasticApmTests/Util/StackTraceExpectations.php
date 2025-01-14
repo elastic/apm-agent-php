@@ -89,5 +89,7 @@ final class StackTraceExpectations extends ExpectationsBase
         } else {
             TestCaseBase::assertSame(count($this->frames), count($actual));
         }
+
+        $dbgCtx->pop();
     }
 }
