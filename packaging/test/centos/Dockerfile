@@ -25,7 +25,6 @@ RUN export PHP_VERSION_TRANSFORMED=$(echo "${PHP_VERSION}" | sed 's#\.##g') \
     && yum install -y \
             php \
             php-mbstring \
-            php-mysql \
             php-mysqli \
             php-pcntl \
             php-posix \
