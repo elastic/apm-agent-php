@@ -21,6 +21,9 @@
 
 declare(strict_types=1);
 
+// Disable deprecation notices
+error_reporting(error_reporting() & ~E_DEPRECATED);
+
 require __DIR__ . '/../../../bootstrap.php';
 
 use ElasticApmTests\ComponentTests\Util\ResourcesCleaner;
