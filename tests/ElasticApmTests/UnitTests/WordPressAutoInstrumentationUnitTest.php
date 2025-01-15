@@ -45,6 +45,8 @@ final class WordPressAutoInstrumentationUnitTest extends TestCaseBase
             $dbgCtx->add(['actualGroupKind' => $actualGroupKind, 'actualGroupName' => $actualGroupName]);
             self::assertSame($expectedGroupKind, $actualGroupKind);
             self::assertSame($expectedGroupName, $actualGroupName);
+
+            $dbgCtx->pop();
         };
 
         $testImpl = function (string $filePath, string $expectedGroupKind, ?string $expectedGroupName) use ($testImplFilePathAsIs): void {
