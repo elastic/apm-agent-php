@@ -15,7 +15,6 @@ RUN apk update \
         wget
 
 RUN docker-php-ext-install \
-        ds \
         mysqli \
         pcntl \
         pdo_mysql \

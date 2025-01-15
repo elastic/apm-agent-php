@@ -24,7 +24,6 @@ RUN export PHP_VERSION_TRANSFORMED=$(echo "${PHP_VERSION}" | sed 's#\.##g') \
     && yum-config-manager --enable remi-php${PHP_VERSION_TRANSFORMED} \
     && yum install -y \
             php \
-            php-ds \
             php-mbstring \
             php-mysqli \
             php-pcntl \
