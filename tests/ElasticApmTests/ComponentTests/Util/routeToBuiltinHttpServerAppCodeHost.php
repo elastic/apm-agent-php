@@ -25,9 +25,6 @@ namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\ElasticApm;
 
-// Disable deprecation notices
-error_reporting(error_reporting() & ~E_DEPRECATED);
-
 require __DIR__ . '/../../../bootstrap.php';
 
 /** @var ?string $globalTopLevelCodeId */

@@ -163,6 +163,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
             ]
         );
 
+        $errorReportingValueToRestore = error_reporting();
         if ($includeInErrorReporting) {
             error_reporting(error_reporting() | self::undefinedVariablePhpErrorCode());
         } else {
@@ -180,6 +181,8 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         );
 
         appCodeForTestPhpErrorUndefinedVariable();
+
+        error_reporting($errorReportingValueToRestore);
 
         if (!$includeInErrorReporting) {
             ElasticApm::createErrorFromThrowable(self::buildExceptionForSubstituteError());
