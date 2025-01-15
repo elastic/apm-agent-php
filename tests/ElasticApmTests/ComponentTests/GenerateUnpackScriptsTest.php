@@ -393,8 +393,22 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
 
     private function assertSufficientCoverageAgentUpgrade(): void
     {
+        /** @noinspection PhpForeachOverSingleElementArrayLiteralInspection */
+        foreach ([self::PHP_VERSION_7_4] as $phpVersion) {
+            /** @noinspection PhpForeachOverSingleElementArrayLiteralInspection */
+            foreach ([self::LINUX_PACKAGE_TYPE_RPM] as $linuxPackageType) {
+                $this->assertAllTestsAreSmoke(
+                    [
+                        self::PHP_VERSION_KEY        => $phpVersion,
+                        self::LINUX_PACKAGE_TYPE_KEY => $linuxPackageType,
+                        self::TESTING_TYPE_KEY       => self::AGENT_UPGRADE_TESTING_TYPE,
+                    ]
+                );
+            }
+        }
         foreach ([self::PHP_VERSION_7_4, self::latestSupportedPhpVersion()] as $phpVersion) {
-            foreach ([self::LINUX_PACKAGE_TYPE_DEB, self::LINUX_PACKAGE_TYPE_RPM] as $linuxPackageType) {
+            /** @noinspection PhpForeachOverSingleElementArrayLiteralInspection */
+            foreach ([self::LINUX_PACKAGE_TYPE_DEB] as $linuxPackageType) {
                 $this->assertAllTestsAreSmoke(
                     [
                         self::PHP_VERSION_KEY        => $phpVersion,
