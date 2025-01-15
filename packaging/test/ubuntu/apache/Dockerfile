@@ -31,6 +31,7 @@ RUN apt-get -qq -y --no-install-recommends install software-properties-common \
         php${PHP_VERSION} \
         libapache2-mod-php \
         php${PHP_VERSION}-curl \
+        php${PHP_VERSION}-ds \
         php${PHP_VERSION}-mbstring \
         php${PHP_VERSION}-mysql \
         php${PHP_VERSION}-mysqli \

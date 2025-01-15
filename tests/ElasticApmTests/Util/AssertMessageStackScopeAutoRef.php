@@ -41,11 +41,17 @@ final class AssertMessageStackScopeAutoRef
 
     public function __destruct()
     {
+        $this->pop();
+    }
+
+    public function pop(): void
+    {
         if ($this->data === null) {
             return;
         }
 
-        $this->stack->autoPopScope($this->data);
+        $this->stack->popTopScope($this->data);
+        $this->data = null;
     }
 
     /**

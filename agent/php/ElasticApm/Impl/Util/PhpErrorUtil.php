@@ -32,41 +32,79 @@ final class PhpErrorUtil
 {
     use StaticClassTrait;
 
+    /**
+     * @return array<int, string>
+     */
+    private static function flagsValueToNameMap(): array
+    {
+        /** @var ?array<int, string> $flags */
+        static $flags = null;
+
+        if ($flags === null) {
+            $flags = [];
+            $addToFlagsIfDefined = function (string $flagName, ?int $flagValue = null) use (&$flags): void {
+                if (defined($flagName)) {
+                    $flagValueToUse = $flagValue ?? constant($flagName);
+                    if (is_int($flagValueToUse)) {
+                        $flags[$flagValueToUse] = $flagName;
+                    }
+                }
+            };
+
+            $addToFlagsIfDefined('E_ERROR');
+            $addToFlagsIfDefined('E_RECOVERABLE_ERROR');
+            $addToFlagsIfDefined('E_WARNING');
+            $addToFlagsIfDefined('E_PARSE');
+            $addToFlagsIfDefined('E_NOTICE');
+            // PHP 8.4: E_STRICT constant deprecated
+            if (PHP_VERSION_ID < 80400) {
+                $addToFlagsIfDefined('E_STRICT');
+            } else {
+                $addToFlagsIfDefined('E_STRICT', /* E_STRICT: */ 2048);
+            }
+            $addToFlagsIfDefined('E_DEPRECATED');
+            $addToFlagsIfDefined('E_CORE_ERROR');
+            $addToFlagsIfDefined('E_CORE_WARNING');
+            $addToFlagsIfDefined('E_COMPILE_ERROR');
+            $addToFlagsIfDefined('E_COMPILE_WARNING');
+            $addToFlagsIfDefined('E_USER_ERROR');
+            $addToFlagsIfDefined('E_USER_WARNING');
+            $addToFlagsIfDefined('E_USER_NOTICE');
+            $addToFlagsIfDefined('E_USER_DEPRECATED');
+        }
+
+        return $flags;
+    }
+
+    public static function convertErrorReportingValueToHumanReadableString(int $errorReporting): string
+    {
+        $flags = self::flagsValueToNameMap();
+        $result = '';
+        $appendToResult = function (string $separator, string $textToAppend) use (&$result): void {
+            if (!TextUtil::isEmptyString($result)) {
+                $result .= $separator;
+            }
+            $result .= $textToAppend;
+        };
+
+        $remaingValue = $errorReporting;
+        foreach ($flags as $flagValue => $flagName) {
+            $partToAddToResult = (($errorReporting & $flagValue) === 0 ? '~' : '') . $flagName;
+            $appendToResult(' & ', $partToAddToResult);
+            $remaingValue &= ~$flagValue;
+        }
+
+        if ($remaingValue !== 0) {
+            $appendToResult(' ', '[remaining value: ' . $remaingValue . ']');
+        }
+
+        $appendToResult(' ', '[value as int: ' . $errorReporting . ']');
+
+        return $result;
+    }
+
     public static function getTypeName(int $type): ?string
     {
-        switch ($type) {
-            case E_ERROR:
-                return 'E_ERROR';
-            case E_WARNING:
-                return 'E_WARNING';
-            case E_PARSE:
-                return 'E_PARSE';
-            case E_NOTICE:
-                return 'E_NOTICE';
-            case E_CORE_ERROR:
-                return 'E_CORE_ERROR';
-            case E_CORE_WARNING:
-                return 'E_CORE_WARNING';
-            case E_COMPILE_ERROR:
-                return 'E_COMPILE_ERROR';
-            case E_COMPILE_WARNING:
-                return 'E_COMPILE_WARNING';
-            case E_USER_ERROR:
-                return 'E_USER_ERROR';
-            case E_USER_WARNING:
-                return 'E_USER_WARNING';
-            case E_USER_NOTICE:
-                return 'E_USER_NOTICE';
-            case E_STRICT:
-                return 'E_STRICT';
-            case E_RECOVERABLE_ERROR:
-                return 'E_RECOVERABLE_ERROR';
-            case E_DEPRECATED:
-                return 'E_DEPRECATED';
-            case E_USER_DEPRECATED:
-                return 'E_USER_DEPRECATED';
-            default:
-                return null;
-        }
+        return ArrayUtil::getValueIfKeyExistsElse($type, self::flagsValueToNameMap(), null);
     }
 }

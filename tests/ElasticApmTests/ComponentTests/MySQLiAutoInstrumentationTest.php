@@ -134,7 +134,10 @@ final class MySQLiAutoInstrumentationTest extends ComponentTestCaseBase
             AmbientContextForTests::testConfig()->mysqlDb
         );
         self::assertNotNull($mySQLi);
-        self::assertTrue($mySQLi->ping());
+        // Method mysqli::ping() is deprecated since PHP 8.4
+        if (PHP_VERSION_ID < 80400) {
+            self::assertTrue($mySQLi->ping());
+        }
     }
 
     public function testIsAutoInstrumentationEnabled(): void
@@ -351,7 +354,11 @@ final class MySQLiAutoInstrumentationTest extends ComponentTestCaseBase
         $mySQLiApiFacade = new ApiFacade($isOOPApi);
         $mySQLi = $mySQLiApiFacade->connect($host, $port, $user, $password, $connectDbName);
         self::assertNotNull($mySQLi);
-        self::assertTrue($mySQLi->ping());
+
+        // Method mysqli::ping() is deprecated since PHP 8.4
+        if (PHP_VERSION_ID < 80400) {
+            self::assertTrue($mySQLi->ping());
+        }
 
         if ($connectDbName !== $workDbName) {
             self::assertTrue($mySQLi->query(self::CREATE_DATABASE_IF_NOT_EXISTS_SQL_PREFIX . $workDbName));
@@ -447,7 +454,11 @@ final class MySQLiAutoInstrumentationTest extends ComponentTestCaseBase
         $expectedSpans = [];
         if ($isInstrumentationEnabled) {
             $expectedSpans[] = $expectationsBuilder->fromNames('mysqli', '__construct', 'mysqli_connect');
-            $expectedSpans[] = $expectationsBuilder->fromNames('mysqli', 'ping');
+
+            // Method mysqli::ping() is deprecated since PHP 8.4
+            if (PHP_VERSION_ID < 80400) {
+                $expectedSpans[] = $expectationsBuilder->fromNames('mysqli', 'ping');
+            }
 
             if ($connectDbName !== $workDbName) {
                 $expectedSpans[] = $expectationsBuilder->fromStatement(self::CREATE_DATABASE_IF_NOT_EXISTS_SQL_PREFIX . $workDbName);
