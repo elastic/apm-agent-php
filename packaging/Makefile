@@ -16,7 +16,7 @@ BUILD_ARCH := $(if $(BUILD_ARCH),$(BUILD_ARCH),"x86-64")
 ifeq ($(shell [ $(PHP_VERSION) \< 8.4 ] && echo true), true)
   RPM_IMAGE_VERSION = 0.0.3 # PHP < 8.4 - image using centos
 else
-  RPM_IMAGE_VERSION = 0.1.0 # PHP 8.4+ - image using fedora
+  RPM_IMAGE_VERSION = 0.1.1 # PHP 8.4+ - image using fedora
 endif
 
 export FPM_FLAGS=

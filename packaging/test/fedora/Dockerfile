@@ -15,7 +15,8 @@ RUN dnf -y update && dnf install -y \
     rsyslog \
     unzip \
     wget \
-    which
+    which \
+    procps
 
     #    && yum-config-manager --enable remi-php${PHP_VERSION_TRANSFORMED} \
 RUN export PHP_VERSION_TRANSFORMED=$(echo "${PHP_VERSION}" | sed 's#\.##g')  \
