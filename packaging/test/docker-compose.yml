@@ -182,9 +182,9 @@ services:
                 - PHP_VERSION=7.2
 
     rpm-php84:
-        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-8.4-0.0.3
+        image: elasticobservability/apm-agent-php-dev:packages-test-rpm-php-8.4-0.1.1
         build:
-            context: centos
+            context: fedora
             dockerfile: Dockerfile
             args:
                 - PHP_VERSION=8.4
