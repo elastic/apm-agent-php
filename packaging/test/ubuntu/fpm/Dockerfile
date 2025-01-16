@@ -31,7 +31,6 @@ RUN apt-get -qq -y --no-install-recommends install software-properties-common \
         php${PHP_VERSION} \
         libapache2-mod-fcgid \
         php${PHP_VERSION}-curl \
-        php${PHP_VERSION}-ds \
         php${PHP_VERSION}-fpm \
         php${PHP_VERSION}-mbstring \
         php${PHP_VERSION}-mysql \
