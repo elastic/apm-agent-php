@@ -20,6 +20,14 @@ endif::[]
 
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
+
+[[release-notes-v1.15.0]]
+=== v1.15.0 - 2025/01/17
+==== Features
+
+- Add php 8.4 compatibility {pull}1255[#1255]
+- Added warning log for Xdebug incompatibility {pull}1256[#1256] {pull}1257[#1257]
+
 [[release-notes-v1.14.1]]
 === v1.14.1 - 2024/09/05
 ==== Bug fixes
