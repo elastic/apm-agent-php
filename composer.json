@@ -8,7 +8,7 @@
         { "name": "Sergey Kleyman" }
     ],
     "require": {
-        "php": "^7.2||8.0.*||8.1.*||8.2.*||8.3.*",
+        "php": "^7.2||8.0.*||8.1.*||8.2.*||8.3.*||8.4.*",
         "ext-json": "*",
         "ext-pcntl": "*",
         "psr/log": "^1.0"
@@ -24,11 +24,11 @@
         "guzzlehttp/guzzle": "^6.5.5||^7.4.4",
         "justinrainbow/json-schema": "^5.2.12",
         "monolog/monolog": "^2.7",
-        "php-ds/php-ds": "^1.4.1",
+        "php-ds/php-ds": "^1.5.0",
         "php-parallel-lint/php-console-highlighter": "^1.0",
         "php-parallel-lint/php-parallel-lint": "1.3.2",
-        "phpstan/phpstan": "1.10.14",
-        "phpstan/phpstan-phpunit": "^1.1.1",
+        "phpstan/phpstan": "^1.12",
+        "phpstan/phpstan-phpunit": "^1.4",        
         "phpunit/phpunit": "^8.5||^9.5",
         "react/async": "^3.0",
         "react/http": "^1.6",

@@ -25,11 +25,18 @@ namespace ElasticApmTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use PHPUnit\Framework\Assert;
 
 final class AssertMessageStackScopeData implements LoggableInterface
 {
+    /** @var int */
+    public static $nextId = 1;
+
+    /** @var int */
+    public $id;
+
     /** @var Pair<string, array<string, mixed>>[] */
     public $subScopesStack;
 
@@ -39,6 +46,10 @@ final class AssertMessageStackScopeData implements LoggableInterface
      */
     public function __construct(string $name, array $initialCtx)
     {
+        if (self::$nextId === PHP_INT_MAX) {
+            self::$nextId = 1;
+        }
+        $this->id = self::$nextId++;
         $this->subScopesStack = [new Pair($name, $initialCtx)];
     }
 
@@ -73,6 +84,7 @@ final class AssertMessageStackScopeData implements LoggableInterface
 
     public function toLog(LogStreamInterface $stream): void
     {
-        $stream->toLogAs(['subScopesStack count' => count($this->subScopesStack)]);
+        $name = ArrayUtil::isEmpty($this->subScopesStack) ? 'N/A' : ArrayUtilForTests::getFirstValue($this->subScopesStack)->first;
+        $stream->toLogAs(['ID' => $this->id, 'name' => $name, 'subScopesStack count' => count($this->subScopesStack)]);
     }
 }

@@ -181,25 +181,47 @@ bool isZendAstListKind( zend_ast_kind kind )
 }
 
 /**
- * zend_ast_create and zend_ast_create_ex allowed up to 4 child* parameters for version before PHP v8
- * and the limit was increased to 5 in PHP v8
+ * Max number of children for AST nodes is
+ *      4 for PHP before 8.0
+ *      5 for PHP from 8.0 but before 8.4
+ *      6 for PHP from 8.4
  *
  * @see ZEND_AST_SPEC_CALL_EX
+ *
+ * When adding support for a new PHP version:
+ *      - Make sure g_astNodeMaxChildCount is correct
+ *      - If g_astNodeMaxChildCount changed then update createAstEx()
+ *      - Make sure zendAstKindToString() in AST_debug.cpp includes all the enum cases from enum _zend_ast_kind in <php-src>/Zend/zend_ast.h
+ *      - Increment minor part of PHP version in static_assert below
  */
-static size_t g_maxCreateAstChildCount =
+static_assert(
+    PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 5, 0 ),
+    "Make sure g_astNodeMaxChildCount is correct. See max number of children in enum _zend_ast_kind in <php-src>/Zend/zend_ast.h"
+);
+static constexpr size_t g_astNodeMaxChildCount =
     #if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 0, 0 )
-    4
+    4 // PHP before 8.0
+    #elif PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 4, 0 )
+    5 // PHP from 8.0 but before 8.4
     #else
-    5
+    6 // PHP from 8.4
     #endif
 ;
+static constexpr size_t g_zendKindWithLargestChildNodesCount =
+    #if PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 0, 0 )
+    ZEND_AST_FOR // PHP before 8.0
+    #else
+    ZEND_AST_PARAM // PHP from 8.0
+    #endif
+;
+static_assert(g_zendKindWithLargestChildNodesCount == (g_astNodeMaxChildCount << ZEND_AST_NUM_CHILDREN_SHIFT));
 
 zend_ast* createAstEx( zend_ast_kind kind, zend_ast_attr attr, ZendAstPtrArrayView children )
 {
     char txtOutStreamBuf[ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
-    ELASTIC_APM_ASSERT_LE_UINT64( children.count, g_maxCreateAstChildCount );
+    ELASTIC_APM_ASSERT_LE_UINT64( children.count, g_astNodeMaxChildCount );
     ELASTIC_APM_ASSERT( ! isZendAstListKind( kind ), "kind: %s", streamZendAstKind( kind, &txtOutStream ) );
 
     switch( children.count )
@@ -218,6 +240,10 @@ zend_ast* createAstEx( zend_ast_kind kind, zend_ast_attr attr, ZendAstPtrArrayVi
         case 5:
             return zend_ast_create_ex( kind, attr, children.values[ 0 ], children.values[ 1 ], children.values[ 2 ], children.values[ 3 ], children.values[ 4 ] );
         #endif
+        #if PHP_VERSION_ID >= ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 4, 0 )
+        case 6:
+            return zend_ast_create_ex( kind, attr, children.values[ 0 ], children.values[ 1 ], children.values[ 2 ], children.values[ 3 ], children.values[ 4 ], children.values[ 5 ] );
+        #endif
         default: // silence compiler warning
             return nullptr;
     }
@@ -227,9 +253,9 @@ ResultCode createAstExCheckChildrenCount( zend_ast_kind kind, zend_ast_attr attr
 {
     ResultCode resultCode;
 
-    if ( children.count > g_maxCreateAstChildCount )
+    if ( children.count > g_astNodeMaxChildCount )
     {
-        ELASTIC_APM_LOG_ERROR( "Number of children is larger than max; children.count: %u, g_maxCreateAstChildCount: %u", (unsigned)children.count, (unsigned)g_maxCreateAstChildCount );
+        ELASTIC_APM_LOG_ERROR( "Number of children is larger than max; children.count: %u, g_astNodeMaxChildCount: %u", (unsigned)children.count, (unsigned)g_astNodeMaxChildCount );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE_EX( resultFailure );
     }
 

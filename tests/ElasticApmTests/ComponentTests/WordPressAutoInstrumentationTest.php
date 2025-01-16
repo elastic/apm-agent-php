@@ -41,6 +41,7 @@ use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
 use ElasticApmTests\ComponentTests\Util\ExpectedEventCounts;
 use ElasticApmTests\ComponentTests\WordPress\WordPressSpanExpectationsBuilder;
 use ElasticApmTests\ComponentTests\WordPress\WordPressMockBridge;
+use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\DataProviderForTestBuilder;
 use ElasticApmTests\Util\FileUtilForTests;
@@ -51,6 +52,7 @@ use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\SpanExpectations;
 use ElasticApmTests\Util\SpanSequenceValidator;
 use ElasticApmTests\Util\StackTraceExpectations;
+use ElasticApmTests\Util\TestCaseBase;
 use ElasticApmTests\Util\TextUtilForTests;
 use SplFileInfo;
 
@@ -218,6 +220,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             $adaptedLines[] = $line . $endOfLine;
         }
 
+        $dbgCtx->pop();
         return implode(/* separator */ '', $adaptedLines);
     }
 
@@ -281,6 +284,8 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             $loggerProxyDebug && $loggerProxyDebug->log(__LINE__, 'Created file', ['adaptedSrcFileFullPath' => $adaptedSrcFileFullPath]);
         }
         $dbgCtx->popSubScope();
+
+        $dbgCtx->pop();
     }
 
     /**
@@ -343,6 +348,8 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         self::assertNotFalse(file_put_contents($adaptedFilePath, $adaptedFileContents));
         $filePath = $adaptedFilePath;
         $fileContents = $adaptedFileContents;
+
+        $dbgCtx->pop();
     }
 
     private static function logFileContentOnMismatch(string $filePath, string $fileContents): void
@@ -359,8 +366,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
 
     private static function verifyAstProcessGeneratedFiles(string $astProcessDebugDumpOutDir, string $phpFileRelativePath): void
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx);
-        $dbgCtx->add(['astProcessDebugDumpOutDir' => $astProcessDebugDumpOutDir, 'phpFileRelativePath' => $phpFileRelativePath]);
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
         $logger = self::getLoggerForThisClass()->addAllContext(['astProcessDebugDumpOutDir' => $astProcessDebugDumpOutDir, 'phpFileRelativePath' => $phpFileRelativePath]);
 
@@ -388,6 +394,8 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             self::assertFileExists($fileFullPath);
             $fileContents = file_get_contents($fileFullPath);
             self::assertNotFalse($fileContents);
+
+            $dbgCtx->pop();
         };
 
         ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Starting...');
@@ -414,9 +422,11 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
             return;
         }
 
-        $logCtx = ['astMatches' => $astMatches];
+        $logCtx = compact('astMatches');
+        $dbgCtx->add(compact('astMatches', 'actualAstFilePath', 'expectedAstFilePath'));
         if (AmbientContextForTests::testConfig()->compareAstConvertedBackToSource) {
-            $logCtx['phpMatches'] = $phpMatches;
+            ArrayUtilForTests::append(compact('phpMatches'), /* in,out */ $logCtx);
+            $dbgCtx->add(compact('phpMatches', 'actualPhpFilePath', 'expectedPhpFilePath'));
         }
 
         ($loggerProxy = $logger->ifCriticalLevelEnabled(__LINE__, __FUNCTION__))
@@ -432,9 +442,9 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         }
 
         if (!$astMatches) {
-            self::assertSame($expectedAstFilePath, $actualAstFilePath);
+            TestCaseBase::fail('Dumpted ASTs do not match');
         } elseif (AmbientContextForTests::testConfig()->compareAstConvertedBackToSource) {
-            self::assertSame($expectedPhpFilePath, $actualPhpFileContents);
+            TestCaseBase::fail('ASTs converted back to source do not match');
         }
     }
 
@@ -523,6 +533,8 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         WordPressMockBridge::loadMockSource($srcVariantBaseDir, /* isExpectedVariant */ false);
 
         WordPressMockBridge::runMockSource($appCodeArgs);
+
+        $dbgCtx->pop();
     }
 
     public static function isWordPressDataToBeExpected(MixedMap $testArgs): bool
@@ -737,6 +749,8 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
                 self::assertSame($expectedServiceFramework->version, $metadata->service->framework->version);
             }
         }
+
+        $dbgCtx->pop();
     }
 
     /**

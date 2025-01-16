@@ -572,6 +572,7 @@ final class TransactionForExtensionRequest
             return $requestInitStartTime;
         }
 
+        /** @phpstan-ignore-next-line */
         $serverRequestTimeInSeconds = floatval($serverRequestTimeAsString);
         $serverRequestTimeInMicroseconds = $serverRequestTimeInSeconds * TimeUtil::NUMBER_OF_MICROSECONDS_IN_SECOND;
         if ($requestInitStartTime < $serverRequestTimeInMicroseconds) {

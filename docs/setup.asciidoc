@@ -18,7 +18,7 @@ NOTE: Experimentally, we also provide packages for the ARM64 architecture - plea
 
 [discrete]
 ==== PHP
-The agent supports PHP versions 7.2-8.3.
+The agent supports PHP versions 7.2-8.4.
 
 [discrete]
 ==== curl

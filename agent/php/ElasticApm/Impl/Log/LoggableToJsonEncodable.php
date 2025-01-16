@@ -108,6 +108,7 @@ final class LoggableToJsonEncodable
             return self::convertObject($value, $depth);
         }
 
+        /** @phpstan-ignore-next-line */
         return [LogConsts::TYPE_KEY => DbgUtil::getType($value), LogConsts::VALUE_AS_STRING_KEY => strval($value)];
     }
 

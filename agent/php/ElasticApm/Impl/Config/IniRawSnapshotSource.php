@@ -79,6 +79,7 @@ final class IniRawSnapshotSource implements RawSnapshotSourceInterface
             return $iniValue ? 'true' : 'false';
         }
 
+        /** @phpstan-ignore-next-line */
         return strval($iniValue);
     }
 }

@@ -33,17 +33,18 @@ final class ArrayUtil
     use StaticClassTrait;
 
     /**
-     * @param string        $key
-     * @param array<mixed>  $array
-     * @param mixed         $valueDst
+     * @template TKey of array-key
+     * @template TValue
+     *
+     * @param TKey                 $key
+     * @param array<TKey, TValue>  $array
+     * @param TValue              &$valueDst
+     *
+     * @param-out TValue           $valueDst
      *
      * @return bool
-     *
-     * @template        T
-     * @phpstan-param   T[] $array
-     * @phpstan-param   T   $valueDst
      */
-    public static function getValueIfKeyExists(string $key, array $array, &$valueDst): bool
+    public static function getValueIfKeyExists($key, array $array, /* out */ &$valueDst): bool
     {
         if (!array_key_exists($key, $array)) {
             return false;
@@ -54,7 +55,7 @@ final class ArrayUtil
     }
 
     /**
-     * @template TKey of string|int
+     * @template TKey of array-key
      * @template TValue
      *
      * @param TKey                $key

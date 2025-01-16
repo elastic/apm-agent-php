@@ -29,7 +29,9 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
+use Elastic\Apm\Impl\Util\PhpErrorUtil;
 use ElasticApmTests\Util\LogCategoryForTests;
+use ElasticApmTests\Util\TestCaseBase;
 use ErrorException;
 use Exception;
 use PHPUnit\Framework\Assert;
@@ -72,23 +74,23 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
             __FILE__
         )->addContext('this', $this);
 
-        set_error_handler(
-            function (
-                int $type,
-                string $message,
-                string $srcFile,
-                int $srcLine
-            ): bool {
-                $msgForEx = LoggableToString::convert(
-                    [
-                        'message' => $message,
-                        'error type' => $type,
-                        'srcFile:srcLine' => $srcFile . ':' . $srcLine,
-                    ]
-                );
+        $prevHandler = set_error_handler(
+            function (int $type, string $message, string $srcFile, int $srcLine, ?array $context = null): bool {
+                $msgCtx = [
+                    'message'         => $message,
+                    'error type'      => PhpErrorUtil::getTypeName($type) . ' (as int :' . $type . ')',
+                    'srcFile:srcLine' => $srcFile . ':' . $srcLine,
+                ];
+                if ($context !== null) {
+                    $msgCtx['context'] = $context;
+                }
+
+                $msgForEx = LoggableToString::convert($msgCtx);
                 throw new ErrorException($msgForEx, /* code: */ 0, $type, $srcFile, $srcLine);
-            }
+            },
+            E_ALL & ~E_DEPRECATED
         );
+        TestCaseBase::assertNull($prevHandler);
     }
 
     /** @inheritDoc */

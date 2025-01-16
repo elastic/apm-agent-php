@@ -43,7 +43,7 @@ final class DeserializationUtil
         return DeserializationUtil::buildException('Unknown key: ' . $key);
     }
 
-    public static function buildException(?string $msgDetails = null, int $code = 0, Throwable $previous = null): DeserializationException
+    public static function buildException(?string $msgDetails = null, int $code = 0, ?Throwable $previous = null): DeserializationException
     {
         $msgStart = 'Deserialization failed';
         if ($msgDetails !== null) {

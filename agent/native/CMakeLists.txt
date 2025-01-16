@@ -43,7 +43,7 @@ include(elastic_conan_debugsymbols)
 
 # Install project dependencies
 
-set(_supported_php_versions 72 73 74 80 81 82 83)
+set(_supported_php_versions 72 73 74 80 81 82 83 84)
 
 function(get_php_api_from_release php_version ret_val)
     block(SCOPE_FOR VARIABLES)
@@ -54,6 +54,7 @@ function(get_php_api_from_release php_version ret_val)
         set(_php_release_81 20210902)
         set(_php_release_82 20220829)
         set(_php_release_83 20230831)
+        set(_php_release_84 20240924)
 
         set(${ret_val} ${_php_release_${php_version}})
         return(PROPAGATE ${ret_val})
