@@ -56,7 +56,7 @@ jobs:
       - name: Download package artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: package-*
+          pattern: packages-*
           path: ${{ env.BUILD_PACKAGES }}
       - name: Moving packages out of folders
         run: |
