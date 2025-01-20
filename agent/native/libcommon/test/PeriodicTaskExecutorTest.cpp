@@ -47,7 +47,13 @@ TEST(PeriodicTaskExecutorTest, resumeAfterFork) {
 
     periodicTaskExecutor_.setInterval(20ms);
 
-    pthread_atfork(fh_prepare, fh_parent, fh_child);
+
+    static bool pthread_atfork_called = false;
+
+    if (!pthread_atfork_called) {
+        pthread_atfork(fh_prepare, fh_parent, fh_child);
+        pthread_atfork_called = true;
+    }
 
     periodicTaskExecutor_.resumePeriodicTasks();
     std::this_thread::sleep_for(100ms);
@@ -60,7 +66,7 @@ TEST(PeriodicTaskExecutorTest, resumeAfterFork) {
 
     ASSERT_GE(counter.load(), 13); // should be 15 in ideal world
     if (pid == 0) {
-        exit(0);
+        exit(testing::Test::HasFailure());
     }
 }
 

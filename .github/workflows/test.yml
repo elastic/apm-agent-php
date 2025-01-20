@@ -1,6 +1,12 @@
 name: test
 
 on:
+  workflow_call:
+    inputs:
+      build_arch:
+        required: true
+        type: string
+        default: 'all'
   pull_request:
     paths-ignore:
       - "**/*.asciidoc"
@@ -26,13 +32,21 @@ concurrency:
 jobs:
   build:
     uses: ./.github/workflows/build.yml
+    with:
+      build_arch: all
+
+  setup-build-matrix:
+    uses: ./.github/workflows/build-arch-matrix-generator.yml
+    with:
+      build_arch: all
 
   phpt-tests:
     name: phpt-tests
-    runs-on: ubuntu-latest
     needs:
       - build
-    timeout-minutes: 10
+      - setup-build-matrix
+    runs-on: ${{ matrix.data.run_qemu && 'observability-linux-2-arm64' || 'ubuntu-latest' }}
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -44,25 +58,24 @@ jobs:
           - "8.1"
           - "8.2"
           - "8.3"
-        arch:
-          - "linux-x86-64"
-          - "linuxmusl-x86-64"
+          - "8.4"
+        data: ${{ fromJson(needs.setup-build-matrix.outputs.matrix-combinations).include }}
     env:
       PHP_VERSION: ${{ matrix.php-version }}
-      BUILD_ARCHITECTURE: ${{ matrix.arch }}
+      BUILD_ARCHITECTURE: ${{ matrix.data.arch }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: package-parts-${{ matrix.data.arch }}
+          path: agent/native/_build/${{ matrix.data.arch }}-release/
       - name: Prepare
         run: make -f .ci/Makefile prepare
-      - uses: actions/download-artifact@v3
-        with:
-          name: package-parts-${{ matrix.arch }}
-          path: agent/native/_build/${{ matrix.arch }}-release/
-      - name: Display structure of downloaded files
-        run: ls -R
       - name: phpt-unit-tests
-        run: make -f .ci/Makefile run-phpt-tests
-
+        run: |
+          tree agent/native/_build/
+          uname -a
+          make -f .ci/Makefile run-phpt-tests
   static-checks-unit-tests:
     name: static-checks-unit-tests
     runs-on: ubuntu-latest
@@ -78,6 +91,7 @@ jobs:
           - "8.1"
           - "8.2"
           - "8.3"
+          - "8.4"
         dockerfile:
           - "Dockerfile"
           - "Dockerfile.alpine"
@@ -98,28 +112,36 @@ jobs:
           -exec bash -c 'mv {} "build/${PHP_VERSION}-${DOCKERFILE}-$(basename {})"'
           \;
       - if: success() || failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-${{ matrix.php-version }}-${{ matrix.dockerfile }}
           path: build/*junit.xml
           if-no-files-found: error
   build-packages:
+    permissions:
+      contents: read
+      packages: read
     needs:
       - build
       - static-checks-unit-tests
       - phpt-tests
     uses: ./.github/workflows/build-packages.yml
+    secrets: inherit
 
   generate-test-packages-matrix:
     uses: ./.github/workflows/generate-matrix.yml
 
   test-packages:
+    permissions:
+      contents: read
+      packages: read
     needs:
       - build-packages
       - generate-test-packages-matrix
     uses: ./.github/workflows/test-packages.yml
     with:
       include: ${{ needs.generate-test-packages-matrix.outputs.include }}
+    secrets: inherit
 
   # The very last job to report whether the Workflow passed.
   # This will act as the Branch Protection gatekeeper

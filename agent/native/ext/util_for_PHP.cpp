@@ -214,8 +214,7 @@ ResultCode callPhpFunction( StringView phpFunctionName, uint32_t argsCount, zval
             , args );
     if ( callUserFunctionRetVal != SUCCESS )
     {
-        ELASTIC_APM_LOG_ERROR( "call_user_function failed. Return value: %d. PHP function name: `%.*s'. argsCount: %u."
-                , callUserFunctionRetVal, (int) phpFunctionName.length, phpFunctionName.begin, argsCount );
+        ELASTIC_APM_LOG_ERROR( "call_user_function failed. Return value: %d. PHP function name: `%.*s'. argsCount: %u. Exception: %p", callUserFunctionRetVal, (int) phpFunctionName.length, phpFunctionName.begin, argsCount, EG( exception ) );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 

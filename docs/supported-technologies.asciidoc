@@ -14,13 +14,14 @@ We will use the results to add support for the most requested technologies.
 [[supported-os]]
 === Operating systems
 
-The agent supports Linux operating system.
+We officially support Linux systems (glibc, deb and rpm packages) and Alpine Linux (musl libc - apk packages) for x86_64 (AMD64) processors.
+Experimentally, we also provide packages for the ARM64 architecture - please note that these packages have not been fully tested.
 
 [float]
 [[supported-php-versions]]
 === PHP versions
 
-The agent supports PHP versions 7.2-8.3.
+The agent supports PHP versions 7.2-8.4.
 
 [float]
 [[unsupported-php-sapis]]

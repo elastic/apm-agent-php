@@ -1,6 +1,7 @@
 SHELL = /bin/bash
 MAKEFLAGS += --no-print-directory
 IMAGE:=php-packaging
+IMAGE_TAG:=latest
 NAME:=apm-agent-php
 VERSION?=$(shell grep 'VERSION' ../agent/php/ElasticApm/ElasticApm.php | cut -d= -f2 | tr -d " " | sed "s/'\(.*\)'.*/\1/g")
 OUTPUT:=build/packages
@@ -10,6 +11,14 @@ SEL_DISTRO?=buster
 GIT_SHA?=$(shell git rev-parse HEAD || echo "unknown")
 RELEASE_VERSION?=
 GITHUB_RELEASES_URL=https://github.com/elastic/apm-agent-php/releases/download
+BUILD_ARCH := $(if $(BUILD_ARCH),$(BUILD_ARCH),"x86-64")
+
+ifeq ($(shell [ $(PHP_VERSION) \< 8.4 ] && echo true), true)
+  RPM_IMAGE_VERSION = 0.0.3 # PHP < 8.4 - image using centos
+else
+  RPM_IMAGE_VERSION = 0.1.1 # PHP 8.4+ - image using fedora
+endif
+
 export FPM_FLAGS=
 
 ifneq ($(PHP_VERSION), 7.2)
@@ -27,7 +36,7 @@ clean: ## Clean the generated packages
 
 .PHONY: prepare
 prepare: ## Build docker image for the packaging
-	docker build -t $(IMAGE) . || exit 1
+	docker build --build-arg IMAGE_TAG=$(IMAGE_TAG) -t $(IMAGE) . || exit 1
 
 .PHONY: build-docker-images
 build-docker-images: prepare prepare-apk prepare-deb prepare-rpm prepare-tar prepare-deb-apache prepare-deb-fpm ## Build all the docker images
@@ -45,7 +54,7 @@ create-%: prepare  ## Create the specific package
 		-e OUTPUT=$(OUTPUT) \
 		-e FPM_FLAGS=${FPM_FLAGS} \
 		-e PHP_AGENT_DIR=${PHP_AGENT_DIR} \
-		-e BUILD_ARCH=x86-64 \
+		-e BUILD_ARCH=$(BUILD_ARCH) \
 		-w /app $(IMAGE)
 	@echo "::endgroup::"
 
@@ -75,33 +84,57 @@ info: apk-info deb-info rpm-info tar-info  ## Show the package metadata for all 
 .PHONY: apk-info
 apk-info:  ## Show the apk package metadata
 	cd $(PWD) ;\
-	BINARY=$$(ls -1 $(OUTPUT)/*.apk) ;\
+	if [ "$(BUILD_ARCH)" = "arm64" ]; then \
+		BINARY=$$(find $(OUTPUT)/ -type f -name "*aarch64*.apk" -o -name "*arm64*.apk" | head -n 1); \
+	elif [ "$(BUILD_ARCH)" = "x86-64" ]; then \
+		BINARY=$$(find $(OUTPUT)/ -type f -name "*x86_64*.apk" -o -name "*amd64*.apk" | head -n 1); \
+	else \
+		echo "Unsupported BUILD_ARCH: $(BUILD_ARCH)"; \
+		exit 1; \
+	fi; \
+	echo $$BINARY; \
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /sbin/apk $(IMAGE) manifest $$BINARY
 
 .PHONY: deb-info
 deb-info:  ## Show the deb package metadata
 	cd $(PWD) ;\
-	BINARY=$$(ls -1 $(OUTPUT)/*.deb) ;\
+	if [ "$(BUILD_ARCH)" = "arm64" ]; then \
+		BINARY=$$(find $(OUTPUT)/ -type f -name "*aarch64*.deb" -o -name "*arm64*.deb" | head -n 1); \
+	elif [ "$(BUILD_ARCH)" = "x86-64" ]; then \
+		BINARY=$$(find $(OUTPUT)/ -type f -name "*x86_64*.deb" -o -name "*amd64*.deb" | head -n 1); \
+	else \
+		echo "Unsupported BUILD_ARCH: $(BUILD_ARCH)"; \
+		exit 1; \
+	fi; \
+	echo $$BINARY; \
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) --info $$BINARY ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/dpkg $(IMAGE) -c $$BINARY
 
 .PHONY: rpm-info
 rpm-info:  ## Show the rpm package metadata
 	cd $(PWD) ;\
-	BINARY=$$(ls -1 $(OUTPUT)/*.rpm) ;\
+	if [ "$(BUILD_ARCH)" = "arm64" ]; then \
+		BINARY=$$(find $(OUTPUT)/ -type f -name "*aarch64*.rpm" -o -name "*arm64*.rpm" | head -n 1); \
+	elif [ "$(BUILD_ARCH)" = "x86-64" ]; then \
+		BINARY=$$(find $(OUTPUT)/ -type f -name "*x86_64*.rpm" -o -name "*amd64*.rpm" | head -n 1); \
+	else \
+		echo "Unsupported BUILD_ARCH: $(BUILD_ARCH)"; \
+		exit 1; \
+	fi; \
+	echo $$BINARY; \
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qip $$BINARY ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/rpm $(IMAGE) -qlp $$BINARY
 
 .PHONY: tar-info
 tar-info:  ## Show the tar package metadata
 	cd $(PWD) ;\
-	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-linux-x86-64*.tar) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-linux-$(BUILD_ARCH)*.tar) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY ;\
-	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-debugsymbols-linux-x86-64.tar) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-debugsymbols-linux-$(BUILD_ARCH).tar) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY ;\
-	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-linuxmusl-x86-64*.tar) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-linuxmusl-$(BUILD_ARCH)*.tar) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY ;\
-	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-debugsymbols-linuxmusl-x86-64.tar) ;\
+	BINARY=$$(ls -1 $(OUTPUT)/$(NAME)-debugsymbols-linuxmusl-$(BUILD_ARCH).tar) ;\
 	docker run --rm -v $(PWD):/app -w /app --entrypoint /usr/bin/tar $(IMAGE) -tvf $$BINARY
 
 .PHONY: prepare-apk
@@ -172,7 +205,7 @@ tar-install: ## Install the tar installer to run some smoke tests
 .PHONY: rpm-install
 rpm-install: ## Install the rpm installer to run some smoke tests
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	TYPE=rpm $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-0.0.1
+	TYPE=rpm $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-$(RPM_IMAGE_VERSION)
 	@echo "::endgroup::"
 
 .PHONY: deb-install-in-apache
@@ -205,7 +238,7 @@ deb-install-release-github: ## Install the deb installer from a given release to
 .PHONY: rpm-install-release-github
 rpm-install-release-github: ## Install the rpm installer from a given release to run some smoke tests
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=release-github $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-0.0.1
+	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=release-github $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-$(RPM_IMAGE_VERSION)
 	@echo "::endgroup::"
 
 .PHONY: tar-install-release-github
@@ -247,7 +280,7 @@ deb-lifecycle-testing-in-fpm: ## Lifecycle testing for the deb installer with fp
 .PHONY: rpm-lifecycle-testing
 rpm-lifecycle-testing:  ## Lifecycle testing for the rpm installer
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	TYPE=rpm-uninstall PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-0.0.1
+	TYPE=rpm-uninstall PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-$(RPM_IMAGE_VERSION)
 	@echo "::endgroup::"
 
 .PHONY: tar-lifecycle-testing
@@ -262,13 +295,13 @@ rpm-php-upgrade-testing: PHP_VERSION=7.2
 rpm-php-upgrade-testing: ## PHP upgrade, from 7.2 to 7.4, testing for the rpm installer
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
 	echo "'$(PHP_VERSION)'"
-	TYPE=php-upgrade PHP_VERSION=$(PHP_VERSION) PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-0.0.2
+	TYPE=php-upgrade PHP_VERSION=$(PHP_VERSION) PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-$(RPM_IMAGE_VERSION)
 	@echo "::endgroup::"
 
 .PHONY: rpm-agent-upgrade-testing
 rpm-agent-upgrade-testing:  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the rpm installer
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=agent-upgrade PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-0.0.1
+	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=agent-upgrade PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-$(RPM_IMAGE_VERSION)
 	@echo "::endgroup::"
 
 .PHONY: deb-agent-upgrade-testing
@@ -280,7 +313,7 @@ deb-agent-upgrade-testing: ## Agent upgrade, from 1.0.0 to the current generated
 .PHONY: rpm-agent-upgrade-testing-local
 rpm-agent-upgrade-testing-local:  ## Agent upgrade, from 1.0.0 to the current generated one, testing for the rpm installer
 	@echo "::group::$@"  # Helping to group logs in GitHub actions
-	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=agent-upgrade-local PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-0.0.1
+	VERSION=$(RELEASE_VERSION) GITHUB_RELEASES_URL=$(GITHUB_RELEASES_URL) TYPE=agent-upgrade-local PACKAGE=$(NAME) $(PWD)/.ci/run_docker_with_component_tests.sh elasticobservability/apm-agent-php-dev:packages-test-rpm-php-$(PHP_VERSION)-$(RPM_IMAGE_VERSION)
 	@echo "::endgroup::"
 
 .PHONY: deb-agent-upgrade-testing-local

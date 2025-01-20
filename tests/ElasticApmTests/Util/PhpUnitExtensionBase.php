@@ -64,6 +64,7 @@ abstract class PhpUnitExtensionBase implements BeforeTestHook
      */
     public function executeBeforeTest(string $test): void
     {
+        AssertMessageStack::reset();
         self::$timestampBeforeTest = AmbientContextForTests::clock()->getSystemClockCurrentTime();
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->includeStackTrace()->log('', ['timestampBeforeTest' => TimeUtilForTests::timestampToLoggable(self::$timestampBeforeTest)]);

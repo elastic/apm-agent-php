@@ -31,7 +31,7 @@ class DummyExceptionForTests extends RuntimeException
     public const NAMESPACE = __NAMESPACE__;
     public const FQ_CLASS_NAME = __CLASS__;
 
-    public function __construct(string $message, int $code = 0, Throwable $previous = null)
+    public function __construct(string $message, int $code = 0, ?Throwable $previous = null)
     {
         parent::__construct($message, $code, $previous);
     }

@@ -85,7 +85,7 @@ class TestCaseBase extends TestCase
         string $class,
         callable $execute,
         string $message = '',
-        callable $inspect = null
+        ?callable $inspect = null
     ): void {
         try {
             $execute();
@@ -140,6 +140,7 @@ class TestCaseBase extends TestCase
             return is_float($value) || is_int($value);
         };
         if ($isNumeric($expected) && $isNumeric($actual) && (is_float($expected) !== is_float($actual))) {
+            /** @phpstan-ignore-next-line */
             self::assertSame(floatval($expected), floatval($actual), $message);
         } else {
             self::assertSame($expected, $actual, $message);
@@ -748,6 +749,7 @@ class TestCaseBase extends TestCase
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         self::assertGreaterThanOrEqual($expectedMinCount, count($haystack));
+        $dbgCtx->pop();
     }
 
     /**
@@ -820,6 +822,8 @@ class TestCaseBase extends TestCase
             self::addMessageStackToException($ex);
             throw $ex;
         }
+
+        $dbgCtx->pop();
     }
 
     /**
@@ -1126,6 +1130,23 @@ class TestCaseBase extends TestCase
     {
         try {
             Assert::assertContains($needle, $haystack, $message);
+        } catch (AssertionFailedError $ex) {
+            self::addMessageStackToException($ex);
+            throw $ex;
+        }
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public static function assertMatchesRegularExpression(string $pattern, string $string, string $message = ''): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        try {
+            $pregMatchRetVal =  preg_match($pattern, $string);
+            $dbgCtx->add(compact('pregMatchRetVal'));
+            Assert::assertTrue($pregMatchRetVal > 0, $message);
         } catch (AssertionFailedError $ex) {
             self::addMessageStackToException($ex);
             throw $ex;

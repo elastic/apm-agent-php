@@ -1,31 +1,47 @@
 ---
-
 # Runs the build-packages based on the provided files in test.yml
 name: build-packages
 
 on:
   workflow_call: ~
 
+permissions:
+  contents: read
+
 jobs:
   build-packages:
     runs-on: ubuntu-latest
+    permissions:
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        BUILD_ARCH: ["x86-64", "arm64"]
+    env:
+      BUILD_ARCH: ${{ matrix.BUILD_ARCH }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
-          name: package-parts-linux-x86-64
-          path: agent/native/_build/linux-x86-64-release/
-      - uses: actions/download-artifact@v3
+          name: package-parts-linux-${{ matrix.BUILD_ARCH }}
+          path: agent/native/_build/linux-${{ matrix.BUILD_ARCH }}-release/
+      - uses: actions/download-artifact@v4
         with:
-          name: package-parts-linuxmusl-x86-64
-          path: agent/native/_build/linuxmusl-x86-64-release/
+          name: package-parts-linuxmusl-${{ matrix.BUILD_ARCH }}
+          path: agent/native/_build/linuxmusl-${{ matrix.BUILD_ARCH }}-release/
+      - name: Log in to the Container registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: package
         run: make -C packaging package
       - name: package info
         run: make -C packaging info
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
-          name: package
+          name: packages-${{ matrix.BUILD_ARCH }}
           path: |
             build/packages/*
             !build/packages/**/*.sha512

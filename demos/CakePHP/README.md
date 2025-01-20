@@ -3,8 +3,8 @@
 Set up application.
 
 ```
-$ docker-compose build
-$ docker-compose up
+$ docker compose build
+$ docker compose up
 ```
 After it open the next link
 ```

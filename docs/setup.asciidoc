@@ -11,12 +11,14 @@ endif::[]
 === Prerequisites
 
 [discrete]
-==== Operating system
-The agent is currently only available for the Linux operating system.
+==== Operating system and architecture
+We officially support Linux systems (glibc, deb and rpm packages) and Alpine Linux (musl libc - apk packages) for x86_64 (AMD64) processors.
+
+NOTE: Experimentally, we also provide packages for the ARM64 architecture - please note that these packages have not been fully tested.
 
 [discrete]
 ==== PHP
-The agent supports PHP versions 7.2-8.2.
+The agent supports PHP versions 7.2-8.4.
 
 [discrete]
 ==== curl
@@ -105,6 +107,21 @@ So if you would like to build `elastic_apm-*.so` on one machine and
 then deploy it on a different machine, you will need to copy both
 the built `elastic_apm-*.so` and the downloaded source files.
 
-=== Limitations
+[discrete]
 [[limitations]]
-Please be aware that if the https://www.php.net/manual/en/ini.core.php#ini.open-basedir[open_basedir] option is configured in your php.ini, the installation directory of the agent (by default /opt/elastic/apm-agent-php) must be located within a path included in the https://www.php.net/manual/en/ini.core.php#ini.open-basedir[open_basedir] configuration. Otherwise, the agent will not be loaded correctly.
+=== Limitations
+
+[discrete]
+[[limitation-open_basedir]]
+==== `open_basedir` PHP configuration option
+Please be aware that if the https://www.php.net/manual/en/ini.core.php#ini.open-basedir[`open_basedir`]
+option is configured in your php.ini,
+the installation directory of the agent (by default `/opt/elastic/apm-agent-php`)
+must be located within a path included in the
+https://www.php.net/manual/en/ini.core.php#ini.open-basedir[`open_basedir`] value.
+Otherwise, the agent will not be loaded correctly.
+
+[discrete]
+[[limitation-xdebug]]
+==== `Xdebug` stability and memory issues
+We strongly advise against running the agent alongside the xdebug extension. Using both extensions simultaneously can lead to stability issues in the instrumented application, such as memory leaks. It is highly recommended to disable xdebug, preferably by preventing it from loading in the `php.ini` configuration file.

@@ -1,5 +1,4 @@
 ---
-
 # Runs the test packages based on the provided files in test.yml
 name: test-packages
 
@@ -10,15 +9,17 @@ on:
         required: true
         type: string
       max-parallel:
-        description: 'Set the maximum number of jobs that can run simultaneously in the matrix'
+        description: "Set the maximum number of jobs that can run simultaneously in the matrix"
         default: 20
         required: false
         type: number
       package-name:
-        description: 'The artifact name with the binaries to be tested'
-        default: "package"
+        description: "The artifact name with the binaries to be tested"
         required: false
         type: string
+
+permissions:
+  contents: read
 
 jobs:
   test-packages:
@@ -35,13 +36,31 @@ jobs:
       TESTING_TYPE: ${{ matrix.item[2] }}
       ELASTIC_APM_PHP_TESTS_MATRIX_ROW: "${{ join(matrix.item, ',') }}"
       BUILD_PACKAGES: build/packages
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
+        if: ${{ inputs.package-name }}
         with:
           name: ${{ inputs.package-name }}
           path: ${{ env.BUILD_PACKAGES }}
+
+      - uses: actions/download-artifact@v4
+        if: ${{ ! inputs.package-name }}
+        with:
+          pattern: 'package*'
+          merge-multiple: true
+          path: ${{ env.BUILD_PACKAGES }}
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       ## This will help with preparing the signed artifacts that were bundled in a zip file
       - if: ${{ inputs.package-name == 'signed-artifacts' }}
@@ -51,15 +70,20 @@ jobs:
         env:
           PACKAGE_FILE: "${{ inputs.package-name }}.zip"
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: package-parts-linux-x86-64
           path: agent/native/_build/linux-x86-64-release
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: package-parts-linuxmusl-x86-64
           path: agent/native/_build/linuxmusl-x86-64-release
+
+      - name: Remove ARM64 artifacts
+        run: |
+          rm ${BUILD_PACKAGES}/apm-agent-php*arm64*
+          rm ${BUILD_PACKAGES}/apm-agent-php*aarch64*
 
       - if: ${{ env.TESTING_TYPE == 'lifecycle' }}
         name: lifecycle test
@@ -100,9 +124,9 @@ jobs:
           \;
 
       - if: success() || failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-${{ env.ELASTIC_APM_PHP_TESTS_MATRIX_ROW }}
           path: build/*junit.xml
           if-no-files-found: error
 
@@ -116,8 +140,8 @@ jobs:
           find . -name "syslog" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
           find . -name "messages" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
       - if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
-          name: syslogs
+          name: syslogs-${{ env.ELASTIC_APM_PHP_TESTS_MATRIX_ROW }}
           path: build/syslog-files/

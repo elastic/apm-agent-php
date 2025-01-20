@@ -5,8 +5,11 @@ permissions:
   contents: read
 
 on:
+  workflow_dispatch: ~
   push:
     tags: [ "v[0-9]+*" ]
+    branches:
+      - main
 
 env:
   BUILD_PACKAGES: build/packages
@@ -15,20 +18,24 @@ jobs:
 
   release-started:
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags')
     steps:
-      - uses: elastic/apm-pipeline-library/.github/actions/slack-message@current
+      - uses: elastic/oblt-actions/slack/send@v1
         with:
-          url: ${{ secrets.VAULT_ADDR }}
-          roleId: ${{ secrets.VAULT_ROLE_ID }}
-          secretId: ${{ secrets.VAULT_SECRET_ID }}
-          channel: "#apm-agent-php"
+          bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel-id: "#apm-agent-php"
           message: |
             :runner: [${{ github.repository }}] Release *${{ github.ref_name }}* has been triggered : (<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|here> for further details)
 
   build:
     uses: ./.github/workflows/build.yml
+    with:
+      build_arch: all
 
   build-packages:
+    permissions:
+      contents: read
+      packages: read
     needs:
       - build
     uses: ./.github/workflows/build-packages.yml
@@ -39,63 +46,82 @@ jobs:
       - build-packages
     env:
       BUCKET_NAME: "apm-agent-php"
+    permissions:
+      attestations: write
+      id-token: write
+      contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v3
+
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
         with:
-          name: package
+          pattern: packages-*
           path: ${{ env.BUILD_PACKAGES }}
+      - name: Moving packages out of folders
+        run: |
+          pushd ${{ env.BUILD_PACKAGES }}
+          find . -mindepth 2 -type f -exec mv -t . {} +
+          find . -mindepth 1 -maxdepth 1 -type d -exec rm -r {} +
+          popd
+          ls -R ${{ env.BUILD_PACKAGES }}
+
+      - name: generate build provenance
+        uses: actions/attest-build-provenance@7668571508540a607bdfd90a87a560489fe372eb  # v2.1.0
+        with:
+          subject-path: "${{ github.workspace }}/${{ env.BUILD_PACKAGES }}/*"
 
       ## NOTE: The name of the zip should match the name of the folder to be zipped.
       - name: Prepare packages to be signed
         run: zip -r packages.zip packages/
         working-directory: build
 
-      - name: 'Get service account'
-        uses: hashicorp/vault-action@v2.7.4
+      - uses: elastic/oblt-actions/google/auth@v1
         with:
-          url: ${{ secrets.VAULT_ADDR }}
-          roleId: ${{ secrets.VAULT_ROLE_ID }}
-          secretId: ${{ secrets.VAULT_SECRET_ID }}
-          method: approle
-          secrets: |
-            secret/observability-team/ci/apm-agent-php-bucket service-account | SERVICE_ACCOUNT ;
-
-      - name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@v1'
-        with:
-          credentials_json: '${{ env.SERVICE_ACCOUNT }}'
+          project-number: '911195782929'
 
       - id: 'upload-file'
-        uses: 'google-github-actions/upload-cloud-storage@v1'
+        uses: 'google-github-actions/upload-cloud-storage@v2'
         with:
           path: "${{ env.BUILD_PACKAGES }}.zip"
           destination: "${{ env.BUCKET_NAME }}/${{ github.run_id }}"
-          predefinedAcl: "publicRead"
 
-      - id: buildkite
-        name: Run buildkite pipeline
-        uses: elastic/apm-pipeline-library/.github/actions/buildkite@current
+      - id: buildkite-run
+        uses: elastic/oblt-actions/buildkite/run@v1
         with:
-          vaultUrl: ${{ secrets.VAULT_ADDR }}
-          vaultRoleId: ${{ secrets.VAULT_ROLE_ID }}
-          vaultSecretId: ${{ secrets.VAULT_SECRET_ID }}
+          token: ${{ secrets.BUILDKITE_TOKEN }}
           pipeline: observability-robots-php-release
-          triggerMessage: "${{ github.repository }}@${{ github.ref_name }} - sign artifacts"
-          waitFor: true
-          printBuildLogs: true
-          artifactName: signed-artifacts
-          artifactPath: "signed-artifacts.zip"
-          buildEnvVars: |
+          wait-for: true
+          env-vars: |
             BUNDLE_URL=https://storage.googleapis.com/${{ env.BUCKET_NAME }}/${{ steps.upload-file.outputs.uploaded }}
 
+      - uses: elastic/oblt-actions/buildkite/download-artifact@v1
+        with:
+          build-number: ${{ steps.buildkite-run.outputs.number }}
+          path: signed-artifacts.zip
+          pipeline: ${{ steps.buildkite-run.outputs.pipeline }}
+          token: ${{ secrets.BUILDKITE_TOKEN }}
+
+      # this artifact name is used also in some other places,
+      # such as ./.github/workflows/test-packages.yml.
+      # Therefore v4 cannot be used at the moment.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-artifacts
+          path: signed-artifacts.zip
+
   generate-test-packages-matrix:
+    if: startsWith(github.ref, 'refs/tags')
     uses: ./.github/workflows/generate-matrix.yml
 
   test-packages:
+    if: startsWith(github.ref, 'refs/tags')
     needs:
       - sign
       - generate-test-packages-matrix
+    permissions:
+      contents: read
+      packages: read
     uses: ./.github/workflows/test-packages.yml
     with:
       include: ${{ needs.generate-test-packages-matrix.outputs.include }}
@@ -114,7 +140,7 @@ jobs:
     steps:
 
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: signed-artifacts
           path: ${{ env.BUILD_PACKAGES }}
@@ -126,12 +152,15 @@ jobs:
           PACKAGE_FILE: "signed-artifacts.zip"
 
       - name: Create draft release
+        if: startsWith(github.ref, 'refs/tags')
         run: make -f .ci/Makefile draft-release
 
       - name: Verify draft release
+        if: startsWith(github.ref, 'refs/tags')
         run: ORIGINAL_PACKAGES_LOCATION=${{ env.BUILD_PACKAGES }} make -f .ci/Makefile download-verify
 
       - name: Publish release
+        if: startsWith(github.ref, 'refs/tags')
         run: make -f .ci/Makefile github-release-ready
 
   notify:
@@ -146,14 +175,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - id: check
-        uses: elastic/apm-pipeline-library/.github/actions/check-dependent-jobs@current
+        uses: elastic/oblt-actions/check-dependent-jobs@v1
         with:
-          needs: ${{ toJSON(needs) }}
-      - uses: elastic/apm-pipeline-library/.github/actions/notify-build-status@current
+          jobs: ${{ toJSON(needs) }}
+      - if: startsWith(github.ref, 'refs/tags')
+        uses: elastic/oblt-actions/slack/notify-result@v1
         with:
+          bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel-id: "#apm-agent-php"
           status: ${{ steps.check.outputs.status }}
-          vaultUrl: ${{ secrets.VAULT_ADDR }}
-          vaultRoleId: ${{ secrets.VAULT_ROLE_ID }}
-          vaultSecretId: ${{ secrets.VAULT_SECRET_ID }}
-          slackChannel: "#apm-agent-php"
           message: "[${{ github.repository }}] Release (<${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}|${{ github.ref_name }}>)"

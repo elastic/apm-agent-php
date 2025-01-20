@@ -228,6 +228,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
                         $optRawVal = str_replace("\n", "\t", $optRawVal);
                     }
                     $optExpectedVal = $optExpectedVal ?? AllOptionsMetadata::get()[$optName]->defaultValue();
+                    /** @phpstan-ignore-next-line */
                     yield [$agentConfigSourceKind, $optName, strval($optRawVal), $optExpectedVal];
                 }
             }

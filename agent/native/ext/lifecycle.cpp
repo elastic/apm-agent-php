@@ -140,7 +140,7 @@ typedef void (* ZendThrowExceptionHook )(
 );
 
 // static bool elasticApmZendErrorCallbackSet = false;
-static bool elasticApmZendThrowExceptionHookSet = false;
+static bool elasticApmZendThrowExceptionHookReplaced = false;
 static ZendThrowExceptionHook originalZendThrowExceptionHook = NULL;
 
 void resetLastThrown() {
@@ -162,11 +162,10 @@ void elasticApmZendThrowExceptionHookImpl(
     resetLastThrown();
 
 #if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
-    zval thrownAsZval;
-    zval* thrownAsPzval = &thrownAsZval;
-    ZVAL_OBJ_COPY( /* dst: */ thrownAsPzval, /* src: */ thrownAsPzobj );
+    ZVAL_OBJ_COPY(&ELASTICAPM_G( lastException ), thrownAsPzobj );
+#else
+    ZVAL_COPY(&ELASTICAPM_G(lastException), thrownAsPzval );
 #endif
-    ZVAL_COPY( /* pZvalDst: */ &ELASTICAPM_G(lastException), /* pZvalSrc: */ thrownAsPzval );
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
 }
@@ -187,17 +186,12 @@ void elasticApmZendThrowExceptionHook(
 #endif
 )
 {
-    Tracer* const tracer = getGlobalTracer();
-    const ConfigSnapshot* config = getTracerCurrentConfigSnapshot( tracer );
-    if (config->captureErrors) {
-        elasticApmZendThrowExceptionHookImpl( thrownObj );
-    }
+    elasticApmZendThrowExceptionHookImpl( thrownObj );
 
     if (originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook) {
         ELASTIC_APM_LOG_CRITICAL( "originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook" );
         return;
     }
-
 
     if ( originalZendThrowExceptionHook != NULL )
     {
@@ -206,22 +200,28 @@ void elasticApmZendThrowExceptionHook(
 }
 
 
-static void registerExceptionHooks() {
-    if (!elasticApmZendThrowExceptionHookSet) {
-        originalZendThrowExceptionHook = zend_throw_exception_hook;
-        zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
-        elasticApmZendThrowExceptionHookSet = true;
-        ELASTIC_APM_LOG_DEBUG( "Set zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
-                            , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
-                            , elasticApmZendThrowExceptionHook );
-    } else {
-        ELASTIC_APM_LOG_WARNING( "zend_erzend_throw_exception_hook already set: %p. Original: %p, Elastic: %p", zend_throw_exception_hook, originalZendThrowExceptionHook, elasticApmZendThrowExceptionHook );
+static void registerExceptionHooks(const ConfigSnapshot& config) {
+    if (!config.captureErrors) {
+        ELASTIC_APM_LOG_DEBUG( "NOT replacing zend_throw_exception_hook hook because capture_errors configuration option is set to false" );
+        return;
     }
+
+    if (elasticApmZendThrowExceptionHookReplaced) {
+        ELASTIC_APM_LOG_WARNING( "zend_throw_exception_hook already replaced: %p. Original: %p, Elastic: %p", zend_throw_exception_hook, originalZendThrowExceptionHook, elasticApmZendThrowExceptionHook );
+        return;
+    }
+
+    originalZendThrowExceptionHook = zend_throw_exception_hook;
+    zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
+    elasticApmZendThrowExceptionHookReplaced = true;
+    ELASTIC_APM_LOG_DEBUG( "Replaced zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
+                           , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
+                           , elasticApmZendThrowExceptionHook );
 }
 
 
 static void unregisterExceptionHooks() {
-    if (elasticApmZendThrowExceptionHookSet) {
+    if (elasticApmZendThrowExceptionHookReplaced) {
         ZendThrowExceptionHook zendThrowExceptionHookBeforeRestore = zend_throw_exception_hook;
         zend_throw_exception_hook = originalZendThrowExceptionHook;
         ELASTIC_APM_LOG_DEBUG( "Restored zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook: %p) -> %p"
@@ -278,7 +278,7 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
 
     registerCallbacksToLogFork();
     registerAtExitLogging();
-    registerExceptionHooks();
+    registerExceptionHooks(*config);
 
     curlCode = curl_global_init( CURL_GLOBAL_ALL );
     if ( curlCode != CURLE_OK )
@@ -291,10 +291,14 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
 
     astInstrumentationOnModuleInit( config );
 
-    elasticapm::php::Hooking::getInstance().replaceHooks();
+    elasticapm::php::Hooking::getInstance().replaceHooks(config->captureErrors, config->profilingInferredSpansEnabled);
 
     if (php_check_open_basedir_ex(config->bootstrapPhpPartFile, false) != 0) {
-        ELASTIC_APM_LOG_WARNING( "Elastic Agent bootstrap file (%s) is located outside of paths allowed by open_basedir ini setting. Read more details here https://www.elastic.co/guide/en/apm/agent/php/current/setup.html#limitations", config->bootstrapPhpPartFile);
+        ELASTIC_APM_LOG_WARNING(
+            "Elastic Agent bootstrap file (%s) is located outside of paths allowed by open_basedir ini setting."
+            " For more details see https://www.elastic.co/guide/en/apm/agent/php/current/setup.html#limitation-open_basedir"
+            , config->bootstrapPhpPartFile
+        );
     }
 
     resultCode = resultSuccess;
@@ -410,12 +414,19 @@ void elasticApmRequestInit()
     enableAccessToServerGlobal();
     bool preloadDetected = requestCounter == 1 ? detectOpcachePreload() : false;
 
-    if (config && config->debugDiagnosticsFile && !preloadDetected && requestCounter <= 2) {
+    if (!preloadDetected && requestCounter <= 2) {
         if (ELASTICAPM_G(globals)->sharedMemory_->shouldExecuteOneTimeTaskAmongWorkers()) {
-            try {
-                elasticapm::utils::storeDiagnosticInformation(elasticapm::utils::getParameterizedString(config->debugDiagnosticsFile), *(ELASTICAPM_G(globals)->bridge_));
-            } catch (std::exception const &e) {
-                ELASTIC_APM_LOG_WARNING( "Unable to write agent diagnostics: %s", e.what() );
+            using namespace std::string_view_literals;
+            if ( ELASTICAPM_G( globals )->bridge_->isExtensionLoaded( "xdebug"sv ) ) {
+                ELASTIC_APM_LOG_WARNING( "Xdebug is loaded, which is not supported by the Elastic APM Agent. This may lead to stability or memory issues");
+            }
+
+            if (config && config->debugDiagnosticsFile) {
+                try {
+                    elasticapm::utils::storeDiagnosticInformation(elasticapm::utils::getParameterizedString(config->debugDiagnosticsFile), *(ELASTICAPM_G(globals)->bridge_));
+                } catch (std::exception const &e) {
+                    ELASTIC_APM_LOG_WARNING( "Unable to write agent diagnostics: %s", e.what() );
+                }
             }
         }
     }
@@ -573,7 +584,7 @@ void elasticApmRequestShutdown()
         ELASTIC_APM_LOG_DEBUG( "opcache.preload request detected on shutdown" );
         return;
     }
-	
+
     if (ELASTICAPM_G(globals)->periodicTaskExecutor_) {
         ELASTIC_APM_LOG_DEBUG("pausing inferred spans thread");
         ELASTICAPM_G(globals)->periodicTaskExecutor_->suspendPeriodicTasks();

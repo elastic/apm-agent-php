@@ -106,8 +106,13 @@ function generateAgentUpgradeRows () {
     local testingType=agent-upgrade
     local appHostKindShortName=all
     local testsGroup=smoke
+    for phpVersion in 7.4 ; do
+        for linuxPackageType in rpm ; do
+            echo "${phpVersion},${linuxPackageType},${testingType},${appHostKindShortName},${testsGroup}"
+        done
+    done
     for phpVersion in 7.4 "$(latestSupportedPhpVersion)" ; do
-        for linuxPackageType in deb rpm ; do
+        for linuxPackageType in deb ; do
             echo "${phpVersion},${linuxPackageType},${testingType},${appHostKindShortName},${testsGroup}"
         done
     done

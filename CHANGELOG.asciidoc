@@ -20,6 +20,38 @@ endif::[]
 
 // Using the template above, release notes go here.
 // CHANGELOG_AUTOMATION_KEYWORD
+
+[[release-notes-v1.15.0]]
+=== v1.15.0 - 2025/01/17
+==== Features
+
+- Add php 8.4 compatibility {pull}1255[#1255]
+- Added warning log for Xdebug incompatibility {pull}1256[#1256] {pull}1257[#1257]
+
+[[release-notes-v1.14.1]]
+=== v1.14.1 - 2024/09/05
+==== Bug fixes
+* Fixed calling post hook if instrumented functions throws {pull}1223[#1223]
+
+[[release-notes-v1.14.0]]
+=== v1.14.0 - 2024/08/28
+==== Features
+* Experimental support for ARM64 architecture
+
+==== Bug fixes
+* Fixed issue causing forked process to hang or crash {pull}1213[#1213]
+
+[[release-notes-v1.13.2]]
+=== v1.13.2 - 2024/08/20
+==== Bug fixes
+* Set various PHP engine hooks only when the relevant feature is enabled {pull}1211[#1211]
+
+[[release-notes-v1.13.1]]
+=== v1.13.1 - 2024/07/23
+==== Features
+* Fixed memory leak in exception handling {pull}1174[#1174]
+* Changed exprerimental part of WordPress instrumentation that is measuring latency impact by plugin to be disabled by default {pull}1181[#1181]
+
 [[release-notes-v1.13.0]]
 === v1.13.0 - 2024/01/31
 ==== Features

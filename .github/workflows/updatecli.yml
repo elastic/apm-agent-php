@@ -9,21 +9,53 @@ permissions:
   contents: read
 
 jobs:
-  bump:
+  compose:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
-      - uses: elastic/apm-pipeline-library/.github/actions/updatecli@current
+
+      - name: Get token
+        id: get_token
+        uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
         with:
-          vaultUrl: ${{ secrets.VAULT_ADDR }}
-          vaultRoleId: ${{ secrets.VAULT_ROLE_ID }}
-          vaultSecretId: ${{ secrets.VAULT_SECRET_ID }}
-          pipeline: .ci/updatecli/updatecli.d
-          values: .ci/updatecli/values.yml
+          app_id: ${{ secrets.OBS_AUTOMATION_APP_ID }}
+          private_key: ${{ secrets.OBS_AUTOMATION_APP_PEM }}
+          permissions: >-
+            {
+              "contents": "write",
+              "pull_requests": "write"
+            }
+
+      - uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: elastic/oblt-actions/updatecli/run@v1
+        with:
+          command: --experimental compose diff
+          # TODO: update to the latest version so the policies can work as expected.
+          #       latest changes in the policies require to use the dependson feature.
+          version: "v0.88.0"
+        env:
+          GITHUB_TOKEN: ${{ steps.get_token.outputs.token }}
+
+      - uses: elastic/oblt-actions/updatecli/run@v1
+        with:
+          command: --experimental compose apply
+          # TODO: update to the latest version so the policies can work as expected.
+          #       latest changes in the policies require to use the dependson feature.
+          version: "v0.88.0"
+        env:
+          GITHUB_TOKEN: ${{ steps.get_token.outputs.token }}
+
       - if: failure()
-        uses: elastic/apm-pipeline-library/.github/actions/notify-build-status@current
+        uses: elastic/oblt-actions/slack/send@v1
         with:
-          vaultUrl: ${{ secrets.VAULT_ADDR }}
-          vaultRoleId: ${{ secrets.VAULT_ROLE_ID }}
-          vaultSecretId: ${{ secrets.VAULT_SECRET_ID }}
-          slackChannel: "#apm-agent-php"
+          bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel-id: "#apm-agent-php"
+          message: ":traffic_cone: updatecli failed for `${{ github.repository }}@${{ github.ref_name }}`, @robots-ci please look what's going on <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|here>"
