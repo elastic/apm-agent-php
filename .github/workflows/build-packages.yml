@@ -41,7 +41,7 @@ jobs:
         run: make -C packaging info
       - uses: actions/upload-artifact@v4
         with:
-          name: package-${{ matrix.BUILD_ARCH }}
+          name: packages-${{ matrix.BUILD_ARCH }}
           path: |
             build/packages/*
             !build/packages/**/*.sha512

@@ -52,10 +52,19 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
         with:
-          pattern: package-*
+          pattern: packages-*
           path: ${{ env.BUILD_PACKAGES }}
+      - name: Moving packages out of folders
+        run: |
+          pushd ${{ env.BUILD_PACKAGES }}
+          find . -mindepth 2 -type f -exec mv -t . {} +
+          find . -mindepth 1 -maxdepth 1 -type d -exec rm -r {} +
+          popd
+          ls -R ${{ env.BUILD_PACKAGES }}
 
       - name: generate build provenance
         uses: actions/attest-build-provenance@7668571508540a607bdfd90a87a560489fe372eb  # v2.1.0
