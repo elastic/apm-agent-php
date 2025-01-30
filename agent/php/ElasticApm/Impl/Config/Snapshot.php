@@ -125,6 +125,9 @@ final class Snapshot implements LoggableInterface
     /** @var SnapshotDevInternal */
     private $devInternalParsed;
 
+    /** @var bool */
+    private $devInternalCurlInstrumCreateSpan;
+
     /** @var ?WildcardListMatcher */
     private $disableInstrumentations;
 
@@ -285,6 +288,11 @@ final class Snapshot implements LoggableInterface
     public function devInternal(): SnapshotDevInternal
     {
         return $this->devInternalParsed;
+    }
+
+    public function devInternalCurlInstrumCreateSpan(): bool
+    {
+        return $this->devInternalCurlInstrumCreateSpan;
     }
 
     public function disableInstrumentations(): ?WildcardListMatcher
