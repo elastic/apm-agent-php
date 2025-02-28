@@ -317,7 +317,7 @@ Add `isElasticApmEnabled`, `elasticApmCurrentTransaction` properties to the view
 @endif
 ```
 
-See the [JavaScript RUM agent documentation](apm-agent-rum-js://docs/reference/index.md) for more information.
+See the [JavaScript RUM agent documentation](apm-agent-rum-js://reference/index.md) for more information.
 
 
 ### `TransactionInterface->setResult` [api-transaction-interface-set-result]
