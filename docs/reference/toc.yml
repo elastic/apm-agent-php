@@ -1,0 +1,12 @@
+project: 'APM PHP agent reference'
+toc:
+  - file: index.md
+  - file: set-up-apm-php-agent.md
+    # TO DO: Not available on master
+    # children:
+    #   - file: _limitations.md
+  - file: supported-technologies.md
+  - file: configuration.md
+    children:
+      - file: configuration-reference.md
+  - file: public-api.md
