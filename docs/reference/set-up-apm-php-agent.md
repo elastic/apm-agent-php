@@ -1,6 +1,7 @@
 ---
 mapped_pages:
   - https://www.elastic.co/guide/en/apm/agent/php/current/setup.html
+  - https://www.elastic.co/guide/en/apm/agent/php/current/_limitations.html
 ---
 
 # Set up the APM PHP Agent [setup]
@@ -111,3 +112,6 @@ Please be aware that if the [`open_basedir`](https://www.php.net/manual/en/ini.c
 
 We strongly advise against running the agent alongside the xdebug extension. Using both extensions simultaneously can lead to stability issues in the instrumented application, such as memory leaks. It is highly recommended to disable xdebug, preferably by preventing it from loading in the `php.ini` configuration file.
 
+## Limitations
+
+Please be aware that if the [open_basedir](https://www.php.net/manual/en/ini.core.php#ini.open-basedir) option is configured in your php.ini, the installation directory of the agent (by default /opt/elastic/apm-agent-php) must be located within a path included in the [open_basedir](https://www.php.net/manual/en/ini.core.php#ini.open-basedir) configuration. Otherwise, the agent will not be loaded correctly.
