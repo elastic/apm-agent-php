@@ -34,9 +34,9 @@ mapped_pages:
   - https://www.elastic.co/guide/en/apm/agent/php/current/release-notes-v1.0.0-beta1.html
 ---
 
-# Elastic APM PHP Agent release notes [elastic-apm-php-agent-release-notes]
+# {{apm-php-agent}} release notes [elastic-apm-php-agent-release-notes]
 
-Review the changes, fixes, and more in each version of Elastic APM PHP Agent.
+Review the changes, fixes, and more in each version of {{apm-php-agent}}.
 
 To check for security updates, go to [Security announcements for the Elastic stack](https://discuss.elastic.co/c/announcements/security-announcements/31).
 
@@ -53,7 +53,7 @@ To check for security updates, go to [Security announcements for the Elastic sta
 **Release date:** January 17, 2025
 
 ### Features and enhancements [elastic-apm-php-agent-1150-features-enhancements]
-* Add php 8.4 compatibility #1255
+* Add php 8.4 compatibility [#1255](https://github.com/elastic/apm-agent-php/pull/1255)
 * Added warning log for Xdebug incompatibility [#1256](https://github.com/elastic/apm-agent-php/pull/1256) and [#1257](https://github.com/elastic/apm-agent-php/pull/1257)
 
 ## 1.14.1 [elastic-apm-php-agent-1141-release-notes]
