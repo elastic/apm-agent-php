@@ -1,5 +1,5 @@
 ---
-navigation_title: "Elastic APM PHP Agent"
+navigation_title: "Known issues"
 
 ---
 
