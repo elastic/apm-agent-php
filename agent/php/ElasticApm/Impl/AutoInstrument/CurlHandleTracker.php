@@ -33,6 +33,7 @@ use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Log\Logger;
+use Elastic\Apm\Impl\NoopSpan;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\Assert;
@@ -424,13 +425,20 @@ final class CurlHandleTracker implements LoggableInterface
         $spanName = $httpMethod . ' ' . $host;
 
         $isHttp = ($this->url !== null) && UrlUtil::isHttp($this->url);
-        $this->span = AutoInstrumentationUtil::beginCurrentSpan($spanName, Constants::SPAN_TYPE_EXTERNAL, /* subtype: */ $isHttp ? Constants::SPAN_SUBTYPE_HTTP : null);
+        if ($this->tracer->getConfig()->devInternalCurlInstrumCreateSpan()) {
+            $this->span = AutoInstrumentationUtil::beginCurrentSpan($spanName, Constants::SPAN_TYPE_EXTERNAL, /* subtype: */ $isHttp ? Constants::SPAN_SUBTYPE_HTTP : null);
+        } else {
+            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxy->log('dev_internal_curl_instrum_create_span (devInternalCurlInstrumCreateSpan) is set to false - creating no-op span');
+            $this->span = NoopSpan::singletonInstance();
+        }
 
         $this->setContextPreHook();
 
         if ($isHttp) {
             $headersToInjectFormattedLines = [];
-            $this->span->injectDistributedTracingHeaders(
+            $execSeg = $this->span->isNoop() ? $this->tracer->getCurrentTransaction() : $this->span;
+            $execSeg->injectDistributedTracingHeaders(
                 function (string $headerName, string $headerValue) use (&$headersToInjectFormattedLines): void {
                     $headersToInjectFormattedLines[] = $headerName . ': ' . $headerValue;
                 }
