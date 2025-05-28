@@ -68,7 +68,7 @@ private function captureExceptionFromErrorMessage($message)
 }
 ```
 
-The code above would allow for an error message, along with its stack trace to be monitored.
+The code above would allow for an error message to be tracked via an artificially created exception.
 
 ### `ElasticApm::captureCurrentTransaction` [api-elasticapm-class-capture-current-transaction]
 
