@@ -2,7 +2,6 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get -qq update \
-    && apt-get -qq -y --no-install-recommends install apt-transport-https \
     && apt-get -qq -y --no-install-recommends install apt-utils \
         dpkg-sig \
         git \
