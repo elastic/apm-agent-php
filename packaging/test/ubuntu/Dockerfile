@@ -4,6 +4,7 @@ ARG SEL_DISTRO=buster
 FROM php:${PHP_VERSION}-fpm-${SEL_DISTRO}
 
 RUN apt-get -qq update \
+    && apt-get -qq -y --no-install-recommends install apt-transport-https \
     && apt-get -qq -y --no-install-recommends install \
         dpkg-sig \
         gnupg \
