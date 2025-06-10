@@ -24,7 +24,7 @@ COPY entrypoint.sh /bin
 ARG PHP_VERSION=7.2
 ENV PHP_VERSION=$PHP_VERSION
 RUN apt-get -qq -y --no-install-recommends install software-properties-common \
-    && add-apt-repository ppa:ondrej/php \
+    && LC_ALL=C.UTF-8 add-apt-repository ppa:ondrej/php \
     && apt-get -qq update \
     && apt-get -qq -y --no-install-recommends install apt-transport-https \
     && apt-get -qq -y --no-install-recommends install \
