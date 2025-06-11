@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get -qq update \
@@ -24,7 +24,7 @@ COPY entrypoint.sh /bin
 ARG PHP_VERSION=7.2
 ENV PHP_VERSION=$PHP_VERSION
 RUN apt-get -qq -y --no-install-recommends install software-properties-common \
-    && add-apt-repository -y ppa:ondrej/php \
+    && add-apt-repository ppa:ondrej/php \
     && apt-get -qq update \
     && apt-get -qq -y --no-install-recommends install \
         apache2 \
