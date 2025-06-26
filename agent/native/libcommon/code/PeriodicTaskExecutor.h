@@ -29,8 +29,11 @@ public:
 
     ~PeriodicTaskExecutor() {
         shutdown();
-        if (thread_.joinable()) {
-            thread_.join();
+        try {
+            if (thread_.joinable()) {
+                thread_.join();
+            }
+        } catch (std::system_error const &) {
         }
     }
 

@@ -700,7 +700,7 @@ String streamSharedStateSnapshot( const BackgroundBackendCommSharedStateSnapshot
     return streamPrintf(
             txtOutStream
             ,"{"
-             "total size of queued events: %" PRIu64 
+             "total size of queued events: %" PRIu64
              ", firstDataToSendNode %s NULL"
              " (serializedEvents.length: %" PRIu64  ")"
              ", shouldExit: %s"
@@ -877,9 +877,9 @@ ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatch(
 
     ELASTIC_APM_LOG_DEBUG(
             "About to send batch of events"
-            "; batch ID: %" PRIu64 
-            "; batch size: %" PRIu64 
-            "; total size of queued events: %" PRIu64 
+            "; batch ID: %" PRIu64
+            "; batch size: %" PRIu64
+            "; total size of queued events: %" PRIu64
             , (UInt64) sharedStateSnapshot->firstDataToSendNode->id
             , (UInt64) serializedEvents.length
             , (UInt64) sharedStateSnapshot->dataToSendTotalSize );
@@ -895,9 +895,9 @@ ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatch(
     {
         ELASTIC_APM_LOG_ERROR(
                 "Failed to send batch of events - the batch will be dequeued and dropped"
-                "; batch ID: %" PRIu64 
-                "; batch size: %" PRIu64 
-                "; total size of queued events: %" PRIu64 
+                "; batch ID: %" PRIu64
+                "; batch size: %" PRIu64
+                "; total size of queued events: %" PRIu64
                 , (UInt64) sharedStateSnapshot->firstDataToSendNode->id
                 , (UInt64) serializedEvents.length
                 , (UInt64) sharedStateSnapshot->dataToSendTotalSize );
@@ -1186,7 +1186,7 @@ ResultCode enqueueEventsToSendToApmServer( StringView userAgentHttpHeader, Strin
     {
         ELASTIC_APM_LOG_ERROR(
                 "Already queued events are above max queue size - dropping these events"
-                "; size of already queued events: %" PRIu64 
+                "; size of already queued events: %" PRIu64
                 , (UInt64) backgroundBackendComm->dataToSendTotalSize );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
@@ -1203,9 +1203,9 @@ ResultCode enqueueEventsToSendToApmServer( StringView userAgentHttpHeader, Strin
 
     ELASTIC_APM_LOG_DEBUG(
             "Queued a batch of events"
-            "; batch ID: %" PRIu64 
-            "; batch size: %" PRIu64 
-            "; total size of queued events: %" PRIu64 
+            "; batch ID: %" PRIu64
+            "; batch size: %" PRIu64
+            "; total size of queued events: %" PRIu64
             , (UInt64) id
             , (UInt64) serializedEvents.length
             , (UInt64) backgroundBackendComm->dataToSendTotalSize );
@@ -1279,6 +1279,8 @@ ResultCode resetBackgroundBackendCommStateInForkedChild()
     {
         ELASTIC_APM_CALL_IF_FAILED_GOTO( unwindBackgroundBackendComm( &g_backgroundBackendComm, /* timeoutAbsUtc: */ NULL, /* isCreatedByThisProcess */ false ) );
     }
+
+    cleanupConnectionData( &g_connectionData );
 
     resultCode = resultSuccess;
     finally:
