@@ -49,6 +49,12 @@ To check for security updates, go to [Security announcements for the Elastic sta
 
 % ### Fixes [elastic-apm-php-agent-versionext-fixes]
 
+## 1.15.1 [elastic-apm-php-agent-1151-release-notes]
+**Release date:** June 27, 2025
+
+### Fixes [elastic-apm-php-agent-1151-fixes]
+* Cleaned up background sending cURL handle after forking [#1328](https://github.com/elastic/apm-agent-php/pull/1328)
+
 ## 1.15.0 [elastic-apm-php-agent-1150-release-notes]
 **Release date:** January 17, 2025
 
