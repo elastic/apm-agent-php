@@ -101,13 +101,33 @@ class MixedMap implements LoggableInterface, ArrayAccess
      * @param string       $key
      * @param array<mixed> $from
      *
+     * @return ?bool
+     */
+    public static function getNullableBoolFrom(string $key, array $from): ?bool
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+        $value = self::getFrom($key, $from);
+        if ($value !== null) {
+            TestCaseBase::assertIsBool($value);
+        }
+        return $value;
+    }
+
+    public function getNullableBool(string $key): ?bool
+    {
+        return self::getNullableBoolFrom($key, $this->map);
+    }
+
+    /**
+     * @param string       $key
+     * @param array<mixed> $from
+     *
      * @return bool
      */
     public static function getBoolFrom(string $key, array $from): bool
     {
-        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
-        $value = self::getFrom($key, $from);
-        TestCaseBase::assertIsBool($value);
+        $value = self::getNullableBoolFrom($key, $from);
+        TestCaseBase::assertNotNull($value);
         return $value;
     }
 
