@@ -2,7 +2,7 @@ ARG PHP_VERSION=7.2
 ARG SEL_DISTRO=buster
 FROM php:${PHP_VERSION}-fpm-${SEL_DISTRO}
 
-RUN if [ "${PHP_VERSION}" == "7.2" && "${SEL_DISTRO}" == "buster" ]; then \
+RUN if [ "${PHP_VERSION}" == "7.2" ] && [ "${SEL_DISTRO}" == "buster" ]; then \
     sed -i 's|https://deb\.debian\.org/debian buster Release$|https://archive\.debian\.org/debian buster Release|g' /etc/apt/sources.list && \
     sed -i 's|https://deb\.debian\.org/debian buster-updates Release$|https://archive\.debian\.org/debian buster-updates Release|g' /etc/apt/sources.list && \
     sed -i 's|https://security\.debian\.org/debian-security buster/updates Release$|https://archive\.debian\.org/debian-security buster/updates Release|g' /etc/apt/sources.list; \
