@@ -42,13 +42,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         if: ${{ inputs.package-name }}
         with:
           name: ${{ inputs.package-name }}
           path: ${{ env.BUILD_PACKAGES }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         if: ${{ ! inputs.package-name }}
         with:
           pattern: 'package*'
@@ -56,7 +56,7 @@ jobs:
           path: ${{ env.BUILD_PACKAGES }}
 
       - name: Log in to the Container registry
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -70,12 +70,12 @@ jobs:
         env:
           PACKAGE_FILE: "${{ inputs.package-name }}.zip"
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: package-parts-linux-x86-64
           path: agent/native/_build/linux-x86-64-release
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: package-parts-linuxmusl-x86-64
           path: agent/native/_build/linuxmusl-x86-64-release
