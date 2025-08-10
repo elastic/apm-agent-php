@@ -39,7 +39,7 @@ jobs:
     #     tar --wildcards  --strip-components 5 -xf /tmp/apm-agent-php-linux-x86-64.tar ./opt/elastic/apm-agent-php/extensions/elastic_apm*
     #     cd -
     - uses: actions/checkout@v4
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v5
       with:
         name: package-parts-linux-x86-64
         path: |
