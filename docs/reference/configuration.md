@@ -154,6 +154,6 @@ Whitespace around commas separating wildcard expressions in the list is ignored.
 
 The input string is matched against wildcard expressions in the order they are listed and the first expression that matches is selected.
 
-When configuration option is intended to matched against a input URL (for example [`url_groups`](/reference/configuration-reference.md#config-url-groups) and [`transaction_ignore_urls`](/reference/configuration-reference.md#config-transaction-ignore-urls)) only path part of the URL is tested against wildcard expressions. Other parts of the URL (such as query string, etc.) are not taken into account so including them in the wildcard expressions might lead to unexpected result. For example `/user/*` matches `http://my_site.com/user/Alice?lang=en` while `/user/*?lang=*` does not match `http://my_site.com/user/Alice?lang=en`
+When configuration option is intended to matched against a input URL (for example [`url_groups`](/reference/configuration-reference.md#config-url-groups) and [`transaction_ignore_urls`](/reference/configuration-reference.md#config-transaction-ignore-urls)) only path part of the URL is tested against wildcard expressions. Other parts of the URL (such as query string, etc.) are not taken into account so including them in the wildcard expressions might lead to unexpected result. For example `/user/*` matches `http://example.com/user/Alice?lang=en` while `/user/*?lang=*` does not match `http://example.com/user/Alice?lang=en`
 
 
