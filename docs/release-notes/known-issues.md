@@ -1,6 +1,11 @@
 ---
 navigation_title: "Known issues"
-
+applies_to:
+  stack:
+  serverless:
+    observability:
+  product:
+    apm_agent_php: ga
 ---
 
 # Elastic APM PHP Agent known issues [elastic-apm-php-agent-known-issues]

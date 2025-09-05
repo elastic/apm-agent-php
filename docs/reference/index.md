@@ -2,6 +2,12 @@
 mapped_pages:
   - https://www.elastic.co/guide/en/apm/agent/php/current/intro.html
   - https://www.elastic.co/guide/en/apm/agent/php/current/index.html
+applies_to:
+  stack:
+  serverless:
+    observability:
+  product:
+    apm_agent_php: ga
 ---
 
 # APM PHP agent [intro]
