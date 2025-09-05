@@ -6,10 +6,6 @@ applies_to:
     observability:
   product:
     apm_agent_php: ga
-products:
-  - id: cloud-serverless
-  - id: observability
-  - id: apm
 ---
 
 # Elastic APM PHP Agent known issues [elastic-apm-php-agent-known-issues]
