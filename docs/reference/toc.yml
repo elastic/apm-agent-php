@@ -10,3 +10,5 @@ toc:
     children:
       - file: configuration-reference.md
   - file: public-api.md
+  - title: Troubleshooting
+    crosslink: docs-content://troubleshoot/observability/apm-agent-php/apm-php-agent.md

@@ -19,3 +19,6 @@ The Elastic APM PHP Agent measures the performance of your application and track
 
 APM Agents work in conjunction with the [APM Server](docs-content://solutions/observability/apps/application-performance-monitoring-apm.md), [Elasticsearch](docs-content://get-started/index.md), and [Kibana](docs-content://get-started/the-stack.md). The [APM Guide](docs-content://solutions/observability/apps/application-performance-monitoring-apm.md) provides details on how these components work together, and provides a matrix outlining [Agent and Server compatibility](docs-content://solutions/observability/apps/apm-agent-compatibility.md).
 
+## Troubleshooting
+
+If you're experiencing issues with the APM PHP agent, refer to [Troubleshoot APM PHP Agent](docs-content://troubleshoot/observability/apm-agent-php/apm-php-agent.md).
