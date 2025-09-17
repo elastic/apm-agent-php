@@ -21,4 +21,4 @@ APM Agents work in conjunction with the [APM Server](docs-content://solutions/ob
 
 ## Troubleshooting
 
-If you're experiencing issues with the APM PHP agent, refer to [Troubleshooting](docs-content://troubleshoot/observability/apm-agent-php/apm-php-agent.md).
+If you're experiencing issues with the APM PHP agent, refer to [Troubleshoot APM PHP Agent](docs-content://troubleshoot/observability/apm-agent-php/apm-php-agent.md).
