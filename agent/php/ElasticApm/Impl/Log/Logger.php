@@ -83,9 +83,18 @@ final class Logger implements LoggableInterface
      */
     public function addAllContext(array $keyValuePairs): self
     {
-        foreach ($keyValuePairs as $key => $value) {
-            $this->addContext($key, $value);
-        }
+        $this->data->context = array_merge($this->data->context, $keyValuePairs);
+        return $this;
+    }
+
+    /**
+     * @param array<string, mixed> $keyValuePairs
+     *
+     * @return Logger
+     */
+    public function prependAllToContext(array $keyValuePairs): self
+    {
+        $this->data->context = $keyValuePairs + $this->data->context;
         return $this;
     }
 

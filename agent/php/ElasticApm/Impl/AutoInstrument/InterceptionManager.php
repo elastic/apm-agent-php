@@ -89,26 +89,25 @@ final class InterceptionManager
         array $interceptedCallArgs
     ): bool {
         $localLogger = $this->logger->inherit()->addAllContext(
-            [
-                'interceptRegistrationId' => $interceptRegistrationId,
-                'thisObj type' => DbgUtil::getType($thisObj),
+            compact('interceptRegistrationId')
+            + [
+                'thisObj type'              => DbgUtil::getType($thisObj),
                 'interceptedCallArgs count' => count($interceptedCallArgs),
-                'thisObj' => $this->logger->possiblySecuritySensitive($thisObj),
-                'interceptedCallArgs' => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
+                'thisObj'                   => $this->logger->possiblySecuritySensitive($thisObj),
+                'interceptedCallArgs'       => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
             ]
         );
         $loggerProxyTrace = $localLogger->ifTraceLevelEnabledNoLine(__FUNCTION__);
 
         $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Entered');
 
-        $interceptRegistration
-            = ArrayUtil::getValueIfKeyExistsElse($interceptRegistrationId, $this->interceptedCallRegistrations, null);
+        $interceptRegistration = ArrayUtil::getValueIfKeyExistsElse($interceptRegistrationId, $this->interceptedCallRegistrations, null);
         if ($interceptRegistration === null) {
             ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
             && $loggerProxy->log('There is no registration with the given interceptRegistrationId');
             return false;
         }
-        $localLogger->addContext('interceptRegistration', $interceptRegistration);
+        $localLogger->prependAllToContext(compact('interceptRegistration'));
 
         $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Calling preHook...');
         try {
