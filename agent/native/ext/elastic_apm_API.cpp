@@ -198,7 +198,7 @@ ResultCode elasticApmInterceptCallsToInternalMethod( String className, String me
 
     finally:
 
-    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT();
+    ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT_MSG( "interceptRegistrationId: %u", *interceptRegistrationId );
     return resultCode;
 
     failure:
