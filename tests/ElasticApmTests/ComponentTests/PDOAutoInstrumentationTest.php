@@ -193,7 +193,7 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
         $dbName = $args->getString(DbAutoInstrumentationUtilForTests::DB_NAME_KEY);
         $wrapInTx = $args->getBool(DbAutoInstrumentationUtilForTests::WRAP_IN_TX_KEY);
         $rollback = $args->getBool(DbAutoInstrumentationUtilForTests::ROLLBACK_KEY);
-        $rollback = $args->getBool(DbAutoInstrumentationUtilForTests::CALL_END_TX_IN_SHUTDOWN_FUNCTION_KEY);
+        $callEndTxInShutdownFunction = $args->getBool(DbAutoInstrumentationUtilForTests::CALL_END_TX_IN_SHUTDOWN_FUNCTION_KEY);
     }
 
     public static function appCodeForTestAutoInstrumentation(MixedMap $appCodeArgs): void
