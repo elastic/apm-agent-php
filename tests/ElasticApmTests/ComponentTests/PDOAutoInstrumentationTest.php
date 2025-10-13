@@ -228,7 +228,17 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
             self::assertEqualsEx(self::MESSAGES[$msgText], $row['time'], $dbgCtx);
         }
 
-        DbAutoInstrumentationUtilForTests::endTx($pdo, $wrapInTx, $rollback, $callEndTxInShutdownFunction);
+        if ($wrapInTx) {
+            $endTxCallFunc = function () use ($rollback, $pdo) {
+                self::assertTrue($rollback ? $pdo->rollBack() : $pdo->commit());
+            };
+
+            if ($callEndTxInShutdownFunction) {
+                register_shutdown_function($endTxCallFunc);
+            } else {
+                $endTxCallFunc();
+            }
+        }
     }
 
     /**

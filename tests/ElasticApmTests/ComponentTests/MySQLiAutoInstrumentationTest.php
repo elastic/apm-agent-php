@@ -400,10 +400,18 @@ final class MySQLiAutoInstrumentationTest extends ComponentTestCaseBase
         }
         $queryResult->close();
 
-        DbAutoInstrumentationUtilForTests::endTx($mySQLi, $wrapInTx, $rollback, $callEndTxInShutdownFunction);
-
-        self::resetDbState($mySQLi, $queryKind);
-        self::assertTrue($mySQLi->close());
+        $endTxCallFunc = function () use ($wrapInTx, $rollback, $mySQLi, $queryKind) {
+            if ($wrapInTx) {
+                self::assertTrue($rollback ? $mySQLi->rollback() : $mySQLi->commit());
+            }
+            self::resetDbState($mySQLi, $queryKind);
+            self::assertTrue($mySQLi->close());
+        };
+        if ($callEndTxInShutdownFunction) {
+            register_shutdown_function($endTxCallFunc);
+        } else {
+            $endTxCallFunc();
+        }
     }
 
     /**
