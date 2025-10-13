@@ -181,21 +181,24 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
      * @param ?string  &$dbName
      * @param ?bool    &$wrapInTx
      * @param ?bool    &$rollback
+     * @param ?bool    &$callEndTxInShutdownFunction
      *
      * @param-out string $dbName
      * @param-out bool   $wrapInTx
      * @param-out bool   $rollback
+     * @param-out bool   $callEndTxInShutdownFunction
      */
-    public static function extractSharedArgs(MixedMap $args, /* out */ ?string &$dbName, /* out */ ?bool &$wrapInTx, /* out */ ?bool &$rollback): void
+    public static function extractSharedArgs(MixedMap $args, /* out */ ?string &$dbName, /* out */ ?bool &$wrapInTx, /* out */ ?bool &$rollback, /* out */ ?bool &$callEndTxInShutdownFunction): void
     {
         $dbName = $args->getString(DbAutoInstrumentationUtilForTests::DB_NAME_KEY);
         $wrapInTx = $args->getBool(DbAutoInstrumentationUtilForTests::WRAP_IN_TX_KEY);
         $rollback = $args->getBool(DbAutoInstrumentationUtilForTests::ROLLBACK_KEY);
+        $rollback = $args->getBool(DbAutoInstrumentationUtilForTests::CALL_END_TX_IN_SHUTDOWN_FUNCTION_KEY);
     }
 
     public static function appCodeForTestAutoInstrumentation(MixedMap $appCodeArgs): void
     {
-        self::extractSharedArgs($appCodeArgs, /* out */ $dbName, /* out */ $wrapInTx, /* out */ $rollback);
+        self::extractSharedArgs($appCodeArgs, /* out */ $dbName, /* out */ $wrapInTx, /* out */ $rollback, /* out */ $callEndTxInShutdownFunction);
 
         $pdo = new PDO(self::buildConnectionString($dbName));
         self::assertTrue($pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION));
@@ -225,9 +228,7 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
             self::assertEqualsEx(self::MESSAGES[$msgText], $row['time'], $dbgCtx);
         }
 
-        if ($wrapInTx) {
-            self::assertTrue($rollback ? $pdo->rollback() : $pdo->commit());
-        }
+        DbAutoInstrumentationUtilForTests::endTx($pdo, $wrapInTx, $rollback, $callEndTxInShutdownFunction);
     }
 
     /**
@@ -248,12 +249,7 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
         $disableInstrumentationsOptVal = $testArgs->getString(AutoInstrumentationUtilForTests::DISABLE_INSTRUMENTATIONS_KEY);
         $isInstrumentationEnabled = $testArgs->getBool(AutoInstrumentationUtilForTests::IS_INSTRUMENTATION_ENABLED_KEY);
 
-        self::extractSharedArgs(
-            $testArgs,
-            /* out */ $dbNameArg,
-            /* out */ $wrapInTx,
-            /* out */ $rollback
-        );
+        self::extractSharedArgs($testArgs, /* out */ $dbNameArg, /* out */ $wrapInTx, /* out */ $rollback, /* out */ $callEndTxInShutdownFunction);
 
         $testCaseHandle = $this->getTestCaseHandle();
 
