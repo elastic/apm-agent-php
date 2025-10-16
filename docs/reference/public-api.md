@@ -53,6 +53,28 @@ try {
 
 See [TransactionInterface](#api-transaction-interface) on how to customize a transaction.
 
+### `ElasticApm::createErrorFromThrowable` [api-elasticapm-class-create-error-from-throwable]
+
+Captures a throwable exception. This API:
+* Captures an error as an exception
+* Displays it in the ElasticAPM `Errors` screen
+* Allows for easy tracking of caught exceptions.
+
+For example:
+```php
+use Elastic\Apm\ElasticApm;
+
+private function captureExceptionFromErrorMessage($message)
+{
+    try {
+        throw new Exception($message);
+    } catch (Throwable $ex) {
+        ElasticApm::createErrorFromThrowable($ex);
+    }
+}
+```
+
+The code above would allow for an error message to be tracked via an artificially created exception.
 
 ### `ElasticApm::captureCurrentTransaction` [api-elasticapm-class-capture-current-transaction]
 
