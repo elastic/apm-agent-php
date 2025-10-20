@@ -36,9 +36,9 @@ final class DbAutoInstrumentationUtilForTests
     public const PASSWORD_KEY = 'PASSWORD';
 
     public const DB_NAME_KEY = 'DB_NAME';
-    public const USE_SELECT_DB_KEY = 'USE_SELECT_DB';
     public const WRAP_IN_TX_KEY = 'WRAP_IN_TX';
     public const ROLLBACK_KEY = 'ROLLBACK';
+    public const CALL_END_TX_IN_SHUTDOWN_FUNCTION_KEY = 'CALL_END_TX_IN_SHUTDOWN_FUNCTION';
 
     /**
      * @return callable(array<mixed>): iterable<array<mixed>>
@@ -53,14 +53,18 @@ final class DbAutoInstrumentationUtilForTests
         return function (array $resultSoFar): iterable {
             foreach (IterableUtilForTests::ALL_BOOL_VALUES as $wrapInTx) {
                 $rollbackValues = $wrapInTx ? [false, true] : [false];
+                $callEndTxInShutdownFunctionValues = $wrapInTx ? [false, true] : [false];
                 foreach ($rollbackValues as $rollback) {
-                    yield array_merge(
-                        $resultSoFar,
-                        [
-                            self::WRAP_IN_TX_KEY => $wrapInTx,
-                            self::ROLLBACK_KEY   => $rollback,
-                        ]
-                    );
+                    foreach ($callEndTxInShutdownFunctionValues as $callEndTxInShutdownFunction) {
+                        yield array_merge(
+                            $resultSoFar,
+                            [
+                                self::WRAP_IN_TX_KEY                       => $wrapInTx,
+                                self::ROLLBACK_KEY                         => $rollback,
+                                self::CALL_END_TX_IN_SHUTDOWN_FUNCTION_KEY => $callEndTxInShutdownFunction,
+                            ]
+                        );
+                    }
                 }
             }
         };

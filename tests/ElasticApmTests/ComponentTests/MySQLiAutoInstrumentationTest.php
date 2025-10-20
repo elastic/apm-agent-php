@@ -323,7 +323,8 @@ final class MySQLiAutoInstrumentationTest extends ComponentTestCaseBase
         ?string &$workDbName /* <- out */,
         ?string &$queryKind /* <- out */,
         ?bool &$wrapInTx /* <- out */,
-        ?bool &$rollback /* <- out */
+        ?bool &$rollback /* <- out */,
+        ?bool &$callEndTxInShutdownFunction /* <- out */
     ): void {
         $isOOPApi = $args->getBool(self::IS_OOP_API_KEY);
         $connectDbName = $args->getNullableString(self::CONNECT_DB_NAME_KEY);
@@ -331,6 +332,7 @@ final class MySQLiAutoInstrumentationTest extends ComponentTestCaseBase
         $queryKind = $args->getString(self::QUERY_KIND_KEY);
         $wrapInTx = $args->getBool(DbAutoInstrumentationUtilForTests::WRAP_IN_TX_KEY);
         $rollback = $args->getBool(DbAutoInstrumentationUtilForTests::ROLLBACK_KEY);
+        $callEndTxInShutdownFunction = $args->getBool(DbAutoInstrumentationUtilForTests::CALL_END_TX_IN_SHUTDOWN_FUNCTION_KEY);
     }
 
     public static function appCodeForTestAutoInstrumentation(MixedMap $appCodeArgs): void
@@ -342,7 +344,8 @@ final class MySQLiAutoInstrumentationTest extends ComponentTestCaseBase
             /* out */ $workDbName,
             /* out */ $queryKind,
             /* out */ $wrapInTx,
-            /* out */ $rollback
+            /* out */ $rollback,
+            /* out */ $callEndTxInShutdownFunction
         );
         $host = $appCodeArgs->getString(DbAutoInstrumentationUtilForTests::HOST_KEY);
         $port = $appCodeArgs->getInt(DbAutoInstrumentationUtilForTests::PORT_KEY);
@@ -397,12 +400,18 @@ final class MySQLiAutoInstrumentationTest extends ComponentTestCaseBase
         }
         $queryResult->close();
 
-        if ($wrapInTx) {
-            self::assertTrue($rollback ? $mySQLi->rollback() : $mySQLi->commit());
+        $endTxCallFunc = function () use ($wrapInTx, $rollback, $mySQLi, $queryKind) {
+            if ($wrapInTx) {
+                self::assertTrue($rollback ? $mySQLi->rollback() : $mySQLi->commit());
+            }
+            self::resetDbState($mySQLi, $queryKind);
+            self::assertTrue($mySQLi->close());
+        };
+        if ($callEndTxInShutdownFunction) {
+            register_shutdown_function($endTxCallFunc);
+        } else {
+            $endTxCallFunc();
         }
-
-        self::resetDbState($mySQLi, $queryKind);
-        self::assertTrue($mySQLi->close());
     }
 
     /**
@@ -436,7 +445,8 @@ final class MySQLiAutoInstrumentationTest extends ComponentTestCaseBase
             /* out */ $workDbName,
             /* out */ $queryKind,
             /* out */ $wrapInTx,
-            /* out */ $rollback
+            /* out */ $rollback,
+            /* out */ $callEndTxInShutdownFunction
         );
 
         $testCaseHandle = $this->getTestCaseHandle();
