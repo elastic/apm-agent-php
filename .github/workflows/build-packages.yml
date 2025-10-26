@@ -21,11 +21,11 @@ jobs:
       BUILD_ARCH: ${{ matrix.BUILD_ARCH }}
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: package-parts-linux-${{ matrix.BUILD_ARCH }}
           path: agent/native/_build/linux-${{ matrix.BUILD_ARCH }}-release/
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: package-parts-linuxmusl-${{ matrix.BUILD_ARCH }}
           path: agent/native/_build/linuxmusl-${{ matrix.BUILD_ARCH }}-release/
@@ -39,7 +39,7 @@ jobs:
         run: make -C packaging package
       - name: package info
         run: make -C packaging info
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: packages-${{ matrix.BUILD_ARCH }}
           path: |

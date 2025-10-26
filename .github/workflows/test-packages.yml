@@ -42,13 +42,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         if: ${{ inputs.package-name }}
         with:
           name: ${{ inputs.package-name }}
           path: ${{ env.BUILD_PACKAGES }}
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         if: ${{ ! inputs.package-name }}
         with:
           pattern: 'package*'
@@ -70,12 +70,12 @@ jobs:
         env:
           PACKAGE_FILE: "${{ inputs.package-name }}.zip"
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: package-parts-linux-x86-64
           path: agent/native/_build/linux-x86-64-release
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: package-parts-linuxmusl-x86-64
           path: agent/native/_build/linuxmusl-x86-64-release
@@ -124,7 +124,7 @@ jobs:
           \;
 
       - if: success() || failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: test-results-${{ env.ELASTIC_APM_PHP_TESTS_MATRIX_ROW }}
           path: build/*junit.xml
@@ -140,7 +140,7 @@ jobs:
           find . -name "syslog" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
           find . -name "messages" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         continue-on-error: true
         with:
           name: syslogs-${{ env.ELASTIC_APM_PHP_TESTS_MATRIX_ROW }}

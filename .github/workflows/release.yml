@@ -54,7 +54,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Download package artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           pattern: packages-*
           path: ${{ env.BUILD_PACKAGES }}
@@ -105,7 +105,7 @@ jobs:
       # this artifact name is used also in some other places,
       # such as ./.github/workflows/test-packages.yml.
       # Therefore v4 cannot be used at the moment.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: signed-artifacts
           path: signed-artifacts.zip
@@ -140,7 +140,7 @@ jobs:
     steps:
 
       - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: signed-artifacts
           path: ${{ env.BUILD_PACKAGES }}
