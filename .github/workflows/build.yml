@@ -48,7 +48,7 @@ jobs:
           echo "Detected CPUs: $(nproc)"
           make -f .ci/Makefile build
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: package-parts-${{ matrix.arch }}
           path: |
