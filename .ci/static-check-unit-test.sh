@@ -42,8 +42,14 @@ runPhpCoposerInstall
 composer run-script static_check
 
 # Run unit tests
+composerCommandToRunUnitTests=(composer run-script --)
 phpUnitConfigFile=$(php ./tests/ElasticApmTests/Util/runSelectPhpUnitConfigFile.php --tests-type=unit)
-composer run-script -- run_unit_tests_custom_config -c "${phpUnitConfigFile}"
+composerCommandToRunUnitTests=("${composerCommandToRunUnitTests[@]}" run_unit_tests_custom_config -c "${phpUnitConfigFile}")
+if [ "${ELASTIC_APM_PHP_TESTS_AGENT_ENABLED_CONFIG_DEFAULT:?}" == "false" ]; then
+    composerCommandToRunUnitTests=("${composerCommandToRunUnitTests[@]}" --filter AgentEnabledConfigUnitTest)
+fi
+echo "composerCommandToRunUnitTests: ${composerCommandToRunUnitTests[@]}"
+"${composerCommandToRunUnitTests[@]}"
 ls -l ./build/unit-tests-phpunit-junit.xml
 
 # Generate junit output for phpstan
