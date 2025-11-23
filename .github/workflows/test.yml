@@ -64,7 +64,7 @@ jobs:
       PHP_VERSION: ${{ matrix.php-version }}
       BUILD_ARCHITECTURE: ${{ matrix.data.arch }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/download-artifact@v6
         with:
           name: package-parts-${{ matrix.data.arch }}
@@ -99,7 +99,7 @@ jobs:
       PHP_VERSION: ${{ matrix.php-version }}
       DOCKERFILE: ${{ matrix.dockerfile }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Prepare
         run: make -f .ci/Makefile prepare
       - name: Static Check / Unit tests
