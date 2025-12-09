@@ -58,8 +58,8 @@ Automatic instrumentation for an HTTP client technology means an HTTP span is au
 
 | Framework        | Supported versions |
 |------------------|--------------------|
-| `curl` extension |                    |
-| `Guzzle` library | 6, 7               |
+| `curl` extension | any version bundled with a supported PHP version |
+| `Guzzle` library | 6, 7 |
 
 
 ## Capturing PHP errors as APM error events [supported-php-errors]
