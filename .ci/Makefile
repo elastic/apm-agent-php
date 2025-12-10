@@ -33,6 +33,10 @@ ifneq ($(PHP_VERSION), 7.2)
 	SEL_DISTRO := bullseye
 endif
 
+ifeq ($(PHP_VERSION), 8.5)
+	SEL_DISTRO := bookworm
+endif
+
 
 CONAN_USER_HOME:=/tmp/conan_user_home
 MAP_CONAN_HOME_TO_DOCKER_HOST_CMD_LINE_ARG:=
