@@ -109,7 +109,7 @@ setup_wordpress() {
 setup_drupal() {
     echo_info "Installing Drupal ${FRAMEWORK_VERSION}..."
     if [ ! -f "composer.json" ]; then
-        composer create-project drupal/recommended-project . "${FRAMEWORK_VERSION}"
+        composer create-project drupal-composer/drupal-project . "${FRAMEWORK_VERSION}"
     fi
 }
 

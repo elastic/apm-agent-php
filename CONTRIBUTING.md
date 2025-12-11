@@ -447,13 +447,13 @@ The `scripts/test-framework.sh` script helps you test the Elastic APM PHP Agent 
 ./scripts/test-framework.sh 8.3 laravel 11.x
 
 # Test with Symfony 7.0 on PHP 8.2
-./scripts/test-framework.sh 8.2 symfony 7.0
+./scripts/test-framework.sh 8.2 symfony 8.0.x
 
 # Test with WordPress latest on PHP 8.1
 ./scripts/test-framework.sh 8.1 wordpress latest
 
 # Test with Drupal on PHP 8.3
-./scripts/test-framework.sh 8.3 drupal
+./scripts/test-framework.sh 8.3 drupal 7.x-dev
 ```
 
 **Supported frameworks**: Laravel, Symfony, WordPress, Drupal, Magento
