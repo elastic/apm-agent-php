@@ -37,7 +37,7 @@ We support automatic instrumentation for the following web frameworks.
 
 | Framework | Supported versions |
 | --- | --- |
-| Framework-less PHP application (i.e., application using PHP’s built in web support) | any version bundled with a supported PHP version |
+| Framework-less PHP application (i.e., application using PHP’s built in web support) | any version bundled with a [supported PHP version](#supported-php-versions) |
 | Laravel | 6, 7, 8, 9, 10 |
 | WordPress | 5, 6 |
 
