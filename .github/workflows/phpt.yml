@@ -40,7 +40,7 @@ jobs:
     #     tar --wildcards  --strip-components 5 -xf /tmp/apm-agent-php-linux-x86-64.tar ./opt/elastic/apm-agent-php/extensions/elastic_apm*
     #     cd -
     - uses: actions/checkout@v6
-    - uses: actions/download-artifact@v6
+    - uses: actions/download-artifact@v7
       with:
         name: package-parts-linux-x86-64
         path: |
@@ -64,7 +64,7 @@ jobs:
         sudo chmod -R 777 agent/extension_phpt_test/results
         sudo chown -R $(id -u):$(id -g) agent/extension_phpt_test/results
     - if: success() || failure()
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       continue-on-error: true
       with:
         name: phpt-test-results-${{ matrix.php-version }}
