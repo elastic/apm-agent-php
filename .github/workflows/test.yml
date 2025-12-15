@@ -65,7 +65,7 @@ jobs:
       BUILD_ARCHITECTURE: ${{ matrix.data.arch }}
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: package-parts-${{ matrix.data.arch }}
           path: agent/native/_build/${{ matrix.data.arch }}-release/
@@ -112,7 +112,7 @@ jobs:
           -exec bash -c 'mv {} "build/${PHP_VERSION}-${DOCKERFILE}-$(basename {})"'
           \;
       - if: success() || failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: test-results-${{ matrix.php-version }}-${{ matrix.dockerfile }}
           path: build/*junit.xml
