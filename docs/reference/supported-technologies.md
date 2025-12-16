@@ -37,7 +37,7 @@ We support automatic instrumentation for the following web frameworks.
 
 | Framework | Supported versions |
 | --- | --- |
-| Framework-less PHP application (i.e., application using PHP’s built in web support) |  |
+| Framework-less PHP application (i.e., application using PHP’s built in web support) | any version bundled with a [supported PHP version](#supported-php-versions) |
 | Laravel | 6, 7, 8, 9, 10 |
 | WordPress | 5, 6 |
 
@@ -56,10 +56,10 @@ We support automatic instrumentation for the following data access technologies.
 
 Automatic instrumentation for an HTTP client technology means an HTTP span is automatically created for each outgoing HTTP request and distributed tracing headers are propagated. The spans are named after the schema `<method> <host>`, for example `GET elastic.co`.
 
-| Framework | Supported versions |
-| --- | --- |
-| `curl` extension |  |
-| `Guzzle` library |  |
+| Framework        | Supported versions |
+|------------------|--------------------|
+| `curl` extension | any version bundled with a [supported PHP version](#supported-php-versions) |
+| `Guzzle` library | 6, 7 |
 
 
 ## Capturing PHP errors as APM error events [supported-php-errors]
