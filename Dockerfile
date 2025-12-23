@@ -19,11 +19,13 @@ RUN apt-get -qq update \
         wget \
  && rm -rf /var/lib/apt/lists/*
 
-RUN docker-php-ext-install \
-    mysqli \
-    pcntl \
-    pdo_mysql \
-    opcache
+RUN MODULES="mysqli pcntl pdo_mysql"; \
+    if [ "${PHP_VERSION}" = "8.5" ]; then \
+        :; \
+    else \
+        MODULES="$MODULES opcache"; \
+    fi; \
+    docker-php-ext-install $MODULES
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
