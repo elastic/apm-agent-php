@@ -12,11 +12,12 @@ RUN apk update \
     git \
     unzip
 
-RUN docker-php-ext-install \
-    mysqli \
-    pcntl \
-    pdo_mysql \
-    opcache
+RUN MODULES="mysqli pcntl pdo_mysql"; \
+    case "${PHP_VERSION}" in \
+        8.5*) ;; \
+        *) MODULES="$MODULES opcache" ;; \
+    esac; \
+    docker-php-ext-install $MODULES
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
