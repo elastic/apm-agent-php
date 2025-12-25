@@ -428,6 +428,11 @@ final class CurlHandleTracker implements LoggableInterface
 
         $this->setContextPreHook();
 
+        // Special case to skip distributed tracing for WordPress cron.
+        if ($this->url !== null && parse_url($this->url, PHP_URL_PATH) === '/wp-cron.php') {
+            return;
+        }
+
         if ($isHttp) {
             $headersToInjectFormattedLines = [];
             $this->span->injectDistributedTracingHeaders(
