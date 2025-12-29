@@ -45,6 +45,7 @@ struct ConfigSnapshot
     String bootstrapPhpPartFile = nullptr;
     bool breakdownMetrics = false;
     bool captureErrors = false;
+    bool captureExceptions = false;
     String devInternal = nullptr;
     bool devInternalBackendCommLogVerbose = false;
     String disableInstrumentations = nullptr;

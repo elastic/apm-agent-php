@@ -131,108 +131,6 @@ bool doesCurrentPidMatchPidOnInit( pid_t pidOnInit, String dbgDesc )
     return true;
 }
 
-typedef void (* ZendThrowExceptionHook )(
-#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
-        zend_object* exception
-#else
-        zval* exception
-#endif
-);
-
-// static bool elasticApmZendErrorCallbackSet = false;
-static bool elasticApmZendThrowExceptionHookReplaced = false;
-static ZendThrowExceptionHook originalZendThrowExceptionHook = NULL;
-
-void resetLastThrown() {
-    zval_dtor(&ELASTICAPM_G(lastException));
-    ZVAL_UNDEF(&ELASTICAPM_G(lastException));
-}
-
-void elasticApmZendThrowExceptionHookImpl(
-#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
-        zend_object* thrownAsPzobj
-#else
-        zval* thrownAsPzval
-#endif
-)
-{
-
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "lastException set: %s", boolToString( Z_TYPE(ELASTICAPM_G(lastException)) != IS_UNDEF ) );
-
-    resetLastThrown();
-
-#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
-    ZVAL_OBJ_COPY(&ELASTICAPM_G( lastException ), thrownAsPzobj );
-#else
-    ZVAL_COPY(&ELASTICAPM_G(lastException), thrownAsPzval );
-#endif
-
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
-}
-
-void elasticApmGetLastThrown(zval *return_value) {
-    if (Z_TYPE(ELASTICAPM_G(lastException)) == IS_UNDEF) {
-        RETURN_NULL();
-    }
-
-    RETURN_ZVAL(&ELASTICAPM_G(lastException), /* copy */ true, /* dtor */ false );
-}
-
-void elasticApmZendThrowExceptionHook(
-#if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
-        zend_object* thrownObj
-#else
-        zval* thrownObj
-#endif
-)
-{
-    elasticApmZendThrowExceptionHookImpl( thrownObj );
-
-    if (originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook) {
-        ELASTIC_APM_LOG_CRITICAL( "originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook" );
-        return;
-    }
-
-    if ( originalZendThrowExceptionHook != NULL )
-    {
-        originalZendThrowExceptionHook( thrownObj );
-    }
-}
-
-
-static void registerExceptionHooks(const ConfigSnapshot& config) {
-    if (!config.captureErrors) {
-        ELASTIC_APM_LOG_DEBUG( "NOT replacing zend_throw_exception_hook hook because capture_errors configuration option is set to false" );
-        return;
-    }
-
-    if (elasticApmZendThrowExceptionHookReplaced) {
-        ELASTIC_APM_LOG_WARNING( "zend_throw_exception_hook already replaced: %p. Original: %p, Elastic: %p", zend_throw_exception_hook, originalZendThrowExceptionHook, elasticApmZendThrowExceptionHook );
-        return;
-    }
-
-    originalZendThrowExceptionHook = zend_throw_exception_hook;
-    zend_throw_exception_hook = elasticApmZendThrowExceptionHook;
-    elasticApmZendThrowExceptionHookReplaced = true;
-    ELASTIC_APM_LOG_DEBUG( "Replaced zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook) -> %p"
-                           , originalZendThrowExceptionHook, originalZendThrowExceptionHook == elasticApmZendThrowExceptionHook ? "==" : "!="
-                           , elasticApmZendThrowExceptionHook );
-}
-
-
-static void unregisterExceptionHooks() {
-    if (elasticApmZendThrowExceptionHookReplaced) {
-        ZendThrowExceptionHook zendThrowExceptionHookBeforeRestore = zend_throw_exception_hook;
-        zend_throw_exception_hook = originalZendThrowExceptionHook;
-        ELASTIC_APM_LOG_DEBUG( "Restored zend_throw_exception_hook: %p (%s elasticApmZendThrowExceptionHook: %p) -> %p"
-                               , zendThrowExceptionHookBeforeRestore, zendThrowExceptionHookBeforeRestore == elasticApmZendThrowExceptionHook ? "==" : "!="
-                               , elasticApmZendThrowExceptionHook, originalZendThrowExceptionHook );
-        originalZendThrowExceptionHook = NULL;
-    } else {
-        ELASTIC_APM_LOG_DEBUG("zend_throw_exception_hook not restored: %p, elastic: %p", zend_throw_exception_hook, elasticApmZendThrowExceptionHook);
-    }
-}
-
 void elasticApmModuleInit( int moduleType, int moduleNumber )
 {
     auto const &sapi = ELASTICAPM_G(globals)->sapi_;
@@ -278,7 +176,6 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
 
     registerCallbacksToLogFork();
     registerAtExitLogging();
-    registerExceptionHooks(*config);
 
     curlCode = curl_global_init( CURL_GLOBAL_ALL );
     if ( curlCode != CURLE_OK )
@@ -291,7 +188,7 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
 
     astInstrumentationOnModuleInit( config );
 
-    elasticapm::php::Hooking::getInstance().replaceHooks(config->captureErrors, config->profilingInferredSpansEnabled);
+    elasticapm::php::Hooking::getInstance().replaceHooks(config->profilingInferredSpansEnabled);
 
     if (php_check_open_basedir_ex(config->bootstrapPhpPartFile, false) != 0) {
         ELASTIC_APM_LOG_WARNING(
@@ -337,8 +234,6 @@ void elasticApmModuleShutdown( int moduleType, int moduleNumber )
     elasticapm::php::Hooking::getInstance().restoreOriginalHooks();
     astInstrumentationOnModuleShutdown();
 
-    unregisterExceptionHooks();
-
     backgroundBackendCommOnModuleShutdown( config );
 
     if ( tracer->curlInited )
@@ -363,20 +258,6 @@ void elasticApmModuleShutdown( int moduleType, int moduleNumber )
     unregisterOsSignalHandler();
 
     ELASTIC_APM_LOG_DIRECT_DEBUG( "%s exiting...", __FUNCTION__ );
-}
-
-void elasticApmGetLastPhpError(zval* return_value) {
-    if (!ELASTICAPM_G(lastErrorData)) {
-        RETURN_NULL();
-    }
-
-    array_init( return_value );
-    ELASTIC_APM_ZEND_ADD_ASSOC(return_value, "type", long, static_cast<zend_long>(ELASTICAPM_G(lastErrorData)->getType()));
-    ELASTIC_APM_ZEND_ADD_ASSOC_NULLABLE_STRING( return_value, "fileName", ELASTICAPM_G(lastErrorData)->getFileName().data() );
-    ELASTIC_APM_ZEND_ADD_ASSOC(return_value, "lineNumber", long, static_cast<zend_long>(ELASTICAPM_G(lastErrorData)->getLineNumber()));
-    ELASTIC_APM_ZEND_ADD_ASSOC_NULLABLE_STRING( return_value, "message", ELASTICAPM_G(lastErrorData)->getMessage().data());
-    Z_TRY_ADDREF_P((ELASTICAPM_G(lastErrorData)->getStackTrace()));
-    ELASTIC_APM_ZEND_ADD_ASSOC(return_value, "stackTrace", zval, (ELASTICAPM_G(lastErrorData)->getStackTrace()));
 }
 
 auto buildPeriodicTaskExecutor() {
@@ -484,11 +365,6 @@ void elasticApmRequestInit()
         goto finally;
     }
 
-    if (!config->captureErrors) {
-        ELASTIC_APM_LOG_DEBUG( "capture_errors (captureErrors) configuration option is set to false which means errors will NOT be captured" );
-    }
-    ELASTICAPM_G(captureErrors) = config->captureErrors;
-
     if ( config->astProcessEnabled )
     {
         astInstrumentationOnRequestInit( config );
@@ -590,8 +466,6 @@ void elasticApmRequestShutdown()
         ELASTICAPM_G(globals)->periodicTaskExecutor_->suspendPeriodicTasks();
     }
 
-    ELASTICAPM_G(captureErrors) = false; // disabling error capturing on shutdown
-
     tracerPhpPartOnRequestShutdown();
 
     // there is no guarantee that following code will be executed - in case of error on php side
@@ -626,9 +500,6 @@ int  elasticApmRequestPostDeactivate(void) {
     }
 
     resetCallInterceptionOnRequestShutdown();
-
-    ELASTICAPM_G(lastErrorData).reset(nullptr);
-    resetLastThrown();
 
     if ( tracer->isInited && isMemoryTrackingEnabled( &tracer->memTracker ) )
     {

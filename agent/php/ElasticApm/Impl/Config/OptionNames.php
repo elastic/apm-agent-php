@@ -42,6 +42,7 @@ final class OptionNames
     public const ASYNC_BACKEND_COMM = 'async_backend_comm';
     public const BREAKDOWN_METRICS = 'breakdown_metrics';
     public const CAPTURE_ERRORS = 'capture_errors';
+    public const CAPTURE_EXCEPTIONS = 'capture_exceptions';
     public const DEV_INTERNAL = 'dev_internal';
     public const DISABLE_INSTRUMENTATIONS = 'disable_instrumentations';
     public const DISABLE_SEND = 'disable_send';
@@ -49,6 +50,7 @@ final class OptionNames
     public const ENVIRONMENT = 'environment';
     public const GLOBAL_LABELS = 'global_labels';
     public const HOSTNAME = 'hostname';
+    /** @noinspection PhpUnused */
     public const INTERNAL_CHECKS_LEVEL = 'internal_checks_level';
     public const LOG_LEVEL = 'log_level';
     public const LOG_LEVEL_SYSLOG = 'log_level_syslog';

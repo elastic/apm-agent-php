@@ -90,6 +90,7 @@ final class AllOptionsMetadata
             OptionNames::ASYNC_BACKEND_COMM                         => new BoolOptionMetadata(/* default */ true),
             OptionNames::BREAKDOWN_METRICS                          => new BoolOptionMetadata(/* default */ true),
             OptionNames::CAPTURE_ERRORS                             => new BoolOptionMetadata(/* default */ true),
+            OptionNames::CAPTURE_EXCEPTIONS                         => new NullableBoolOptionMetadata(),
             OptionNames::DEV_INTERNAL                               => new NullableWildcardListOptionMetadata(),
             OptionNames::DISABLE_INSTRUMENTATIONS                   => new NullableWildcardListOptionMetadata(),
             OptionNames::DISABLE_SEND                               => new BoolOptionMetadata(/* default */ false),

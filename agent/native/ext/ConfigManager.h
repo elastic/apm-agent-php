@@ -74,6 +74,7 @@ enum OptionId
     optionId_bootstrapPhpPartFile,
     optionId_breakdownMetrics,
     optionId_captureErrors,
+    optionId_captureExceptions,
     optionId_devInternal,
     optionId_devInternalBackendCommLogVerbose,
     optionId_disableInstrumentations,
@@ -257,10 +258,8 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE "bootstrap_php_part_file"
 #define ELASTIC_APM_CFG_OPT_NAME_BREAKDOWN_METRICS "breakdown_metrics"
 
-/**
- * Internal configuration option (not included in public documentation)
- */
 #define ELASTIC_APM_CFG_OPT_NAME_CAPTURE_ERRORS "capture_errors"
+#define ELASTIC_APM_CFG_OPT_NAME_CAPTURE_EXCEPTIONS "capture_exceptions"
 
 /**
  * Internal configuration option (not included in public documentation)

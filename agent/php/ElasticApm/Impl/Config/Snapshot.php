@@ -119,6 +119,9 @@ final class Snapshot implements LoggableInterface
     /** @var bool */
     private $captureErrors;
 
+    /** @var ?bool */
+    private $captureExceptions;
+
     /** @var ?WildcardListMatcher */
     private $devInternal;
 
@@ -280,6 +283,11 @@ final class Snapshot implements LoggableInterface
     public function captureErrors(): bool
     {
         return $this->captureErrors;
+    }
+
+    public function captureExceptions(): ?bool
+    {
+        return $this->captureExceptions;
     }
 
     public function devInternal(): SnapshotDevInternal

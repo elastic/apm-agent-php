@@ -31,7 +31,6 @@ use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\InferredSpansManager;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
-use Elastic\Apm\Impl\Span;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Transaction;
 use Elastic\Apm\Impl\Util\ArrayUtil;
@@ -43,6 +42,8 @@ use Elastic\Apm\Impl\Util\UrlUtil;
 use Elastic\Apm\Impl\Util\WildcardListMatcher;
 use Elastic\Apm\TransactionInterface;
 use Throwable;
+
+use function set_exception_handler;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -73,8 +74,11 @@ final class TransactionForExtensionRequest
     /** @var ?TransactionInterface */
     private $transactionForRequest;
 
-    /** @var ?Throwable  */
-    private $lastThrown = null;
+    /** @var null|callable(mixed ...$args): bool */
+    private $prevErrorHandler;
+
+    /** @var null|callable(Throwable): void  */
+    private $prevExceptionHandler;
 
     /** @var ?InferredSpansManager  */
     private $inferredSpansManager = null;
@@ -82,37 +86,43 @@ final class TransactionForExtensionRequest
     public function __construct(Tracer $tracer, float $requestInitStartTime)
     {
         $this->tracer = $tracer;
-        $this->logger = $tracer->loggerFactory()
-                               ->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__)
-                               ->addContext('this', $this);
+        $this->logger = $tracer->loggerFactory()->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__)->addContext('this', $this);
 
         $this->transactionForRequest = $this->beginTransaction($requestInitStartTime);
         if ($this->transactionForRequest instanceof Transaction && $this->transactionForRequest->isSampled()) {
             $this->inferredSpansManager = new InferredSpansManager($tracer);
         }
 
-        $this->tracer->onNewCurrentTransactionHasBegun->add(
-            function (Transaction $transaction): void {
-                PhpPartFacade::ensureHaveLatestDataDeferredByExtension();
-                $transaction->onAboutToEnd->add(
-                    function (/** @noinspection PhpUnusedParameterInspection */ Transaction $ignored): void {
-                        PhpPartFacade::ensureHaveLatestDataDeferredByExtension();
-                    }
-                );
-                $transaction->onCurrentSpanChanged->add(
-                    function (?Span $span): void {
-                        PhpPartFacade::ensureHaveLatestDataDeferredByExtension();
-                        if ($span !== null) {
-                            $span->onAboutToEnd->add(
-                                function (/** @noinspection PhpUnusedParameterInspection */ Span $ignored): void {
-                                    PhpPartFacade::ensureHaveLatestDataDeferredByExtension();
-                                }
-                            );
-                        }
-                    }
-                );
-            }
-        );
+        $logDebug = $this->logger->ifDebugLevelEnabledNoLine(__FUNCTION__);
+        $logDebug && $logDebug->log(__LINE__, '$this->logger->maxEnabledLevel(): ' . $this->logger->maxEnabledLevel());
+        if ($this->tracer->getConfig()->captureErrors()) {
+            $this->prevErrorHandler = set_error_handler(
+                /**
+                 * @param mixed ...$otherArgs
+                 */
+                function (int $errno, string $errstr, ?string $errfile, ?int $errline, ...$otherArgs): bool {
+                    return $this->onPhpError(/* numberOfStackFramesToSkip */ 1, $errno, $errstr, $errfile, $errline, ...$otherArgs);
+                }
+            );
+            $logDebug && $logDebug->log(__LINE__, 'Registered PHP error handler');
+        } else {
+            $logDebug && $logDebug->log(__LINE__, 'capture_errors configuration option is set to false - not registering PHP error handler');
+        }
+
+        // captureExceptions can be null, true or false and only false disables exception capturing even if captureErrors is true
+        if ($this->tracer->getConfig()->captureErrors() && ($this->tracer->getConfig()->captureExceptions() !== false)) {
+            $this->prevExceptionHandler = set_exception_handler(
+                function (Throwable $thrown): void {
+                    $this->onNotCaughtThrowable($thrown);
+                }
+            );
+            $logDebug && $logDebug->log(__LINE__, 'Registered exception handler');
+        } else {
+            $optName = ($this->tracer->getConfig()->captureErrors() ? 'capture_exceptions' : 'capture_errors');
+            $logDebug && $logDebug->log(__LINE__, $optName . ' configuration option is set to false - not registering exception handler');
+        }
+
+        $this->logger->addContext('this', $this);
     }
 
     public function getConfig(): ConfigSnapshot
@@ -313,10 +323,6 @@ final class TransactionForExtensionRequest
         if ($tx->getOutcome() === null) {
             $this->discoverHttpOutcome($tx);
         }
-
-        if ($tx->getOutcome() === Constants::OUTCOME_FAILURE && $this->lastThrown !== null) {
-            $this->tracer->createErrorFromThrowable($this->lastThrown);
-        }
     }
 
     private function logGcStatus(): void
@@ -332,48 +338,43 @@ final class TransactionForExtensionRequest
         && $loggerProxy->log('Called gc_status()', ['gc_status() return value' => $gcStatusRetVal]);
     }
 
-    public function onPhpError(PhpErrorData $phpErrorData): void
+    /**
+     * @param mixed ...$otherArgs
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     *
+     * @noinspection PhpSameParameterValueInspection
+     */
+    private function onPhpError(int $numberOfStackFramesToSkip, int $errno, string $errstr, ?string $errfile, ?int $errline, ...$otherArgs): bool
     {
-        $relatedThrowable = null;
-        if (
-            $this->lastThrown !== null
-            && $phpErrorData->message !== null
-            && TextUtil::isPrefixOf('Uncaught Exception: ', $phpErrorData->message, /* isCaseSensitive: */ false)
-        ) {
-            $relatedThrowable = $this->lastThrown;
-            $this->lastThrown = null;
-        }
-        $this->tracer->onPhpError($phpErrorData, $relatedThrowable, /* numberOfStackFramesToSkip */ 1);
+        ($logDebug = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $logDebug->log('Entered', compact('errno', 'errstr', 'errfile', 'errline'));
+
+        $phpErrorData = new PhpErrorData($errno, $errfile, $errline, $errstr, array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), $numberOfStackFramesToSkip + 1));
+        $this->tracer->onPhpError($phpErrorData, /* relatedThrowable */ null, $numberOfStackFramesToSkip + 1);
+
+        /**
+         * If the function returns false then the normal error handler continues.
+         *
+         * @link https://www.php.net/manual/en/function.set-error-handler.php
+         */
+        return $this->prevErrorHandler === null ? false : ($this->prevErrorHandler)($errno, $errstr, $errfile, $errline, ...$otherArgs);
     }
 
-    /**
-     * @param mixed $lastThrown
-     *
-     * @return void
-     */
-    public function setLastThrown($lastThrown): void
+    public function onNotCaughtThrowable(Throwable $thrown): void
     {
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log('Entered', ['lastThrown' => $lastThrown]);
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Entered', compact('thrown'));
 
-        if (!($lastThrown instanceof Throwable)) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'lastThrown is not an instance of Throwable - ignoring it...',
-                ['lastThrown' => $lastThrown]
-            );
-            return;
+        $this->tracer->createErrorFromThrowable($thrown);
+
+        if ($this->prevExceptionHandler !== null) {
+            ($this->prevExceptionHandler)($thrown);
         }
-
-        $this->lastThrown = $lastThrown;
     }
 
     public function onShutdown(): void
     {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered');
-
-        PhpPartFacade::ensureHaveLatestDataDeferredByExtension();
 
         if ($this->inferredSpansManager !== null) {
             $this->inferredSpansManager->shutdown();

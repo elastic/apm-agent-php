@@ -27,7 +27,6 @@ use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\Impl\Util\ArrayUtil;
-use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\PhpErrorUtil;
 use Elastic\Apm\Impl\Util\RangeUtil;
 use ElasticApmTests\ComponentTests\Util\AppCodeHostHandle;
@@ -61,6 +60,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
 
     private const INCLUDE_IN_ERROR_REPORTING_KEY = 'include_in_error_reporting';
     private const CAPTURE_ERRORS_KEY = 'capture_errors';
+    private const CAPTURE_EXCEPTIONS_KEY = 'capture_exceptions';
 
     private function verifyError(DataFromAgent $dataFromAgent): ErrorDto
     {
@@ -207,7 +207,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         $captureErrorsConfigOptVal = $testArgs->getBool(self::CAPTURE_ERRORS_KEY);
 
         $testCaseHandle = $this->getTestCaseHandle();
-        $appCodeHost = self::ensureMainAppCodeHost($testCaseHandle, $captureErrorsConfigOptVal);
+        $appCodeHost = self::ensureMainAppCodeHost($testCaseHandle, $testArgs);
         $appCodeHost->sendRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestPhpErrorUndefinedVariableWrapper']),
             function (AppCodeRequestParams $appCodeRequestParams) use ($includeInErrorReporting): void {
@@ -299,17 +299,30 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         return $justReturnLineNumber ? $callLineNumber : appCodeForTestPhpErrorUncaughtException();
     }
 
+
     /**
-     * @dataProvider boolDataProviderAdaptedToSmoke
-     *
-     * @param bool $captureErrorsConfigOptVal
+     * @return iterable<string, array{MixedMap}>
      */
-    public function testPhpErrorUncaughtException(bool $captureErrorsConfigOptVal): void
+    public function dataProviderCaptureErrorsExceptions(): iterable
+    {
+        $result = (new DataProviderForTestBuilder())
+            ->addBoolKeyedDimensionAllValuesCombinable(self::CAPTURE_ERRORS_KEY)
+            ->addKeyedDimensionAllValuesCombinable(self::CAPTURE_EXCEPTIONS_KEY, [null, false, true])
+            ->build();
+
+        return DataProviderForTestBuilder::convertEachDataSetToMixedMap(self::adaptKeyValueToSmoke($result));
+    }
+
+    private function implTestPhpErrorUncaughtException(MixedMap $testArgs): void
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
+        $captureErrorsOptVal = $testArgs->getBool(self::CAPTURE_ERRORS_KEY);
+        $captureExceptionsOptVal = $testArgs->getNullableBool(self::CAPTURE_EXCEPTIONS_KEY);
+
         $testCaseHandle = $this->getTestCaseHandle();
-        $appCodeHost = self::ensureMainAppCodeHost($testCaseHandle, $captureErrorsConfigOptVal);
+        $appCodeHost = self::ensureMainAppCodeHost($testCaseHandle, $testArgs);
+
         $appCodeHost->sendRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestPhpErrorUncaughtExceptionWrapper']),
             function (AppCodeRequestParams $appCodeRequestParams): void {
@@ -324,7 +337,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
             }
         );
 
-        $isErrorExpected = $captureErrorsConfigOptVal;
+        $isErrorExpected = $captureErrorsOptVal && ($captureExceptionsOptVal !== false);
         $expectedErrorCount = $isErrorExpected ? 1 : 0;
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->errors($expectedErrorCount));
         $dbgCtx->add(['dataFromAgent' => $dataFromAgent]);
@@ -369,32 +382,45 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         self::verifyAppCodeStackTraceTop($expectedStackTraceTop, $err);
     }
 
+    /**
+     * @dataProvider dataProviderCaptureErrorsExceptions
+     */
+    public function testPhpErrorUncaughtException(MixedMap $testArgs): void
+    {
+        self::runAndEscalateLogLevelOnFailure(
+            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
+            function () use ($testArgs): void {
+                $this->implTestPhpErrorUncaughtException($testArgs);
+            }
+        );
+    }
+
     public static function appCodeForTestCaughtExceptionResponded500Wrapper(bool $justReturnLineNumber = false): int
     {
         $callLineNumber = __LINE__ + 1;
         return $justReturnLineNumber ? $callLineNumber : appCodeForTestCaughtExceptionResponded500();
     }
 
-    private static function ensureMainAppCodeHost(TestCaseHandle $testCaseHandle, bool $captureErrorsConfigOptVal): AppCodeHostHandle
+    private static function ensureMainAppCodeHost(TestCaseHandle $testCaseHandle, MixedMap $testArgs): AppCodeHostHandle
     {
         return $testCaseHandle->ensureMainAppCodeHost(
-            function (AppCodeHostParams $appCodeParams) use ($captureErrorsConfigOptVal): void {
-                if (!self::equalsConfigDefaultValue(OptionNames::CAPTURE_ERRORS, $captureErrorsConfigOptVal)) {
-                    $appCodeParams->setAgentOption(OptionNames::CAPTURE_ERRORS, $captureErrorsConfigOptVal);
+            function (AppCodeHostParams $appCodeParams) use ($testArgs): void {
+                foreach ([OptionNames::CAPTURE_ERRORS, OptionNames::CAPTURE_EXCEPTIONS] as $optName) {
+                    if ($testArgs->hasKey($optName)) {
+                        $appCodeParams->setAgentOptionIfNotDefaultValue($optName, $testArgs->get($optName));
+                    }
                 }
             }
         );
     }
 
     /**
-     * @dataProvider boolDataProviderAdaptedToSmoke
-     *
-     * @param bool $captureErrorsConfigOptVal
+     * @dataProvider dataProviderCaptureErrorsExceptions
      */
-    public function testCaughtExceptionResponded500(bool $captureErrorsConfigOptVal): void
+    public function testCaughtExceptionResponded500(MixedMap $testArgs): void
     {
         $testCaseHandle = $this->getTestCaseHandle();
-        $appCodeHost = self::ensureMainAppCodeHost($testCaseHandle, $captureErrorsConfigOptVal);
+        $appCodeHost = self::ensureMainAppCodeHost($testCaseHandle, $testArgs);
         $appCodeHost->sendRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestCaughtExceptionResponded500Wrapper']),
             function (AppCodeRequestParams $appCodeRequestParams): void {
@@ -403,50 +429,8 @@ final class ErrorComponentTest extends ComponentTestCaseBase
                 }
             }
         );
-        $isErrorExpected = self::isMainAppCodeHostHttp() && $captureErrorsConfigOptVal;
-        $expectedErrorCount = $isErrorExpected ? 1 : 0;
-        $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->errors($expectedErrorCount));
-        self::assertCount($expectedErrorCount, $dataFromAgent->idToError);
-        if (!$isErrorExpected) {
-            return;
-        }
 
-        $err = $this->verifyError($dataFromAgent);
-
-        $appCodeFile = FileUtilForTests::listToPath([dirname(__FILE__), 'appCodeForTestCaughtExceptionResponded500.php']);
-        self::assertNotNull($err->exception);
-        self::assertSame(APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_CODE, $err->exception->code);
-
-        $exceptionNamespace = '';
-        $exceptionClassName = '';
-        ClassNameUtil::splitFqClassName(DummyExceptionForTests::class, /* out */  $exceptionNamespace, /* out */ $exceptionClassName);
-        self::assertSame('ElasticApmTests\\Util', $exceptionNamespace);
-        self::assertSame('DummyExceptionForTests', $exceptionClassName);
-
-        self::assertSame($exceptionNamespace, $err->exception->module);
-        self::assertSame($exceptionClassName, $err->exception->type);
-        self::assertSame(APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_MESSAGE, $err->exception->message);
-
-        $expectedStackTraceTop = [
-            [
-                self::STACK_TRACE_FILE_NAME   => $appCodeFile,
-                self::STACK_TRACE_FUNCTION    => null,
-                self::STACK_TRACE_LINE_NUMBER => APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_THROW_LINE_NUMBER,
-            ],
-            [
-                self::STACK_TRACE_FILE_NAME   => $appCodeFile,
-                self::STACK_TRACE_FUNCTION    => __NAMESPACE__ . '\\appCodeForTestCaughtExceptionResponded500Impl',
-                self::STACK_TRACE_LINE_NUMBER => APP_CODE_FOR_TEST_CAUGHT_EXCEPTION_RESPONDED_500_CALL_TO_IMPL_LINE_NUMBER,
-            ],
-            [
-                self::STACK_TRACE_FILE_NAME   => __FILE__,
-                self::STACK_TRACE_FUNCTION    => __NAMESPACE__ . '\\appCodeForTestCaughtExceptionResponded500',
-                self::STACK_TRACE_LINE_NUMBER => self::appCodeForTestCaughtExceptionResponded500Wrapper(/* justReturnLineNumber */ true),
-            ],
-            [
-                self::STACK_TRACE_FUNCTION => __CLASS__ . '::appCodeForTestCaughtExceptionResponded500Wrapper',
-            ],
-        ];
-        self::verifyAppCodeStackTraceTop($expectedStackTraceTop, $err);
+        $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1));
+        self::assertEmpty($dataFromAgent->idToError);
     }
 }

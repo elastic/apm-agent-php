@@ -328,9 +328,7 @@ final class Tracer implements TracerInterface, LoggableInterface
             $customErrorData->message = $phpErrorData->message . $messageSuffix;
         }
 
-        if ($phpErrorData->type !== null) {
-            $customErrorData->type = PhpErrorUtil::getTypeName($phpErrorData->type);
-        }
+        $customErrorData->type = PhpErrorUtil::getTypeName($phpErrorData->type);
 
         $this->createError($customErrorData, $phpErrorData, $relatedThrowable, $numberOfStackFramesToSkip + 1);
     }
