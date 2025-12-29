@@ -407,7 +407,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
             function (AppCodeHostParams $appCodeParams) use ($testArgs): void {
                 foreach ([OptionNames::CAPTURE_ERRORS, OptionNames::CAPTURE_EXCEPTIONS] as $optName) {
                     if ($testArgs->hasKey($optName)) {
-                        $appCodeParams->setAgentOptionIfNotDefaultValue($optName, $testArgs->get($optName));
+                        $appCodeParams->setAgentOptionIfNotDefaultValue($optName, $testArgs->get($optName)); // @phpstan-ignore argument.type
                     }
                 }
             }
