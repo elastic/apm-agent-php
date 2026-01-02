@@ -48,6 +48,7 @@ struct ConfigSnapshot
     bool captureExceptions = false;
     String devInternal = nullptr;
     bool devInternalBackendCommLogVerbose = false;
+    bool devInternalCaptureErrorsOnlyToLog = false;
     String disableInstrumentations = nullptr;
     bool disableSend = false;
     bool enabled = false;

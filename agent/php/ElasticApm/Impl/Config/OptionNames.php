@@ -44,6 +44,7 @@ final class OptionNames
     public const CAPTURE_ERRORS = 'capture_errors';
     public const CAPTURE_EXCEPTIONS = 'capture_exceptions';
     public const DEV_INTERNAL = 'dev_internal';
+    public const DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG = 'dev_internal_capture_errors_only_to_log';
     public const DISABLE_INSTRUMENTATIONS = 'disable_instrumentations';
     public const DISABLE_SEND = 'disable_send';
     public const ENABLED = 'enabled';

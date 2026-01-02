@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\Impl\Util\ArrayUtil;
@@ -59,8 +60,6 @@ final class ErrorComponentTest extends ComponentTestCaseBase
     private const STACK_TRACE_LINE_NUMBER = 'STACK_TRACE_LINE_NUMBER';
 
     private const INCLUDE_IN_ERROR_REPORTING_KEY = 'include_in_error_reporting';
-    private const CAPTURE_ERRORS_KEY = 'capture_errors';
-    private const CAPTURE_EXCEPTIONS_KEY = 'capture_exceptions';
 
     private function verifyError(DataFromAgent $dataFromAgent): ErrorDto
     {
@@ -193,7 +192,8 @@ final class ErrorComponentTest extends ComponentTestCaseBase
     {
         $result = (new DataProviderForTestBuilder())
             ->addBoolKeyedDimensionAllValuesCombinable(self::INCLUDE_IN_ERROR_REPORTING_KEY)
-            ->addBoolKeyedDimensionAllValuesCombinable(self::CAPTURE_ERRORS_KEY)
+            ->addBoolKeyedDimensionAllValuesCombinable(OptionNames::CAPTURE_ERRORS)
+            ->addKeyedDimensionAllValuesCombinable(OptionNames::DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG, [false, true])
             ->build();
 
         return DataProviderForTestBuilder::convertEachDataSetToMixedMap(self::adaptKeyValueToSmoke($result));
@@ -204,7 +204,8 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
         $includeInErrorReporting = $testArgs->getBool(self::INCLUDE_IN_ERROR_REPORTING_KEY);
-        $captureErrorsConfigOptVal = $testArgs->getBool(self::CAPTURE_ERRORS_KEY);
+        $captureErrorsConfigOptVal = $testArgs->getBool(OptionNames::CAPTURE_ERRORS);
+        $devInternalCaptureErrorsOnlyToLogOptVal = $testArgs->getBool(OptionNames::DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG);
 
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = self::ensureMainAppCodeHost($testCaseHandle, $testArgs);
@@ -215,7 +216,10 @@ final class ErrorComponentTest extends ComponentTestCaseBase
             }
         );
 
-        $isErrorExpected = $captureErrorsConfigOptVal || (!$includeInErrorReporting);
+        // If $includeInErrorReporting is false then substitute error is created by the app code calling ElasticApm::createErrorFromThrowable
+        // If $includeInErrorReporting is true then error is created only when captureErrors is true and devInternalCaptureErrorsOnlyToLog is false
+        $isErrorExpected = (!$includeInErrorReporting) || ($captureErrorsConfigOptVal && !$devInternalCaptureErrorsOnlyToLogOptVal);
+        $dbgCtx->add(compact('isErrorExpected'));
         $expectedErrorCount = $isErrorExpected ? 1 : 0;
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->errors($expectedErrorCount));
         $dbgCtx->add(['dataFromAgent' => $dataFromAgent]);
@@ -306,8 +310,9 @@ final class ErrorComponentTest extends ComponentTestCaseBase
     public function dataProviderCaptureErrorsExceptions(): iterable
     {
         $result = (new DataProviderForTestBuilder())
-            ->addBoolKeyedDimensionAllValuesCombinable(self::CAPTURE_ERRORS_KEY)
-            ->addKeyedDimensionAllValuesCombinable(self::CAPTURE_EXCEPTIONS_KEY, [null, false, true])
+            ->addBoolKeyedDimensionAllValuesCombinable(OptionNames::CAPTURE_ERRORS)
+            ->addKeyedDimensionAllValuesCombinable(OptionNames::CAPTURE_EXCEPTIONS, [null, false, true])
+            ->addKeyedDimensionAllValuesCombinable(OptionNames::DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG, [false, true])
             ->build();
 
         return DataProviderForTestBuilder::convertEachDataSetToMixedMap(self::adaptKeyValueToSmoke($result));
@@ -317,8 +322,9 @@ final class ErrorComponentTest extends ComponentTestCaseBase
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
-        $captureErrorsOptVal = $testArgs->getBool(self::CAPTURE_ERRORS_KEY);
-        $captureExceptionsOptVal = $testArgs->getNullableBool(self::CAPTURE_EXCEPTIONS_KEY);
+        $captureErrorsOptVal = $testArgs->getBool(OptionNames::CAPTURE_ERRORS);
+        $captureExceptionsOptVal = $testArgs->getNullableBool(OptionNames::CAPTURE_EXCEPTIONS);
+        $devInternalCaptureErrorsOnlyToLogOptVal = $testArgs->getBool(OptionNames::DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG);
 
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = self::ensureMainAppCodeHost($testCaseHandle, $testArgs);
@@ -337,7 +343,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
             }
         );
 
-        $isErrorExpected = $captureErrorsOptVal && ($captureExceptionsOptVal !== false);
+        $isErrorExpected = ($captureExceptionsOptVal ?? $captureErrorsOptVal) && (!$devInternalCaptureErrorsOnlyToLogOptVal);
         $expectedErrorCount = $isErrorExpected ? 1 : 0;
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->errors($expectedErrorCount));
         $dbgCtx->add(['dataFromAgent' => $dataFromAgent]);
@@ -405,7 +411,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
     {
         return $testCaseHandle->ensureMainAppCodeHost(
             function (AppCodeHostParams $appCodeParams) use ($testArgs): void {
-                foreach ([OptionNames::CAPTURE_ERRORS, OptionNames::CAPTURE_EXCEPTIONS] as $optName) {
+                foreach (AllOptionsMetadata::get() as $optName => $_) {
                     if ($testArgs->hasKey($optName)) {
                         $appCodeParams->setAgentOptionIfNotDefaultValue($optName, $testArgs->get($optName)); // @phpstan-ignore argument.type
                     }

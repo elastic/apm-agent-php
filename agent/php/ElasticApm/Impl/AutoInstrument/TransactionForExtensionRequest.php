@@ -109,8 +109,9 @@ final class TransactionForExtensionRequest
             $logDebug && $logDebug->log(__LINE__, 'capture_errors configuration option is set to false - not registering PHP error handler');
         }
 
-        // captureExceptions can be null, true or false and only false disables exception capturing even if captureErrors is true
-        if ($this->tracer->getConfig()->captureErrors() && ($this->tracer->getConfig()->captureExceptions() !== false)) {
+        // If captureExceptions is set explcitly (i.e., it is not null) can be null then it overrides captureErrors
+        // If captureExceptions is NOT set explcitly (i.e., it is null) then captureErrors is used to decide whether to capture exceptions
+        if ($this->tracer->getConfig()->captureExceptions() === null ? $this->tracer->getConfig()->captureErrors() : $this->tracer->getConfig()->captureExceptions()) {
             $this->prevExceptionHandler = set_exception_handler(
                 function (Throwable $thrown): void {
                     $this->onNotCaughtThrowable($thrown);
@@ -118,7 +119,7 @@ final class TransactionForExtensionRequest
             );
             $logDebug && $logDebug->log(__LINE__, 'Registered exception handler');
         } else {
-            $optName = ($this->tracer->getConfig()->captureErrors() ? 'capture_exceptions' : 'capture_errors');
+            $optName = ($this->tracer->getConfig()->captureExceptions() === null ? 'capture_errors' : 'capture_exceptions');
             $logDebug && $logDebug->log(__LINE__, $optName . ' configuration option is set to false - not registering exception handler');
         }
 
@@ -339,6 +340,8 @@ final class TransactionForExtensionRequest
     }
 
     /**
+     * Callable passed to set_error_handler had 5th parameter - $errcontext (array). This parameter was deprecated in PHP 7.2.0 and removed in PHP 8.0.0
+     *
      * @param mixed ...$otherArgs
      *
      * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
@@ -349,8 +352,10 @@ final class TransactionForExtensionRequest
     {
         ($logDebug = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $logDebug->log('Entered', compact('errno', 'errstr', 'errfile', 'errline'));
 
-        $phpErrorData = new PhpErrorData($errno, $errfile, $errline, $errstr, array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), $numberOfStackFramesToSkip + 1));
-        $this->tracer->onPhpError($phpErrorData, /* relatedThrowable */ null, $numberOfStackFramesToSkip + 1);
+        if (!$this->tracer->getConfig()->devInternalCaptureErrorsOnlyToLog()) {
+            $phpErrorData = new PhpErrorData($errno, $errfile, $errline, $errstr, array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), $numberOfStackFramesToSkip + 1));
+            $this->tracer->onPhpError($phpErrorData, /* relatedThrowable */ null, $numberOfStackFramesToSkip + 1);
+        }
 
         /**
          * If the function returns false then the normal error handler continues.
@@ -364,7 +369,9 @@ final class TransactionForExtensionRequest
     {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Entered', compact('thrown'));
 
-        $this->tracer->createErrorFromThrowable($thrown);
+        if (!$this->tracer->getConfig()->devInternalCaptureErrorsOnlyToLog()) {
+            $this->tracer->createErrorFromThrowable($thrown);
+        }
 
         if ($this->prevExceptionHandler !== null) {
             ($this->prevExceptionHandler)($thrown);
