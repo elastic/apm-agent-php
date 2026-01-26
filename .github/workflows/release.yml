@@ -47,9 +47,10 @@ jobs:
     env:
       BUCKET_NAME: "apm-agent-php"
     permissions:
+      artifact-metadata: write
       attestations: write
-      id-token: write
       contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v6
 
