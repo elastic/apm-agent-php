@@ -21,6 +21,12 @@ elif [ $PHP_VERSION == "8.1" ]; then
 	PHP_API_VERSION="20210902"
 elif [ $PHP_VERSION == "8.2" ]; then
 	PHP_API_VERSION="20220829"
+elif [ $PHP_VERSION == "8.3" ]; then
+	PHP_API_VERSION="20230831"
+elif [ $PHP_VERSION == "8.4" ]; then
+	PHP_API_VERSION="20240924"
+elif [ $PHP_VERSION == "8.5" ]; then
+	PHP_API_VERSION="20250925"
 fi
 
 mkdir -m 666 -p /results/${PHP_VERSION}

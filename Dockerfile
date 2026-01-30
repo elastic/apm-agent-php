@@ -12,17 +12,17 @@ RUN if [ ${PHP_VERSION} = 7.2 ] && [ ${SEL_DISTRO} = buster ]; then \
 
 RUN apt-get -qq update \
     && apt-get -qq -y --no-install-recommends install \
-        procps \
-        rsyslog \
-        curl \
-        unzip \
-        wget \
- && rm -rf /var/lib/apt/lists/*
+    procps \
+    rsyslog \
+    curl \
+    unzip \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN MODULES="mysqli pcntl pdo_mysql"; \
     case "${PHP_VERSION}" in \
-        8.5*) ;; \
-        *) MODULES="$MODULES opcache" ;; \
+    8.5*) ;; \
+    *) MODULES="$MODULES opcache" ;; \
     esac; \
     docker-php-ext-install $MODULES
 
@@ -39,4 +39,9 @@ ENV TEST_PHP_JUNIT=/app/build/junit.xml
 ENV ELASTIC_APM_ENABLED=false
 
 # Create a link to extensions directory to make it easier accessible (paths are different between php releases)
-RUN ln -s `find /usr/local/lib/php/extensions/ -name opcache.so | head -n1 | xargs dirname` /tmp/extensions
+RUN OPCACHE_PATH=$(find /usr/local/lib/php/extensions/ -name opcache.so -o -name opcache.a | head -n1); \
+    if [ -z "$OPCACHE_PATH" ]; then \
+        ln -s $(find /usr/local/lib/php/extensions/ -type d | head -n1) /tmp/extensions; \
+    else \
+        ln -s $(dirname "$OPCACHE_PATH") /tmp/extensions; \
+    fi

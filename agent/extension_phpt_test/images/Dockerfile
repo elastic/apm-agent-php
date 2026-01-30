@@ -5,7 +5,12 @@ RUN apt-get update && apt-get install -y libcurl4 libcurl4-openssl-dev gdb
 
 RUN docker-php-source extract
 
-RUN docker-php-ext-install pdo pdo_mysql opcache curl 
+RUN MODULES="pdo pdo_mysql curl"; \
+    case "${PHP_VERSION}" in \
+        8.5*) ;; \
+        *) MODULES="$MODULES opcache" ;; \
+    esac; \
+    docker-php-ext-install $MODULES 
 
 RUN php -m
 
