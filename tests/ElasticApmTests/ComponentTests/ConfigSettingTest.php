@@ -138,8 +138,12 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::ASYNC_BACKEND_COMM             => $asyncBackendCommValues,
             OptionNames::BREAKDOWN_METRICS              => $boolRawToParsedValues(),
             OptionNames::CAPTURE_ERRORS                 => $boolRawToParsedValues(),
+            OptionNames::CAPTURE_ERRORS_WITH_PHP_PART   => $boolRawToParsedValues(),
+            OptionNames::CAPTURE_EXCEPTIONS             => $boolRawToParsedValues(),
             OptionNames::ENABLED                        => $boolRawToParsedValues(/* valueToExclude: */ false),
             OptionNames::DEV_INTERNAL                   => $wildcardListRawToParsedValues,
+            OptionNames::DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG
+                                                        => $boolRawToParsedValues(),
             OptionNames::DISABLE_INSTRUMENTATIONS       => $wildcardListRawToParsedValues,
             OptionNames::DISABLE_SEND                   => $boolRawToParsedValues(/* valueToExclude: */ true),
             OptionNames::ENVIRONMENT                    => $stringRawToParsedValues([" my_environment \t "]),
@@ -149,7 +153,6 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::LOG_LEVEL_STDERR               => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_SYSLOG               => $logLevelRawToParsedValues,
             OptionNames::NON_KEYWORD_STRING_MAX_LENGTH  => $intRawToParsedValues,
-            // OLD TODO: Sergey Kleyman: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
             OptionNames::PROFILING_INFERRED_SPANS_ENABLED
                                                         => $boolRawToParsedValues(/* valueToExclude: */ true),
             OptionNames::PROFILING_INFERRED_SPANS_MIN_DURATION

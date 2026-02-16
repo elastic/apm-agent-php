@@ -156,16 +156,18 @@ void elasticApmZendThrowExceptionHookImpl(
 #endif
 )
 {
+	ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "lastException set: %s", boolToString( Z_TYPE(ELASTICAPM_G(lastException)) != IS_UNDEF ) );
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "lastException set: %s", boolToString( Z_TYPE(ELASTICAPM_G(lastException)) != IS_UNDEF ) );
-
-    resetLastThrown();
-
+	if (ELASTICAPM_G(captureErrorsToLogOnly)) {
+		ELASTIC_APM_LOG_DEBUG("Captured exception but only to log it");
+	} else {
+    	resetLastThrown();
 #if PHP_MAJOR_VERSION >= 8 /* if PHP version is 8.* and later */
-    ZVAL_OBJ_COPY(&ELASTICAPM_G( lastException ), thrownAsPzobj );
+ 	   ZVAL_OBJ_COPY(&ELASTICAPM_G( lastException ), thrownAsPzobj );
 #else
-    ZVAL_COPY(&ELASTICAPM_G(lastException), thrownAsPzval );
+    	ZVAL_COPY(&ELASTICAPM_G(lastException), thrownAsPzval );
 #endif
+	}
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
 }
@@ -201,8 +203,12 @@ void elasticApmZendThrowExceptionHook(
 
 
 static void registerExceptionHooks(const ConfigSnapshot& config) {
-    if (!config.captureErrors) {
-        ELASTIC_APM_LOG_DEBUG( "NOT replacing zend_throw_exception_hook hook because capture_errors configuration option is set to false" );
+	bool shouldCaptureExceptions = config.captureExceptions.isSet ? config.captureExceptions.value : config.captureErrors;
+    if ((!shouldCaptureExceptions) || config.captureErrorsWithPhpPart) {
+        ELASTIC_APM_LOG_DEBUG(
+			"NOT replacing zend_throw_exception_hook hook because configuration options capture_exceptions is %s, capture_errors is %s and capture_errors_with_php_part is %s",
+			optionalBoolToString(config.captureExceptions), boolToString(config.captureErrors), boolToString(config.captureErrorsWithPhpPart)
+		);
         return;
     }
 
@@ -291,7 +297,7 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
 
     astInstrumentationOnModuleInit( config );
 
-    elasticapm::php::Hooking::getInstance().replaceHooks(config->captureErrors, config->profilingInferredSpansEnabled);
+    elasticapm::php::Hooking::getInstance().replaceHooks(config->captureErrors, config->captureErrorsWithPhpPart, config->profilingInferredSpansEnabled);
 
     if (php_check_open_basedir_ex(config->bootstrapPhpPartFile, false) != 0) {
         ELASTIC_APM_LOG_WARNING(
@@ -484,10 +490,20 @@ void elasticApmRequestInit()
         goto finally;
     }
 
-    if (!config->captureErrors) {
+    ELASTICAPM_G(captureErrorsUsingNative) = false;
+    if (config->captureErrors) {
+	    if (config->captureErrorsWithPhpPart) {
+    	    ELASTIC_APM_LOG_DEBUG( "capture_errors_with_php_part (captureErrorsWithPhpPart) configuration option is set to true which means errors will be captured by PHP part of the agent" );
+    	} else {
+		    ELASTICAPM_G(captureErrorsUsingNative) = true;
+		}
+	    if (config->devInternalCaptureErrorsOnlyToLog) {
+    	    ELASTIC_APM_LOG_DEBUG( "dev_internal_capture_errors_only_to_log (devInternalCaptureErrorsOnlyToLog) configuration option is set to true which means errors will be logged only" );
+    	}
+    } else {
         ELASTIC_APM_LOG_DEBUG( "capture_errors (captureErrors) configuration option is set to false which means errors will NOT be captured" );
-    }
-    ELASTICAPM_G(captureErrors) = config->captureErrors;
+	}
+    ELASTICAPM_G(captureErrorsToLogOnly) = config->devInternalCaptureErrorsOnlyToLog;
 
     if ( config->astProcessEnabled )
     {
@@ -590,7 +606,7 @@ void elasticApmRequestShutdown()
         ELASTICAPM_G(globals)->periodicTaskExecutor_->suspendPeriodicTasks();
     }
 
-    ELASTICAPM_G(captureErrors) = false; // disabling error capturing on shutdown
+    ELASTICAPM_G(captureErrorsUsingNative) = false; // disabling error capturing on shutdown
 
     tracerPhpPartOnRequestShutdown();
 

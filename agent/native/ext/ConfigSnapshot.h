@@ -41,12 +41,15 @@ struct ConfigSnapshot
     bool astProcessDebugDumpConvertedBackToSource = false;
     String astProcessDebugDumpForPathPrefix = nullptr;
     String astProcessDebugDumpOutDir = nullptr;
-    OptionalBool asyncBackendComm = {false, false};
+    OptionalBool asyncBackendComm = (OptionalBool){ .isSet = false, .value = false };
     String bootstrapPhpPartFile = nullptr;
     bool breakdownMetrics = false;
     bool captureErrors = false;
+    bool captureErrorsWithPhpPart = false;
+    OptionalBool captureExceptions = (OptionalBool){ .isSet = false, .value = false };
     String devInternal = nullptr;
     bool devInternalBackendCommLogVerbose = false;
+    bool devInternalCaptureErrorsOnlyToLog = false;
     String disableInstrumentations = nullptr;
     bool disableSend = false;
     bool enabled = false;

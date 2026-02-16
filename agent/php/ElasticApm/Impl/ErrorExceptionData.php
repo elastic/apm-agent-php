@@ -117,6 +117,7 @@ class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableI
             }
 
             $message = $throwable->getMessage();
+            /** @noinspection PhpConditionAlreadyCheckedInspection */
             if (is_string($message)) {
                 $result->message = $tracer->limitNullableNonKeywordString($message);
             }

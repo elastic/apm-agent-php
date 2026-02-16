@@ -276,19 +276,19 @@ final class PhpPartFacade
     private static function ensureHaveLastErrorData(
         TransactionForExtensionRequest $transactionForExtensionRequest
     ): void {
-        if (!$transactionForExtensionRequest->getConfig()->captureErrors()) {
-            return;
+        if ($transactionForExtensionRequest->getConfig()->captureErrors() && (!$transactionForExtensionRequest->getConfig()->captureErrorsWithPhpPart())) {
+            /**
+             * The last thrown should be fetched before last PHP error because if the error is for "Uncaught Exception"
+             * agent will use the last thrown exception
+             */
+            if ($transactionForExtensionRequest->getConfig()->shouldCaptureExceptions()) {
+                self::ensureHaveLastThrownCapturedByNativePart($transactionForExtensionRequest);
+            }
+            self::ensureHaveLastPhpErrorCapturedByNativePart($transactionForExtensionRequest);
         }
-
-        /**
-         * The last thrown should be fetched before last PHP error because if the error is for "Uncaught Exception"
-         * agent will use the last thrown exception
-         */
-        self::ensureHaveLastThrown($transactionForExtensionRequest);
-        self::ensureHaveLastPhpError($transactionForExtensionRequest);
     }
 
-    private static function ensureHaveLastThrown(TransactionForExtensionRequest $transactionForExtensionRequest): void
+    private static function ensureHaveLastThrownCapturedByNativePart(TransactionForExtensionRequest $transactionForExtensionRequest): void
     {
         /**
          * elastic_apm_* functions are provided by the elastic_apm extension
@@ -303,7 +303,7 @@ final class PhpPartFacade
             return;
         }
 
-        $transactionForExtensionRequest->setLastThrown($lastThrown);
+        $transactionForExtensionRequest->setLastThrownCapturedByNativePart($lastThrown);
     }
 
     /**
@@ -431,7 +431,7 @@ final class PhpPartFacade
         return $result;
     }
 
-    private static function ensureHaveLastPhpError(TransactionForExtensionRequest $transactionForExtensionRequest): void
+    private static function ensureHaveLastPhpErrorCapturedByNativePart(TransactionForExtensionRequest $transactionForExtensionRequest): void
     {
         /**
          * elastic_apm_* functions are provided by the elastic_apm extension
@@ -462,7 +462,7 @@ final class PhpPartFacade
         }
         /** @var array<array-key, mixed> $lastPhpErrorData */
 
-        $transactionForExtensionRequest->onPhpError(self::buildPhpErrorData($lastPhpErrorData));
+        $transactionForExtensionRequest->onPhpErrorCapturedByNativePart(self::buildPhpErrorData($lastPhpErrorData));
     }
 
     /**

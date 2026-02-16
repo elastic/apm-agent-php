@@ -76,15 +76,19 @@ final class TransactionForExtensionRequest
     /** @var ?Throwable  */
     private $lastThrown = null;
 
+    /** @var null|callable(mixed ...$args): bool */
+    private $prevErrorHandler;
+
+    /** @var null|callable(Throwable): void  */
+    private $prevExceptionHandler;
+
     /** @var ?InferredSpansManager  */
     private $inferredSpansManager = null;
 
     public function __construct(Tracer $tracer, float $requestInitStartTime)
     {
         $this->tracer = $tracer;
-        $this->logger = $tracer->loggerFactory()
-                               ->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__)
-                               ->addContext('this', $this);
+        $this->logger = $tracer->loggerFactory()->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__);
 
         $this->transactionForRequest = $this->beginTransaction($requestInitStartTime);
         if ($this->transactionForRequest instanceof Transaction && $this->transactionForRequest->isSampled()) {
@@ -113,6 +117,38 @@ final class TransactionForExtensionRequest
                 );
             }
         );
+
+        $logDebug = $this->logger->ifDebugLevelEnabledNoLine(__FUNCTION__);
+        $logDebug && $logDebug->log(__LINE__, '$this->logger->maxEnabledLevel(): ' . $this->logger->maxEnabledLevel());
+        if ($this->tracer->getConfig()->captureErrorsWithPhpPart()) {
+            if ($this->tracer->getConfig()->captureErrors()) {
+                $this->prevErrorHandler = set_error_handler(
+                /**
+                 * @param mixed ...$otherArgs
+                 */
+                    function (int $errno, string $errstr, ?string $errfile, ?int $errline, ...$otherArgs): bool {
+                        return $this->onPhpErrorCapturedByPhpPart(/* numberOfStackFramesToSkip */ 1, $errno, $errstr, $errfile, $errline, ...$otherArgs);
+                    }
+                );
+                $logDebug && $logDebug->log(__LINE__, 'Registered PHP error handler');
+            } else {
+                $logDebug && $logDebug->log(__LINE__, 'capture_errors configuration option is set to false - not registering PHP error handler');
+            }
+
+            if ($this->tracer->getConfig()->shouldCaptureExceptions()) {
+                $this->prevExceptionHandler = set_exception_handler(
+                    function (Throwable $thrown): void {
+                        $this->onNotCaughtThrowableCapturedByPhpPart($thrown);
+                    }
+                );
+                $logDebug && $logDebug->log(__LINE__, 'Registered exception handler');
+            } else {
+                $optName = ($this->tracer->getConfig()->captureExceptions() === null ? 'capture_errors' : 'capture_exceptions');
+                $logDebug && $logDebug->log(__LINE__, $optName . ' configuration option is set to false - not registering exception handler');
+            }
+        }
+
+        $this->logger->addContext('this', $this);
     }
 
     public function getConfig(): ConfigSnapshot
@@ -332,7 +368,7 @@ final class TransactionForExtensionRequest
         && $loggerProxy->log('Called gc_status()', ['gc_status() return value' => $gcStatusRetVal]);
     }
 
-    public function onPhpError(PhpErrorData $phpErrorData): void
+    public function onPhpErrorCapturedByNativePart(PhpErrorData $phpErrorData): void
     {
         $relatedThrowable = null;
         if (
@@ -347,11 +383,42 @@ final class TransactionForExtensionRequest
     }
 
     /**
+     * Callable passed to set_error_handler had 5th parameter - $errcontext (array). This parameter was deprecated in PHP 7.2.0 and removed in PHP 8.0.0
+     *
+     * @param mixed ...$otherArgs
+     *
+     * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
+     *
+     * @noinspection PhpSameParameterValueInspection
+     */
+    private function onPhpErrorCapturedByPhpPart(int $numberOfStackFramesToSkip, int $errno, string $errstr, ?string $errfile, ?int $errline, ...$otherArgs): bool
+    {
+        ($logDebug = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $logDebug->log('Entered', compact('errno', 'errstr', 'errfile', 'errline'));
+
+        if (!$this->tracer->getConfig()->devInternalCaptureErrorsOnlyToLog()) {
+            $phpErrorData = new PhpErrorData();
+            $phpErrorData->type = $errno;
+            $phpErrorData->fileName = $errfile;
+            $phpErrorData->lineNumber = $errline;
+            $phpErrorData->message = $errstr;
+            $phpErrorData->stackTrace = array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), $numberOfStackFramesToSkip + 1);
+            $this->tracer->onPhpError($phpErrorData, /* relatedThrowable */ null, $numberOfStackFramesToSkip + 1);
+        }
+
+        /**
+         * If the function returns false then the normal error handler continues.
+         *
+         * @link https://www.php.net/manual/en/function.set-error-handler.php
+         */
+        return $this->prevErrorHandler === null ? false : ($this->prevErrorHandler)($errno, $errstr, $errfile, $errline, ...$otherArgs);
+    }
+
+    /**
      * @param mixed $lastThrown
      *
      * @return void
      */
-    public function setLastThrown($lastThrown): void
+    public function setLastThrownCapturedByNativePart($lastThrown): void
     {
         ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered', ['lastThrown' => $lastThrown]);
@@ -366,6 +433,19 @@ final class TransactionForExtensionRequest
         }
 
         $this->lastThrown = $lastThrown;
+    }
+
+    public function onNotCaughtThrowableCapturedByPhpPart(Throwable $thrown): void
+    {
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Entered', compact('thrown'));
+
+        if (!$this->tracer->getConfig()->devInternalCaptureErrorsOnlyToLog()) {
+            $this->tracer->createErrorFromThrowable($thrown);
+        }
+
+        if ($this->prevExceptionHandler !== null) {
+            ($this->prevExceptionHandler)($thrown);
+        }
     }
 
     public function onShutdown(): void

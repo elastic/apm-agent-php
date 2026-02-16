@@ -801,8 +801,11 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( optionalBoolValue, asyncBackendComm )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, bootstrapPhpPartFile )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, breakdownMetrics )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, captureErrors )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, captureErrorsWithPhpPart )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( optionalBoolValue, captureExceptions )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, devInternal )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, devInternalBackendCommLogVerbose )
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, devInternalCaptureErrorsOnlyToLog )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, disableInstrumentations )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, disableSend )
 ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( boolValue, enabled )
@@ -1009,6 +1012,18 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             /* defaultValue: */ true );
 
     ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            captureErrorsWithPhpPart,
+            ELASTIC_APM_CFG_OPT_NAME_CAPTURE_ERRORS_WITH_PHP_PART,
+            /* defaultValue: */ false );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildOptionalBoolOptionMetadata,
+            captureExceptions,
+            ELASTIC_APM_CFG_OPT_NAME_CAPTURE_EXCEPTIONS,
+            /* defaultValue: */ makeNotSetOptionalBool() );
+
+    ELASTIC_APM_INIT_METADATA(
             buildStringOptionMetadata,
             devInternal,
             ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL,
@@ -1018,6 +1033,12 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             buildBoolOptionMetadata,
             devInternalBackendCommLogVerbose,
             ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_BACKEND_COMM_LOG_VERBOSE,
+            /* defaultValue: */ false );
+
+    ELASTIC_APM_INIT_METADATA(
+            buildBoolOptionMetadata,
+            devInternalCaptureErrorsOnlyToLog,
+            ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG,
             /* defaultValue: */ false );
 
     ELASTIC_APM_INIT_METADATA(
