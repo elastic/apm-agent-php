@@ -27,13 +27,17 @@ use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Config\NullableOptionMetadata;
 use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\Level as LogLevel;
+use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\ComponentTests\Util\AgentConfigSourceKind;
+use ElasticApmTests\ComponentTests\Util\AmbientContextForTests;
 use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
+use ElasticApmTests\ComponentTests\Util\ConfigUtilForTests;
+use ElasticApmTests\ComponentTests\Util\EnvVarUtilForTests;
 use ElasticApmTests\ComponentTests\Util\HttpAppCodeRequestParams;
 use ElasticApmTests\Util\ArrayUtilForTests;
 use ElasticApmTests\Util\AssertMessageStack;
@@ -408,15 +412,34 @@ final class ConfigSettingTest extends ComponentTestCaseBase
      */
     public function testAllWaysToSetConfig(MixedMap $testArgs): void
     {
-        if (self::isOptionLogLevelRelated($testArgs->getString(self::OPTION_NAME_KEY))) {
-            $this->implTestAllWaysToSetConfig($testArgs);
+        $optName = $testArgs->getString(self::OPTION_NAME_KEY);
+        // The environment variable for the option should NOT be inherited from the parent process even if tests configuration passes it through to app code
+        $envVarName = ConfigUtilForTests::agentOptionNameToEnvVarName($optName);
+        $envVarValue = ArrayUtil::getValueIfKeyExistsElse($envVarName, EnvVarUtilForTests::getAll(), null);
+        if ($envVarValue !== null && AmbientContextForTests::testConfig()->isEnvVarToPassThrough($envVarName)) {
+            EnvVarUtilForTests::unset($envVarName);
+            $envVarValueWasUnset = true;
         } else {
-            self::runAndEscalateLogLevelOnFailure(
-                self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
-                function () use ($testArgs): void {
-                    $this->implTestAllWaysToSetConfig($testArgs);
-                }
-            );
+            $envVarValueWasUnset = false;
+        }
+
+        try {
+            // If the option is log level related we cannot use "escalate log level on failure" feature of the component tests infrastructure
+            if (self::isOptionLogLevelRelated($optName)) {
+                $this->implTestAllWaysToSetConfig($testArgs);
+            } else {
+                self::runAndEscalateLogLevelOnFailure(
+                    self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
+                    function () use ($testArgs): void {
+                        $this->implTestAllWaysToSetConfig($testArgs);
+                    }
+                );
+            }
+        } finally {
+            if ($envVarValueWasUnset) {
+                self::assertNotNull($envVarValue);
+                EnvVarUtilForTests::set($envVarName, $envVarValue);
+            }
         }
     }
 }

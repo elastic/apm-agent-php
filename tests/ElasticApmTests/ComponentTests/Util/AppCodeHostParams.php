@@ -124,28 +124,6 @@ class AppCodeHostParams implements LoggableInterface
     }
 
     /**
-     * @param array<string, string> $input
-     *
-     * @return array<string, string>
-     */
-    private function removeLogLevelEnvVarsIfSetByOptions(array $input): array
-    {
-        $logDebug = $this->logger->ifDebugLevelEnabledNoLine(__FUNCTION__);
-        $logDebug && $logDebug->log(__LINE__, 'Entered', compact('input'));
-
-        $output = $input;
-        foreach (ConfigUtilForTests::allAgentLogLevelRelatedOptionNames() as $optName) {
-            $envVarName = ConfigUtilForTests::agentOptionNameToEnvVarName($optName);
-            if (array_key_exists($envVarName, $output)) {
-                unset($output[$envVarName]);
-            }
-        }
-
-        $logDebug && $logDebug->log(__LINE__, 'Exiting', compact('output'));
-        return $output;
-    }
-
-    /**
      * @param array<string, string> $baseEnvVars
      *
      * @return array<string, string>
@@ -156,7 +134,6 @@ class AppCodeHostParams implements LoggableInterface
         $logDebug && $logDebug->log(__LINE__, 'Entered', compact('baseEnvVars'));
 
         $result = $baseEnvVars;
-        $result = $this->removeLogLevelEnvVarsIfSetByOptions($result);
 
         foreach ($this->getExplicitlySetAgentOptionsNames() as $optName) {
             $envVarName = ConfigUtilForTests::agentOptionNameToEnvVarName($optName);
@@ -172,16 +149,6 @@ class AppCodeHostParams implements LoggableInterface
 
                 // Keep environment variables related to testing infrastructure
                 if (TextUtil::isPrefixOfIgnoreCase(ConfigUtilForTests::ENV_VAR_NAME_PREFIX, $envVarName)) {
-                    return true;
-                }
-
-                // Keep environment variables related to agent's logging
-                if (
-                    TextUtil::isPrefixOfIgnoreCase(
-                        EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX . 'LOG_',
-                        $envVarName
-                    )
-                ) {
                     return true;
                 }
 
