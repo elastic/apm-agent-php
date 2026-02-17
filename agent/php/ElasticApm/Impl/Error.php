@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace Elastic\Apm\Impl;
 
 use Elastic\Apm\Impl\BackendComm\SerializationUtil;
+use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
 use Elastic\Apm\Impl\Util\IdGenerator;
@@ -135,6 +136,9 @@ class Error implements SerializableDataInterface, LoggableInterface
 
     public static function build(Tracer $tracer, ErrorExceptionData $errorExceptionData, ?Transaction $transaction, ?Span $span): Error
     {
+        $logger = $tracer->loggerFactory()->loggerForClass(LogCategory::AUTO_INSTRUMENTATION, __NAMESPACE__, __CLASS__, __FILE__);
+        ($logDebug = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $logDebug->includeStackTrace()->log('Entered', compact('errorExceptionData', 'transaction', 'span'));
+
         $result = new Error();
 
         $result->timestamp = $tracer->getClock()->getSystemClockCurrentTime();

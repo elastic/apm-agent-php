@@ -325,6 +325,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
         $captureErrorsOptVal = $testArgs->getBool(OptionNames::CAPTURE_ERRORS);
+        $captureErrorsWithPhpPartOptVal = $testArgs->getBool(OptionNames::CAPTURE_ERRORS_WITH_PHP_PART);
         $captureExceptionsOptVal = $testArgs->getNullableBool(OptionNames::CAPTURE_EXCEPTIONS);
         $devInternalCaptureErrorsOnlyToLogOptVal = $testArgs->getBool(OptionNames::DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG);
 
@@ -345,8 +346,20 @@ final class ErrorComponentTest extends ComponentTestCaseBase
             }
         );
 
-        //
-        $isErrorExpected = $captureErrorsOptVal && (!$devInternalCaptureErrorsOnlyToLogOptVal);
+        if ($captureErrorsWithPhpPartOptVal) {
+            // If error capturing is implemented by PHP  part then on uncaught exception only exception handler is called
+            $isErrorExpected = ($captureExceptionsOptVal ?? $captureErrorsOptVal);
+        } else {
+            // If error capturing is implemented by native part then on uncaught exception both error and exception handler are called
+            if (self::isMainAppCodeHostHttp()) {
+                // If it's HTTP app then outcome will be failure and error will be created even if capture_error config is false
+                $isErrorExpected = $captureErrorsOptVal || $captureExceptionsOptVal;
+            } else {
+                $isErrorExpected = $captureErrorsOptVal;
+            }
+        }
+        $isErrorExpected = $isErrorExpected && !$devInternalCaptureErrorsOnlyToLogOptVal;
+
         $expectedErrorCount = $isErrorExpected ? 1 : 0;
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->errors($expectedErrorCount));
         $dbgCtx->add(compact('dataFromAgent'));
@@ -358,42 +371,48 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         $err = $this->verifyError($dataFromAgent);
 
         $appCodeFile = FileUtilForTests::listToPath([dirname(__FILE__), 'appCodeForTestPhpErrorUncaughtException.php']);
-        if ($captureExceptionsOptVal !== null && !$captureExceptionsOptVal) {
-            self::assertNull($err->exception);
-        } else {
-            self::assertNotNull($err->exception);
+        self::assertNotNull($err->exception);
+        self::assertNull($err->exception->module);
+        if ($captureExceptionsOptVal ?? $captureErrorsOptVal) {
+            $culpritFunction = __NAMESPACE__ . '\\appCodeForTestPhpErrorUncaughtExceptionImpl';
+            self::assertSame($culpritFunction, $err->culprit);
+
             $defaultCode = (new Exception(""))->getCode();
             self::assertSame($defaultCode, $err->exception->code);
-            self::assertSame(Exception::class, $err->exception->type);
-            self::assertNotNull($err->exception->message);
             self::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_MESSAGE, $err->exception->message);
-            self::assertNull($err->exception->module);
+            self::assertSame(Exception::class, $err->exception->type);
+            $expectedStackTraceTop = [
+                [
+                    self::STACK_TRACE_FILE_NAME   => $appCodeFile,
+                    self::STACK_TRACE_FUNCTION    => null,
+                    self::STACK_TRACE_LINE_NUMBER => APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_ERROR_LINE_NUMBER,
+                ],
+                [
+                    self::STACK_TRACE_FILE_NAME   => $appCodeFile,
+                    self::STACK_TRACE_FUNCTION    => __NAMESPACE__ . '\\appCodeForTestPhpErrorUncaughtExceptionImpl',
+                    self::STACK_TRACE_LINE_NUMBER => APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_CALL_TO_IMPL_LINE_NUMBER,
+                ],
+                [
+                    self::STACK_TRACE_FILE_NAME   => __FILE__,
+                    self::STACK_TRACE_FUNCTION    => __NAMESPACE__ . '\\appCodeForTestPhpErrorUncaughtException',
+                    self::STACK_TRACE_LINE_NUMBER => self::appCodeForTestPhpErrorUncaughtExceptionWrapper(/* justReturnLineNumber */ true),
+                ],
+                [
+                    self::STACK_TRACE_FUNCTION => __CLASS__ . '::appCodeForTestPhpErrorUncaughtExceptionWrapper',
+                ],
+            ];
+            self::verifyAppCodeStackTraceTop($expectedStackTraceTop, $err);
+        } else {
+            self::assertNull($err->culprit);
+
+            // TODO: Sergey Kleyman: Implement: ErrorComponentTest::
+            self::assertSame(32769, $err->exception->code);
+            self::assertNotNull($err->exception->message);
+            self::assertStringContainsString(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_MESSAGE, $err->exception->message);
+            self::assertNull($err->exception->type);
+            self::assertNotNull($err->exception->stacktrace);
+            self::assertCount(0, $err->exception->stacktrace);
         }
-
-        $culpritFunction = __NAMESPACE__ . '\\appCodeForTestPhpErrorUncaughtExceptionImpl';
-        self::assertSame($culpritFunction, $err->culprit);
-
-        $expectedStackTraceTop = [
-            [
-                self::STACK_TRACE_FILE_NAME   => $appCodeFile,
-                self::STACK_TRACE_FUNCTION    => null,
-                self::STACK_TRACE_LINE_NUMBER => APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_ERROR_LINE_NUMBER,
-            ],
-            [
-                self::STACK_TRACE_FILE_NAME   => $appCodeFile,
-                self::STACK_TRACE_FUNCTION    => __NAMESPACE__ . '\\appCodeForTestPhpErrorUncaughtExceptionImpl',
-                self::STACK_TRACE_LINE_NUMBER => APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_CALL_TO_IMPL_LINE_NUMBER,
-            ],
-            [
-                self::STACK_TRACE_FILE_NAME   => __FILE__,
-                self::STACK_TRACE_FUNCTION    => __NAMESPACE__ . '\\appCodeForTestPhpErrorUncaughtException',
-                self::STACK_TRACE_LINE_NUMBER => self::appCodeForTestPhpErrorUncaughtExceptionWrapper(),
-            ],
-            [
-                self::STACK_TRACE_FUNCTION => __CLASS__ . '::appCodeForTestPhpErrorUncaughtExceptionWrapper',
-            ],
-        ];
-        self::verifyAppCodeStackTraceTop($expectedStackTraceTop, $err);
     }
 
     /**
