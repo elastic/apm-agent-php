@@ -126,4 +126,14 @@ final class TextUtilForTests
         /** @phpstan-ignore-next-line */
         return $input === null ? '' : strval($input);
     }
+
+    /**
+     * @param mixed $value
+     *
+     * @return string
+     */
+    public static function valuetoString($value): string
+    {
+        return strval($value); // @phpstan-ignore-line
+    }
 }

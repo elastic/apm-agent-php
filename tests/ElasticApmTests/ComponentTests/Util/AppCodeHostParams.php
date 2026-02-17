@@ -130,16 +130,8 @@ class AppCodeHostParams implements LoggableInterface
      */
     private function removeLogLevelEnvVarsIfSetByOptions(array $input): array
     {
-        $isAnyLogLevelOptionsSet = false;
-        foreach ($this->getExplicitlySetAgentOptionsNames() as $optName) {
-            if (ConfigUtilForTests::isOptionLogLevelRelated($optName)) {
-                $isAnyLogLevelOptionsSet = true;
-                break;
-            }
-        }
-        if (!$isAnyLogLevelOptionsSet) {
-            return $input;
-        }
+        $logDebug = $this->logger->ifDebugLevelEnabledNoLine(__FUNCTION__);
+        $logDebug && $logDebug->log(__LINE__, 'Entered', compact('input'));
 
         $output = $input;
         foreach (ConfigUtilForTests::allAgentLogLevelRelatedOptionNames() as $optName) {
@@ -149,6 +141,7 @@ class AppCodeHostParams implements LoggableInterface
             }
         }
 
+        $logDebug && $logDebug->log(__LINE__, 'Exiting', compact('output'));
         return $output;
     }
 
@@ -159,19 +152,21 @@ class AppCodeHostParams implements LoggableInterface
      */
     public function selectEnvVarsToInherit(array $baseEnvVars): array
     {
-        $envVars = $baseEnvVars;
+        $logDebug = $this->logger->ifDebugLevelEnabledNoLine(__FUNCTION__);
+        $logDebug && $logDebug->log(__LINE__, 'Entered', compact('baseEnvVars'));
 
-        $envVars = $this->removeLogLevelEnvVarsIfSetByOptions($envVars);
+        $result = $baseEnvVars;
+        $result = $this->removeLogLevelEnvVarsIfSetByOptions($result);
 
         foreach ($this->getExplicitlySetAgentOptionsNames() as $optName) {
             $envVarName = ConfigUtilForTests::agentOptionNameToEnvVarName($optName);
-            if (array_key_exists($envVarName, $envVars)) {
-                unset($envVars[$envVarName]);
+            if (array_key_exists($envVarName, $result)) {
+                unset($result[$envVarName]);
             }
         }
 
-        return array_filter(
-            $envVars,
+        $result = array_filter(
+            $result,
             function (string $envVarName): bool {
                 // Return false for entries to be removed
 
@@ -204,6 +199,9 @@ class AppCodeHostParams implements LoggableInterface
             },
             ARRAY_FILTER_USE_KEY
         );
+
+        $logDebug && $logDebug->log(__LINE__, 'Exiting', compact('result'));
+        return $result;
     }
 
     /**
@@ -247,6 +245,8 @@ class AppCodeHostParams implements LoggableInterface
      * @param string $optName
      *
      * @return mixed
+     *
+     * @noinspection PhpReturnDocTypeMismatchInspection
      */
     private function getExplicitlySetAgentOptionValue(string $optName)
     {

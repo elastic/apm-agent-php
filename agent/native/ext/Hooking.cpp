@@ -49,10 +49,8 @@ void elastic_apm_error_cb(int type, zend_string *error_filename, const uint32_t 
 
 		if (ELASTICAPM_G(captureErrorsToLogOnly)) {
 		    ELASTIC_APM_LOG_DEBUG(
-				"Captured error but only to log it; error_filename: %.*s; error_lineno: %d; message: %.*s",
-				static_cast<int>(errorData->getFileName().length()), errorData->getFileName().data(),
-				errorData->getLineNumber(),
-				static_cast<int>(errorData->getMessage().length()), errorData->getMessage().data()
+				"Captured error but only to log it; error_filename: " ELASTIC_APM_PRINTF_STRING_VIEW_FMT_SPEC() "; error_lineno: %d; message: " ELASTIC_APM_PRINTF_STRING_VIEW_FMT_SPEC(),
+				ELASTIC_APM_PRINTF_STD_STRING_VIEW_ARG(errorData->getFileName()), errorData->getLineNumber(), ELASTIC_APM_PRINTF_STD_STRING_VIEW_ARG(errorData->getMessage())
 			);
 		} else {
 			ELASTICAPM_G(lastErrorData) = std::move(errorData);

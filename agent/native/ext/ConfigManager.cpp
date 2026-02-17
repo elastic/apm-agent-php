@@ -365,7 +365,11 @@ static void parsedOptionalBoolValueToZval( const OptionMetadata* optMeta, Parsed
     ELASTIC_APM_ASSERT_EQ_UINT64( parsedValue.type, optMeta->defaultValue.type );
     ELASTIC_APM_ASSERT_VALID_PTR( return_value );
 
-    RETURN_STRING( optionalBoolToString( parsedValue.u.optionalBoolValue ) );
+	if (parsedValue.u.optionalBoolValue.isSet) {
+	    RETURN_BOOL(parsedValue.u.optionalBoolValue.value);
+	} else {
+	    RETURN_NULL();
+	}
 }
 
 static ResultCode parseDurationValue( const OptionMetadata* optMeta, String rawValue, /* out */ ParsedOptionValue* parsedValue )

@@ -146,9 +146,9 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         self::assertSame(123, $err->exception->code);
     }
 
-    public static function appCodeForTestPhpErrorUndefinedVariableWrapper(MixedMap $appCodeArgs): void
+    public static function appCodeForTestPhpErrorUndefinedVariableWrapper(MixedMap $testArgs): void
     {
-        $includeInErrorReporting = $appCodeArgs->getBool(self::INCLUDE_IN_ERROR_REPORTING_KEY);
+        $includeInErrorReporting = $testArgs->getBool(self::INCLUDE_IN_ERROR_REPORTING_KEY);
 
         $logger = self::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
         ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
@@ -214,8 +214,8 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         $appCodeHost = self::ensureMainAppCodeHost($testCaseHandle, $testArgs);
         $appCodeHost->sendRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestPhpErrorUndefinedVariableWrapper']),
-            function (AppCodeRequestParams $appCodeRequestParams) use ($includeInErrorReporting): void {
-                $appCodeRequestParams->setAppCodeArgs([self::INCLUDE_IN_ERROR_REPORTING_KEY => $includeInErrorReporting]);
+            function (AppCodeRequestParams $appCodeRequestParams) use ($testArgs): void {
+                $appCodeRequestParams->setAppCodeArgs($testArgs);
             }
         );
 
@@ -225,14 +225,14 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         $dbgCtx->add(compact('isErrorExpected'));
         $expectedErrorCount = $isErrorExpected ? 1 : 0;
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->errors($expectedErrorCount));
-        $dbgCtx->add(['dataFromAgent' => $dataFromAgent]);
+        $dbgCtx->add(compact('dataFromAgent'));
         self::assertCount($expectedErrorCount, $dataFromAgent->idToError);
         if (!$isErrorExpected) {
             return;
         }
 
         $actualError = $this->verifyError($dataFromAgent);
-        $dbgCtx->add(['actualError' => $actualError]);
+        $dbgCtx->add(compact('actualError'));
         if (!$includeInErrorReporting) {
             self::verifySubstituteError($actualError);
             return;
@@ -302,8 +302,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
 
     public static function appCodeForTestPhpErrorUncaughtExceptionWrapper(bool $justReturnLineNumber = false): int
     {
-        $callLineNumber = __LINE__ + 1;
-        return $justReturnLineNumber ? $callLineNumber : appCodeForTestPhpErrorUncaughtException();
+        return $justReturnLineNumber ? __LINE__ : appCodeForTestPhpErrorUncaughtException();
     }
 
     /**
@@ -346,10 +345,11 @@ final class ErrorComponentTest extends ComponentTestCaseBase
             }
         );
 
-        $isErrorExpected = ($captureExceptionsOptVal ?? $captureErrorsOptVal) && (!$devInternalCaptureErrorsOnlyToLogOptVal);
+        //
+        $isErrorExpected = $captureErrorsOptVal && (!$devInternalCaptureErrorsOnlyToLogOptVal);
         $expectedErrorCount = $isErrorExpected ? 1 : 0;
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->errors($expectedErrorCount));
-        $dbgCtx->add(['dataFromAgent' => $dataFromAgent]);
+        $dbgCtx->add(compact('dataFromAgent'));
         self::assertCount($expectedErrorCount, $dataFromAgent->idToError);
         if (!$isErrorExpected) {
             return;
@@ -358,13 +358,18 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         $err = $this->verifyError($dataFromAgent);
 
         $appCodeFile = FileUtilForTests::listToPath([dirname(__FILE__), 'appCodeForTestPhpErrorUncaughtException.php']);
-        self::assertNotNull($err->exception);
-        $defaultCode = (new Exception(""))->getCode();
-        self::assertSame($defaultCode, $err->exception->code);
-        self::assertSame(Exception::class, $err->exception->type);
-        self::assertNotNull($err->exception->message);
-        self::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_MESSAGE, $err->exception->message);
-        self::assertNull($err->exception->module);
+        if ($captureExceptionsOptVal !== null && !$captureExceptionsOptVal) {
+            self::assertNull($err->exception);
+        } else {
+            self::assertNotNull($err->exception);
+            $defaultCode = (new Exception(""))->getCode();
+            self::assertSame($defaultCode, $err->exception->code);
+            self::assertSame(Exception::class, $err->exception->type);
+            self::assertNotNull($err->exception->message);
+            self::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_MESSAGE, $err->exception->message);
+            self::assertNull($err->exception->module);
+        }
+
         $culpritFunction = __NAMESPACE__ . '\\appCodeForTestPhpErrorUncaughtExceptionImpl';
         self::assertSame($culpritFunction, $err->culprit);
 
@@ -382,7 +387,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
             [
                 self::STACK_TRACE_FILE_NAME   => __FILE__,
                 self::STACK_TRACE_FUNCTION    => __NAMESPACE__ . '\\appCodeForTestPhpErrorUncaughtException',
-                self::STACK_TRACE_LINE_NUMBER => self::appCodeForTestPhpErrorUncaughtExceptionWrapper(/* justReturnLineNumber */ true),
+                self::STACK_TRACE_LINE_NUMBER => self::appCodeForTestPhpErrorUncaughtExceptionWrapper(),
             ],
             [
                 self::STACK_TRACE_FUNCTION => __CLASS__ . '::appCodeForTestPhpErrorUncaughtExceptionWrapper',
@@ -428,6 +433,8 @@ final class ErrorComponentTest extends ComponentTestCaseBase
      */
     public function implTestCaughtExceptionResponded500(MixedMap $testArgs): void
     {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = self::ensureMainAppCodeHost($testCaseHandle, $testArgs);
         $appCodeHost->sendRequest(
@@ -443,6 +450,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         $isErrorExpected = self::isMainAppCodeHostHttp() && $captureErrorsOptVal && (!$captureErrorsWithPhpPartOptVal);
         $expectedErrorCount = $isErrorExpected ? 1 : 0;
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->errors($expectedErrorCount));
+        $dbgCtx->add(compact('dataFromAgent'));
         self::assertCount($expectedErrorCount, $dataFromAgent->idToError);
         if (!$isErrorExpected) {
             return;

@@ -87,7 +87,7 @@ final class AllOptionsMetadata
                                                                     => new BoolOptionMetadata(/* defaultValue: */ true),
             OptionNames::AST_PROCESS_DEBUG_DUMP_FOR_PATH_PREFIX     => new NullableStringOptionMetadata(),
             OptionNames::AST_PROCESS_DEBUG_DUMP_OUT_DIR             => new NullableStringOptionMetadata(),
-            OptionNames::ASYNC_BACKEND_COMM                         => new BoolOptionMetadata(/* default */ true),
+            OptionNames::ASYNC_BACKEND_COMM                         => new NullableBoolOptionMetadata(),
             OptionNames::BREAKDOWN_METRICS                          => new BoolOptionMetadata(/* default */ true),
             OptionNames::CAPTURE_ERRORS                             => new BoolOptionMetadata(/* default */ true),
             OptionNames::CAPTURE_ERRORS_WITH_PHP_PART               => new BoolOptionMetadata(/* default */ false),
