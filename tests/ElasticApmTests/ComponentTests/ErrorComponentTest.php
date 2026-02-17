@@ -447,7 +447,10 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         );
         $captureErrorsOptVal = $testArgs->getBool(OptionNames::CAPTURE_ERRORS);
         $captureErrorsWithPhpPartOptVal = $testArgs->getBool(OptionNames::CAPTURE_ERRORS_WITH_PHP_PART);
-        $isErrorExpected = self::isMainAppCodeHostHttp() && $captureErrorsOptVal && (!$captureErrorsWithPhpPartOptVal);
+        $captureExceptionsOptVal = $testArgs->getNullableBool(OptionNames::CAPTURE_EXCEPTIONS);
+        $devInternalCaptureErrorsOnlyToLogOptVal = $testArgs->getBool(OptionNames::DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG);
+        // If exception handler is implemented by PHP it can only capture unhandled exception
+        $isErrorExpected = self::isMainAppCodeHostHttp() && ($captureExceptionsOptVal ?? $captureErrorsOptVal) && (!$captureErrorsWithPhpPartOptVal) && (!$devInternalCaptureErrorsOnlyToLogOptVal);
         $expectedErrorCount = $isErrorExpected ? 1 : 0;
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->errors($expectedErrorCount));
         $dbgCtx->add(compact('dataFromAgent'));

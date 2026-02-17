@@ -156,7 +156,7 @@ void elasticApmZendThrowExceptionHookImpl(
 #endif
 )
 {
-	ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "lastException set: %s", boolToString( Z_TYPE(ELASTICAPM_G(lastException)) != IS_UNDEF ) );
+	ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG("lastException set: %s", boolToString(Z_TYPE(ELASTICAPM_G(lastException)) != IS_UNDEF));
 
 	if (ELASTICAPM_G(captureErrorsToLogOnly)) {
 		ELASTIC_APM_LOG_DEBUG("Captured exception but only to log it");
@@ -169,7 +169,7 @@ void elasticApmZendThrowExceptionHookImpl(
 #endif
 	}
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT_MSG("lastException set: %s", boolToString(Z_TYPE(ELASTICAPM_G(lastException)) != IS_UNDEF));
 }
 
 void elasticApmGetLastThrown(zval *return_value) {
