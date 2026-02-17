@@ -85,6 +85,7 @@ ResultCode callPhpFunctionRetZval( StringView phpFunctionName, uint32_t argsCoun
 
 void getArgsFromZendExecuteData( zend_execute_data *execute_data, size_t dstArraySize, zval dstArray[], uint32_t* argsCount );
 
+String getPhpSapiModuleName();
 bool isPhpRunningAsCliScript();
 bool detectOpcachePreload();
 bool isScriptRestricedByOpcacheAPI();
