@@ -45,9 +45,6 @@ ZEND_TSRMLS_CACHE_EXTERN()
 ZEND_BEGIN_MODULE_GLOBALS(elastic_apm)
     Tracer globalTracer;
     elasticapm::php::AgentGlobals *globals;
-    zval lastException;
-    std::unique_ptr<elasticapm::php::PhpErrorData> lastErrorData;
-    bool captureErrors;
 ZEND_END_MODULE_GLOBALS(elastic_apm)
 
 ZEND_EXTERN_MODULE_GLOBALS(elastic_apm)

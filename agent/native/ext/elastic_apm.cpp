@@ -151,8 +151,10 @@ PHP_INI_BEGIN()
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_BREAKDOWN_METRICS )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_CAPTURE_ERRORS )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_CAPTURE_EXCEPTIONS )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_BACKEND_COMM_LOG_VERBOSE )
+    ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_DISABLE_INSTRUMENTATIONS )
     ELASTIC_APM_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_DISABLE_SEND )
     ELASTIC_APM_NOT_RELOADABLE_INI_ENTRY( ELASTIC_APM_CFG_OPT_NAME_ENABLED )
@@ -287,22 +289,12 @@ static PHP_GINIT_FUNCTION(elastic_apm)
     } catch (std::exception const &e) {
         ELASTIC_APM_LOG_DIRECT_CRITICAL( "Unable to allocate AgentGlobals. '%s'", e.what());
     }
-
-    ZVAL_UNDEF(&elastic_apm_globals->lastException);
-    new (&elastic_apm_globals->lastErrorData) std::unique_ptr<elasticapm::php::PhpErrorData>;
-    elastic_apm_globals->captureErrors = false;
 }
 
 static PHP_GSHUTDOWN_FUNCTION(elastic_apm) {
     ELASTIC_APM_LOG_DIRECT_DEBUG( "%s: GSHUTDOWN called; parent PID: %d", __FUNCTION__, (int)getParentProcessId() );
     if (elastic_apm_globals->globals) {
         delete elastic_apm_globals->globals;
-    }
-
-    if (elastic_apm_globals->lastErrorData) {
-        ELASTIC_APM_LOG_DIRECT_WARNING( "%s: still holding error", __FUNCTION__);
-        // we need to relese any dangling php error data beacause it is already freed (it was allocated in request pool)
-        elastic_apm_globals->lastErrorData.release();
     }
 }
 
@@ -603,52 +595,6 @@ PHP_FUNCTION( elastic_apm_log )
 }
 /* }}} */
 
-ZEND_BEGIN_ARG_INFO_EX( elastic_apm_get_last_thrown_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 0 )
-ZEND_END_ARG_INFO()
-/* {{{ elastic_apm_get_last_thrown(): mixed
- */
-PHP_FUNCTION( elastic_apm_get_last_thrown )
-{
-    ResultCode resultCode;
-    ZVAL_NULL( /* out */ return_value );
-
-    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
-    // which might deadlock in forked child
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
-
-    elasticApmGetLastThrown( /* out */ return_value );
-
-    finally:
-    return;
-
-    failure:
-    goto finally;
-}
-/* }}} */
-
-ZEND_BEGIN_ARG_INFO_EX( elastic_apm_get_last_php_error_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 0 )
-ZEND_END_ARG_INFO()
-/* {{{ elastic_apm_get_last_error(): array
- */
-PHP_FUNCTION( elastic_apm_get_last_php_error )
-{
-    ResultCode resultCode;
-    ZVAL_NULL( /* out */ return_value );
-
-    // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
-    // which might deadlock in forked child
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
-
-    elasticApmGetLastPhpError( /* out */ return_value );
-
-    finally:
-    return;
-
-    failure:
-    goto finally;
-}
-/* }}} */
-
 ZEND_BEGIN_ARG_INFO_EX( elastic_apm_before_loading_agent_php_code_arginfo, /* _unused */ 0, /* return_reference: */ 0, /* required_num_args: */ 0 )
 ZEND_END_ARG_INFO()
 /* {{{ elastic_apm_before_loading_agent_php_code(): void
@@ -717,8 +663,6 @@ static const zend_function_entry elastic_apm_functions[] =
     PHP_FE( elastic_apm_intercept_calls_to_internal_function, elastic_apm_intercept_calls_to_internal_function_arginfo )
     PHP_FE( elastic_apm_send_to_server, elastic_apm_send_to_server_arginfo )
     PHP_FE( elastic_apm_log, elastic_apm_log_arginfo )
-    PHP_FE( elastic_apm_get_last_thrown, elastic_apm_get_last_thrown_arginfo )
-    PHP_FE( elastic_apm_get_last_php_error, elastic_apm_get_last_php_error_arginfo )
     PHP_FE( elastic_apm_before_loading_agent_php_code, elastic_apm_before_loading_agent_php_code_arginfo )
     PHP_FE( elastic_apm_after_loading_agent_php_code, elastic_apm_after_loading_agent_php_code_arginfo )
     PHP_FE( elastic_apm_ast_instrumentation_pre_hook, elastic_apm_ast_instrumentation_pre_hook_arginfo )

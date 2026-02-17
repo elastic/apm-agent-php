@@ -111,9 +111,26 @@ class MixedMap implements LoggableInterface, ArrayAccess
         return $value;
     }
 
+    public function hasKey(string $key): bool
+    {
+        return array_key_exists($key, $this->map);
+    }
+
     public function getBool(string $key): bool
     {
         return self::getBoolFrom($key, $this->map);
+    }
+
+    public function getNullableBool(string $key): ?bool
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
+        $value = $this->get($key);
+        if ($value === null || is_bool($value)) {
+            return $value;
+        }
+
+        $dbgCtx->add(['value type' => DbgUtil::getType($value), 'value' => $value]);
+        TestCaseBase::fail('Value is not a bool');
     }
 
     /**
