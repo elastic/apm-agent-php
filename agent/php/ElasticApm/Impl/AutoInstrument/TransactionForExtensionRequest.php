@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\Config\Snapshot as ConfigSnapshot;
 use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\HttpDistributedTracing;
 use Elastic\Apm\Impl\InferredSpansManager;
+use Elastic\Apm\Impl\Log\Level as LogLevel;
 use Elastic\Apm\Impl\Log\LogCategory;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Span;
@@ -119,7 +120,7 @@ final class TransactionForExtensionRequest
         );
 
         $logDebug = $this->logger->ifDebugLevelEnabledNoLine(__FUNCTION__);
-        $logDebug && $logDebug->log(__LINE__, '$this->logger->maxEnabledLevel(): ' . $this->logger->maxEnabledLevel());
+        $logDebug && $logDebug->log(__LINE__, '$this->logger->maxEnabledLevel(): ' . LogLevel::intToName($this->logger->maxEnabledLevel()) . ' (as int: ' . $this->logger->maxEnabledLevel() . ')');
         if ($this->tracer->getConfig()->captureErrorsWithPhpPart()) {
             if ($this->tracer->getConfig()->captureErrors()) {
                 $this->prevErrorHandler = set_error_handler(
@@ -146,6 +147,8 @@ final class TransactionForExtensionRequest
                 $optName = ($this->tracer->getConfig()->captureExceptions() === null ? 'capture_errors' : 'capture_exceptions');
                 $logDebug && $logDebug->log(__LINE__, $optName . ' configuration option is set to false - not registering exception handler');
             }
+        } else {
+            $logDebug && $logDebug->log(__LINE__, 'Error capturing is implemented by native part');
         }
 
         $this->logger->addContext('this', $this);

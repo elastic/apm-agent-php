@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\Assert;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use Elastic\Apm\Impl\Util\HiddenConstructorTrait;
@@ -273,18 +274,27 @@ final class PhpPartFacade
         );
     }
 
-    private static function ensureHaveLastErrorData(
-        TransactionForExtensionRequest $transactionForExtensionRequest
-    ): void {
-        if ($transactionForExtensionRequest->getConfig()->captureErrors() && (!$transactionForExtensionRequest->getConfig()->captureErrorsWithPhpPart())) {
-            /**
-             * The last thrown should be fetched before last PHP error because if the error is for "Uncaught Exception"
-             * agent will use the last thrown exception
-             */
+    private static function ensureHaveLastErrorData(TransactionForExtensionRequest $transactionForExtensionRequest): void
+    {
+        BootstrapStageLogger::logDebug(
+            'Entered'
+            . '; captureErrors: ' . BoolUtil::toString($transactionForExtensionRequest->getConfig()->captureErrors())
+            . '; captureExceptions: ' . BoolUtil::nullableToString($transactionForExtensionRequest->getConfig()->captureExceptions())
+            . '; captureErrorsWithPhpPart: ' . BoolUtil::toString($transactionForExtensionRequest->getConfig()->captureErrorsWithPhpPart())
+            . '; shouldCaptureExceptions: ' . BoolUtil::toString($transactionForExtensionRequest->getConfig()->shouldCaptureExceptions()),
+            __LINE__,
+            __FUNCTION__
+        );
+
+        if (!$transactionForExtensionRequest->getConfig()->captureErrorsWithPhpPart()) {
+             // The last thrown should be fetched before last PHP error because if the error is for "Uncaught Exception"
+             // agent will use the last thrown exception
             if ($transactionForExtensionRequest->getConfig()->shouldCaptureExceptions()) {
                 self::ensureHaveLastThrownCapturedByNativePart($transactionForExtensionRequest);
             }
-            self::ensureHaveLastPhpErrorCapturedByNativePart($transactionForExtensionRequest);
+            if ($transactionForExtensionRequest->getConfig()->captureErrors()) {
+                self::ensureHaveLastPhpErrorCapturedByNativePart($transactionForExtensionRequest);
+            }
         }
     }
 
