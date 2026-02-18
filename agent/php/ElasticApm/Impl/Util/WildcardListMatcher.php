@@ -23,12 +23,14 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Util;
 
+use Stringable;
+
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class WildcardListMatcher
+final class WildcardListMatcher implements Stringable
 {
     /** @var WildcardMatcher[] */
     private $matchers;
