@@ -119,8 +119,17 @@ final class Snapshot implements LoggableInterface
     /** @var bool */
     private $captureErrors;
 
+    /** @var bool */
+    private $captureErrorsWithPhpPart;
+
+    /** @var ?bool */
+    private $captureExceptions;
+
     /** @var ?WildcardListMatcher */
     private $devInternal;
+
+    /** @var bool */
+    private $devInternalCaptureErrorsOnlyToLog;
 
     /** @var SnapshotDevInternal */
     private $devInternalParsed;
@@ -282,9 +291,31 @@ final class Snapshot implements LoggableInterface
         return $this->captureErrors;
     }
 
+    public function captureErrorsWithPhpPart(): bool
+    {
+        return $this->captureErrorsWithPhpPart;
+    }
+
+    public function captureExceptions(): ?bool
+    {
+        return $this->captureExceptions;
+    }
+
+    public function shouldCaptureExceptions(): bool
+    {
+        // If captureExceptions is set explcitly (i.e., it is not null) can be null then it overrides captureErrors
+        // If captureExceptions is NOT set explcitly (i.e., it is null) then captureErrors is used to decide whether to capture exceptions
+        return $this->captureExceptions === null ? $this->captureErrors : $this->captureExceptions;
+    }
+
     public function devInternal(): SnapshotDevInternal
     {
         return $this->devInternalParsed;
+    }
+
+    public function devInternalCaptureErrorsOnlyToLog(): bool
+    {
+        return $this->devInternalCaptureErrorsOnlyToLog;
     }
 
     public function disableInstrumentations(): ?WildcardListMatcher
@@ -292,6 +323,7 @@ final class Snapshot implements LoggableInterface
         return $this->disableInstrumentations;
     }
 
+    /** @noinspection PhpUnused */
     public function disableSend(): bool
     {
         return $this->disableSend;
@@ -340,16 +372,19 @@ final class Snapshot implements LoggableInterface
         return $this->profilingInferredSpansMinDuration;
     }
 
+    /** @noinspection PhpUnused */
     public function profilingInferredSpansSamplingInterval(): float
     {
         return $this->profilingInferredSpansSamplingInterval;
     }
 
+    /** @noinspection PhpUnused */
     public function sanitizeFieldNames(): WildcardListMatcher
     {
         return $this->sanitizeFieldNames;
     }
 
+    /** @noinspection PhpUnused */
     public function serverTimeout(): float
     {
         return $this->serverTimeout;

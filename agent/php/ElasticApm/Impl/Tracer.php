@@ -289,28 +289,15 @@ final class Tracer implements TracerInterface, LoggableInterface
      */
     public function onPhpError(PhpErrorData $phpErrorData, ?Throwable $relatedThrowable, int $numberOfStackFramesToSkip): void
     {
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Entered',
-            [
-                'phpErrorData'     => $phpErrorData,
-                'relatedThrowable' => $relatedThrowable,
-            ]
-        );
+        $logDebug = $this->logger->ifDebugLevelEnabledNoLine(__FUNCTION__);
+        $logDebug && $logDebug->log(__LINE__, 'Entered', compact('phpErrorData', 'relatedThrowable'));
 
+        $errorReporting = error_reporting();
         if ((error_reporting() & $phpErrorData->type) === 0) {
-            ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log(
-                'Not creating error event because error_reporting() does not include its type',
-                ['type' => $phpErrorData->type, 'error_reporting()' => error_reporting()]
-            );
+            $logDebug && $logDebug->log(__LINE__, 'Not creating error event because error_reporting() does not include its type', compact('phpErrorData', 'errorReporting'));
             return;
         }
-        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
-        && $loggerProxy->log(
-            'Creating error event because error_reporting() includes its type...',
-            ['type' => $phpErrorData->type, 'error_reporting()' => error_reporting()]
-        );
+        $logDebug && $logDebug->log(__LINE__, 'Creating error event because error_reporting() includes its type...', compact('phpErrorData', 'errorReporting'));
 
         $customErrorData = new CustomErrorData();
         $customErrorData->code = $phpErrorData->type;
