@@ -46,7 +46,6 @@ use ElasticApmTests\Util\MetadataExpectations;
 use ElasticApmTests\Util\MixedMap;
 use ElasticApmTests\Util\TextUtilForTests;
 use ElasticApmTests\Util\TransactionExpectations;
-use Stringable;
 
 /**
  * @group smoke
@@ -297,8 +296,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         }
 
         if (is_object($optParsedValue)) {
-            self::assertInstanceOf(Stringable::class, $optParsedValue);
-            return strval($optParsedValue);
+            return TextUtilForTests::valuetoString($optParsedValue);
         }
 
         self::fail('Unexpected $optParsedValue type: ' . DbgUtil::getType($optParsedValue));

@@ -25,14 +25,13 @@ namespace Elastic\Apm\Impl\Util;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LoggableTrait;
-use Stringable;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class UrlParts implements LoggableInterface, Stringable
+final class UrlParts implements LoggableInterface
 {
     use LoggableTrait;
 
