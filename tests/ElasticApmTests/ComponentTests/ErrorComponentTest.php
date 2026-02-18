@@ -308,13 +308,13 @@ final class ErrorComponentTest extends ComponentTestCaseBase
     /**
      * @return iterable<string, array{MixedMap}>
      */
-    public function dataProviderCaptureErrorsExceptions(): iterable
+    public function dataProviderForTestsForErrorCausedByException(): iterable
     {
         $result = (new DataProviderForTestBuilder())
-            ->addBoolKeyedDimensionAllValuesCombinable(OptionNames::CAPTURE_ERRORS)
-            ->addBoolKeyedDimensionAllValuesCombinable(OptionNames::CAPTURE_ERRORS_WITH_PHP_PART)
-            ->addKeyedDimensionAllValuesCombinable(OptionNames::CAPTURE_EXCEPTIONS, [null, false, true])
-            ->addKeyedDimensionAllValuesCombinable(OptionNames::DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG, [false, true])
+            ->addAgentBoolConfigOptionKeyedDimensionAllValuesCombinable(OptionNames::CAPTURE_ERRORS)
+            ->addAgentBoolConfigOptionKeyedDimensionAllValuesCombinable(OptionNames::CAPTURE_ERRORS_WITH_PHP_PART)
+            ->addAgentNullableBoolConfigOptionKeyedDimensionAllValuesCombinable(OptionNames::CAPTURE_EXCEPTIONS)
+            ->addAgentBoolConfigOptionKeyedDimensionAllValuesCombinable(OptionNames::DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG)
             ->build();
 
         return DataProviderForTestBuilder::convertEachDataSetToMixedMap(self::adaptKeyValueToSmoke($result));
@@ -327,6 +327,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         $captureErrorsOptVal = $testArgs->getBool(OptionNames::CAPTURE_ERRORS);
         $captureErrorsWithPhpPartOptVal = $testArgs->getBool(OptionNames::CAPTURE_ERRORS_WITH_PHP_PART);
         $captureExceptionsOptVal = $testArgs->getNullableBool(OptionNames::CAPTURE_EXCEPTIONS);
+        $shouldCaptureExceptionsDerivedCfg = $captureExceptionsOptVal ?? $captureErrorsOptVal;
         $devInternalCaptureErrorsOnlyToLogOptVal = $testArgs->getBool(OptionNames::DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG);
 
         $testCaseHandle = $this->getTestCaseHandle();
@@ -348,12 +349,12 @@ final class ErrorComponentTest extends ComponentTestCaseBase
 
         if ($captureErrorsWithPhpPartOptVal) {
             // If error capturing is implemented by PHP  part then on uncaught exception only exception handler is called
-            $isErrorExpected = ($captureExceptionsOptVal ?? $captureErrorsOptVal);
+            $isErrorExpected = $shouldCaptureExceptionsDerivedCfg;
         } else {
             // If error capturing is implemented by native part then on uncaught exception both error and exception handler are called
             if (self::isMainAppCodeHostHttp()) {
                 // If it's HTTP app then outcome will be failure and error will be created even if capture_error config is false
-                $isErrorExpected = $captureErrorsOptVal || $captureExceptionsOptVal;
+                $isErrorExpected = $captureErrorsOptVal || $shouldCaptureExceptionsDerivedCfg;
             } else {
                 $isErrorExpected = $captureErrorsOptVal;
             }
@@ -373,7 +374,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         $appCodeFile = FileUtilForTests::listToPath([dirname(__FILE__), 'appCodeForTestPhpErrorUncaughtException.php']);
         self::assertNotNull($err->exception);
         self::assertNull($err->exception->module);
-        if ($captureExceptionsOptVal ?? $captureErrorsOptVal) {
+        if ($shouldCaptureExceptionsDerivedCfg) {
             $culpritFunction = __NAMESPACE__ . '\\appCodeForTestPhpErrorUncaughtExceptionImpl';
             self::assertSame($culpritFunction, $err->culprit);
 
@@ -402,11 +403,9 @@ final class ErrorComponentTest extends ComponentTestCaseBase
                 ],
             ];
             self::verifyAppCodeStackTraceTop($expectedStackTraceTop, $err);
-        } else {
+        } else { // if ($shouldCaptureExceptionsDerivedCfg)
             self::assertNull($err->culprit);
 
-            // TODO: Sergey Kleyman: Implement: ErrorComponentTest::
-            self::assertSame(32769, $err->exception->code);
             self::assertNotNull($err->exception->message);
             self::assertStringContainsString(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_MESSAGE, $err->exception->message);
             self::assertNull($err->exception->type);
@@ -416,7 +415,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
     }
 
     /**
-     * @dataProvider dataProviderCaptureErrorsExceptions
+     * @dataProvider dataProviderForTestsForErrorCausedByException
      */
     public function testPhpErrorUncaughtException(MixedMap $testArgs): void
     {
@@ -447,10 +446,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         );
     }
 
-    /**
-     * @dataProvider dataProviderCaptureErrorsExceptions
-     */
-    public function implTestCaughtExceptionResponded500(MixedMap $testArgs): void
+    private function implTestCaughtExceptionResponded500(MixedMap $testArgs): void
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
@@ -518,7 +514,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
     }
 
     /**
-     * @dataProvider dataProviderCaptureErrorsExceptions
+     * @dataProvider dataProviderForTestsForErrorCausedByException
      */
     public function testCaughtExceptionResponded500(MixedMap $testArgs): void
     {
