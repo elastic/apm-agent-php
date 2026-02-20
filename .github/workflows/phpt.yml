@@ -29,6 +29,7 @@ jobs:
           - "8.2"
           - "8.3"
           - "8.4"
+          - "8.5"
     steps:
     # - uses: actions/checkout@v6
     # - name: Fetch and extract latest release of apm-agent-php
