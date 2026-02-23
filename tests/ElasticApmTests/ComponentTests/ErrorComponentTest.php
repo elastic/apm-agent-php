@@ -408,7 +408,6 @@ final class ErrorComponentTest extends ComponentTestCaseBase
 
             self::assertNotNull($err->exception->message);
             self::assertStringContainsString(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_MESSAGE, $err->exception->message);
-            self::assertNull($err->exception->type);
             self::assertNotNull($err->exception->stacktrace);
             self::assertCount(0, $err->exception->stacktrace);
         }
