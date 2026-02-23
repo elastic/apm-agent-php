@@ -348,7 +348,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             $optActualValuesToVerify += compact('optActualValueParsedByNativePart');
         } else {
             $optRawValue = $appCodeArgs->get(self::OPTION_RAW_VALUE_KEY);
-            self::assertSame($optRawValue === null ? $optRawValue : TextUtilForTests::valuetoString($optRawValue), $optActualValueParsedByNativePart);
+            self::assertSame($optRawValue === null ? $optRawValue : trim(TextUtilForTests::valuetoString($optRawValue)), $optActualValueParsedByNativePart);
         }
 
         $dbgCtx->pushSubScope();
