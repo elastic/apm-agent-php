@@ -140,6 +140,10 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::CAPTURE_ERRORS                 => $boolRawToParsedValues(),
             OptionNames::ENABLED                        => $boolRawToParsedValues(/* valueToExclude: */ false),
             OptionNames::DEV_INTERNAL                   => $wildcardListRawToParsedValues,
+            OptionNames::DEV_INTERNAL_CURL_INSTRUM_CALL_CURL
+                                                        => $boolRawToParsedValues(),
+            OptionNames::DEV_INTERNAL_CURL_INSTRUM_CREATE_SPAN
+                                                        => $boolRawToParsedValues(),
             OptionNames::DISABLE_INSTRUMENTATIONS       => $wildcardListRawToParsedValues,
             OptionNames::DISABLE_SEND                   => $boolRawToParsedValues(/* valueToExclude: */ true),
             OptionNames::ENVIRONMENT                    => $stringRawToParsedValues([" my_environment \t "]),

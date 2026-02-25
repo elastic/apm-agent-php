@@ -76,6 +76,9 @@ enum OptionId
     optionId_captureErrors,
     optionId_devInternal,
     optionId_devInternalBackendCommLogVerbose,
+    optionId_devInternalConfigOnCallStack,
+    optionId_devInternalCurlInstrumCallCurl,
+    optionId_devInternalCurlInstrumCreateSpan,
     optionId_disableInstrumentations,
     optionId_disableSend,
     optionId_enabled,
@@ -212,6 +215,11 @@ void getConfigManagerRawData(
 
 const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 
+bool isOptionValueSameAsDefault(const ConfigManager* cfgManager, OptionId optId);
+
+typedef void (* AddConfigToCallStackContinuation)();
+void addConfigToCallStack(const ConfigManager* configManager, AddConfigToCallStackContinuation continuation);
+
 #define ELASTIC_APM_CFG_OPT_HAS_NO_VALUE "no value"
 
 /**
@@ -267,6 +275,9 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
  */
 #define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL "dev_internal"
 #define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_BACKEND_COMM_LOG_VERBOSE "dev_internal_backend_comm_log_verbose"
+#define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_CONFIG_ON_CALL_STACK "dev_internal_config_on_call_stack"
+#define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_CURL_INSTRUM_CALL_CURL "dev_internal_curl_instrum_call_curl"
+#define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_CURL_INSTRUM_CREATE_SPAN "dev_internal_curl_instrum_create_span"
 
 #define ELASTIC_APM_CFG_OPT_NAME_DISABLE_INSTRUMENTATIONS "disable_instrumentations"
 #define ELASTIC_APM_CFG_OPT_NAME_DISABLE_SEND "disable_send"
