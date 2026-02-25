@@ -124,69 +124,31 @@ class AppCodeHostParams implements LoggableInterface
     }
 
     /**
-     * @param array<string, string> $input
-     *
-     * @return array<string, string>
-     */
-    private function removeLogLevelEnvVarsIfSetByOptions(array $input): array
-    {
-        $isAnyLogLevelOptionsSet = false;
-        foreach ($this->getExplicitlySetAgentOptionsNames() as $optName) {
-            if (ConfigUtilForTests::isOptionLogLevelRelated($optName)) {
-                $isAnyLogLevelOptionsSet = true;
-                break;
-            }
-        }
-        if (!$isAnyLogLevelOptionsSet) {
-            return $input;
-        }
-
-        $output = $input;
-        foreach (ConfigUtilForTests::allAgentLogLevelRelatedOptionNames() as $optName) {
-            $envVarName = ConfigUtilForTests::agentOptionNameToEnvVarName($optName);
-            if (array_key_exists($envVarName, $output)) {
-                unset($output[$envVarName]);
-            }
-        }
-
-        return $output;
-    }
-
-    /**
      * @param array<string, string> $baseEnvVars
      *
      * @return array<string, string>
      */
     public function selectEnvVarsToInherit(array $baseEnvVars): array
     {
-        $envVars = $baseEnvVars;
+        $logDebug = $this->logger->ifDebugLevelEnabledNoLine(__FUNCTION__);
+        $logDebug && $logDebug->log(__LINE__, 'Entered', compact('baseEnvVars'));
 
-        $envVars = $this->removeLogLevelEnvVarsIfSetByOptions($envVars);
+        $result = $baseEnvVars;
 
         foreach ($this->getExplicitlySetAgentOptionsNames() as $optName) {
             $envVarName = ConfigUtilForTests::agentOptionNameToEnvVarName($optName);
-            if (array_key_exists($envVarName, $envVars)) {
-                unset($envVars[$envVarName]);
+            if (array_key_exists($envVarName, $result)) {
+                unset($result[$envVarName]);
             }
         }
 
-        return array_filter(
-            $envVars,
+        $result = array_filter(
+            $result,
             function (string $envVarName): bool {
                 // Return false for entries to be removed
 
                 // Keep environment variables related to testing infrastructure
                 if (TextUtil::isPrefixOfIgnoreCase(ConfigUtilForTests::ENV_VAR_NAME_PREFIX, $envVarName)) {
-                    return true;
-                }
-
-                // Keep environment variables related to agent's logging
-                if (
-                    TextUtil::isPrefixOfIgnoreCase(
-                        EnvVarsRawSnapshotSource::DEFAULT_NAME_PREFIX . 'LOG_',
-                        $envVarName
-                    )
-                ) {
                     return true;
                 }
 
@@ -204,6 +166,9 @@ class AppCodeHostParams implements LoggableInterface
             },
             ARRAY_FILTER_USE_KEY
         );
+
+        $logDebug && $logDebug->log(__LINE__, 'Exiting', compact('result'));
+        return $result;
     }
 
     /**
@@ -247,6 +212,8 @@ class AppCodeHostParams implements LoggableInterface
      * @param string $optName
      *
      * @return mixed
+     *
+     * @noinspection PhpReturnDocTypeMismatchInspection
      */
     private function getExplicitlySetAgentOptionValue(string $optName)
     {

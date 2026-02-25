@@ -57,6 +57,11 @@ final class Backend implements LoggableInterface
         return $this->maxEnabledLevel >= $level;
     }
 
+    public function maxEnabledLevel(): int
+    {
+        return $this->maxEnabledLevel;
+    }
+
     public function clone(): self
     {
         return new self($this->maxEnabledLevel, $this->logSink);

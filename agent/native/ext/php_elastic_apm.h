@@ -47,7 +47,8 @@ ZEND_BEGIN_MODULE_GLOBALS(elastic_apm)
     elasticapm::php::AgentGlobals *globals;
     zval lastException;
     std::unique_ptr<elasticapm::php::PhpErrorData> lastErrorData;
-    bool captureErrors;
+    bool captureErrorsUsingNative;
+    bool captureErrorsToLogOnly;
 ZEND_END_MODULE_GLOBALS(elastic_apm)
 
 ZEND_EXTERN_MODULE_GLOBALS(elastic_apm)

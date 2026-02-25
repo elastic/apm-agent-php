@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\Util;
 
+use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Log\NoopLoggerFactory;
 use Elastic\Apm\Impl\Util\RangeUtil;
@@ -458,6 +459,59 @@ final class DataProviderForTestBuilder
         iterable $iterableForFalse
     ): self {
         return $this->addConditionalKeyedDimension($dimensionKey, /* onlyFirstValueCombinable: */ false, $prevDimensionKey, $prevDimensionTrueValue, $iterableForTrue, $iterableForFalse);
+    }
+
+    /**
+     * @return $this
+     */
+    public function addAgentBoolConfigOptionKeyedDimension(string $optionName, bool $onlyFirstValueCombinable): self
+    {
+        $defaultValue = AllOptionsMetadata::get()[$optionName]->defaultValue();
+        return $this->addKeyedDimension($optionName, $onlyFirstValueCombinable, [$defaultValue, !$defaultValue]);
+    }
+
+    /**
+     * @return $this
+     *
+     * @noinspection PhpUnused
+     */
+    public function addAgentBoolConfigOptionKeyedDimensionOnlyFirstValueCombinable(string $optionName): self
+    {
+        return $this->addAgentBoolConfigOptionKeyedDimension($optionName, /* onlyFirstValueCombinable: */ true);
+    }
+
+    /**
+     * @return $this
+     */
+    public function addAgentBoolConfigOptionKeyedDimensionAllValuesCombinable(string $optionName): self
+    {
+        return $this->addAgentBoolConfigOptionKeyedDimension($optionName, /* onlyFirstValueCombinable: */ false);
+    }
+
+    /**
+     * @return $this
+     */
+    public function addAgentNullableBoolConfigOptionKeyedDimension(string $optionName, bool $onlyFirstValueCombinable): self
+    {
+        return $this->addKeyedDimension($optionName, $onlyFirstValueCombinable, [null, false, true]);
+    }
+
+    /**
+     * @return $this
+     *
+     * @noinspection PhpUnused
+     */
+    public function addAgentNullableBoolConfigOptionKeyedDimensionOnlyFirstValueCombinable(string $optionName): self
+    {
+        return $this->addAgentNullableBoolConfigOptionKeyedDimension($optionName, /* onlyFirstValueCombinable: */ true);
+    }
+
+    /**
+     * @return $this
+     */
+    public function addAgentNullableBoolConfigOptionKeyedDimensionAllValuesCombinable(string $optionName): self
+    {
+        return $this->addAgentNullableBoolConfigOptionKeyedDimension($optionName, /* onlyFirstValueCombinable: */ false);
     }
 
     /**

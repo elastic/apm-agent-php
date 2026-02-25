@@ -26,25 +26,35 @@ void elastic_apm_error_cb(int type, zend_string *error_filename, const uint32_t 
 #endif
     using namespace std::string_view_literals;
 
-    if (ELASTICAPM_G(captureErrors)) {
+    if (ELASTICAPM_G(captureErrorsUsingNative)) {
+		ELASTICAPM_G(lastErrorData) = nullptr;
+		std::unique_ptr<elasticapm::php::PhpErrorData> errorData;
 #if PHP_VERSION_ID < 80000
-        char * message = nullptr;
-        va_list messageArgsCopy;
+	    char * message = nullptr;
+    	va_list messageArgsCopy;
         va_copy(messageArgsCopy, args);
-        vspprintf(/* out */ &message, 0, format, messageArgsCopy); // vspprintf allocates memory for the resulted string buffer and it needs to be freed with efree()
-        va_end(messageArgsCopy);
+	    vspprintf(/* out */ &message, 0, format, messageArgsCopy); // vspprintf allocates memory for the resulted string buffer and it needs to be freed with efree()
+    	va_end(messageArgsCopy);
 
-        ELASTICAPM_G(lastErrorData) = std::make_unique<elasticapm::php::PhpErrorData>(type, error_filename ? error_filename : ""sv, error_lineno, message ? message : ""sv);
+        errorData = std::make_unique<elasticapm::php::PhpErrorData>(type, error_filename ? error_filename : ""sv, error_lineno, message ? message : ""sv);
 
-        if (message) {
-            efree(message);
-        }
+		if (message) {
+        	efree(message);
+    	}
 #elif PHP_VERSION_ID < 80100
-        ELASTICAPM_G(lastErrorData) = std::make_unique<elasticapm::php::PhpErrorData>(type, error_filename ? error_filename : ""sv, error_lineno, message ? std::string_view{ZSTR_VAL(message), ZSTR_LEN(message)} : ""sv);
+        errorData = std::make_unique<elasticapm::php::PhpErrorData>(type, error_filename ? error_filename : ""sv, error_lineno, message ? std::string_view{ZSTR_VAL(message), ZSTR_LEN(message)} : ""sv);
 #else
-        ELASTICAPM_G(lastErrorData) = nullptr;
-        ELASTICAPM_G(lastErrorData) = std::make_unique<elasticapm::php::PhpErrorData>(type, error_filename ? std::string_view{ZSTR_VAL(error_filename), ZSTR_LEN(error_filename)} : ""sv, error_lineno, message ? std::string_view{ZSTR_VAL(message), ZSTR_LEN(message)} : ""sv);
+    	errorData = std::make_unique<elasticapm::php::PhpErrorData>(type, error_filename ? std::string_view{ZSTR_VAL(error_filename), ZSTR_LEN(error_filename)} : ""sv, error_lineno, message ? std::string_view{ZSTR_VAL(message), ZSTR_LEN(message)} : ""sv);
 #endif
+
+		if (ELASTICAPM_G(captureErrorsToLogOnly)) {
+		    ELASTIC_APM_LOG_DEBUG(
+				"Captured error but only to log it; error_filename: " ELASTIC_APM_PRINTF_STRING_VIEW_FMT_SPEC() "; error_lineno: %d; message: " ELASTIC_APM_PRINTF_STRING_VIEW_FMT_SPEC(),
+				ELASTIC_APM_PRINTF_STD_STRING_VIEW_ARG(errorData->getFileName()), errorData->getLineNumber(), ELASTIC_APM_PRINTF_STD_STRING_VIEW_ARG(errorData->getMessage())
+			);
+		} else {
+			ELASTICAPM_G(lastErrorData) = std::move(errorData);
+		}
     }
 
     auto original = Hooking::getInstance().getOriginalZendErrorCb();
@@ -92,7 +102,7 @@ static void elastic_interrupt_function(zend_execute_data *execute_data) {
     } zend_end_try();
 }
 
-void Hooking::replaceHooks(bool cfgCaptureErrors, bool cfgInferredSpansEnabled) {
+void Hooking::replaceHooks(bool cfgCaptureErrors, bool cfgCaptureErrorsWithPhpPart, bool cfgInferredSpansEnabled) {
     if (cfgInferredSpansEnabled) {
         zend_execute_internal = elastic_execute_internal;
         zend_interrupt_function = elastic_interrupt_function;
@@ -101,11 +111,14 @@ void Hooking::replaceHooks(bool cfgCaptureErrors, bool cfgInferredSpansEnabled) 
         ELASTIC_APM_LOG_DEBUG( "NOT replacing zend_execute_internal and zend_interrupt_function hooks because profiling_inferred_spans_enabled configuration option is set to false" );
     }
 
-    if (cfgCaptureErrors) {
+    if (cfgCaptureErrors && (!cfgCaptureErrorsWithPhpPart)) {
         zend_error_cb = elastic_apm_error_cb;
         ELASTIC_APM_LOG_DEBUG( "Replaced zend_error_cb hook" );
     } else {
-        ELASTIC_APM_LOG_DEBUG( "NOT replacing zend_error_cb hook because capture_errors configuration option is set to false" );
+        ELASTIC_APM_LOG_DEBUG(
+			"NOT replacing zend_error_cb hook because configuration options capture_errors is %s and capture_errors_with_php_part is %s",
+			boolToString(cfgCaptureErrors), boolToString(cfgCaptureErrorsWithPhpPart)
+		);
     }
 }
 

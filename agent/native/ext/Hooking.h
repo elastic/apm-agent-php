@@ -46,7 +46,7 @@ public:
         zend_error_cb = original_zend_error_cb_;
     }
 
-    void replaceHooks(bool cfgCaptureErrors, bool cfgInferredSpansEnabled);
+    void replaceHooks(bool cfgCaptureErrors, bool cfgCaptureErrorsWithPhpPart, bool cfgInferredSpansEnabled);
 
     zend_execute_internal_t getOriginalExecuteInternal() {
         return original_execute_internal_;
