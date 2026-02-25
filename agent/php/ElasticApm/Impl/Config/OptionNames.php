@@ -43,6 +43,7 @@ final class OptionNames
     public const BREAKDOWN_METRICS = 'breakdown_metrics';
     public const CAPTURE_ERRORS = 'capture_errors';
     public const DEV_INTERNAL = 'dev_internal';
+    public const DEV_INTERNAL_CURL_INSTRUM_CALL_CURL = 'dev_internal_curl_instrum_call_curl';
     public const DISABLE_INSTRUMENTATIONS = 'disable_instrumentations';
     public const DISABLE_SEND = 'disable_send';
     public const ENABLED = 'enabled';
