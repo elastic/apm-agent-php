@@ -233,6 +233,22 @@ static void unregisterExceptionHooks() {
     }
 }
 
+void logImportantAgentInfo( const ConfigSnapshot* config, String calledFromFunc )
+{
+    ELASTIC_APM_LOG_INFO(
+        "Custom build based on version: %s"
+        "; Custom changes:"
+        " * agent is disabled by default (enabled: false)"
+        "; config->enabled: %s."
+        "; SAPI module name: %s"
+        "; Called from: %s"
+        , PHP_ELASTIC_APM_VERSION
+        , boolToString( config->enabled )
+        , getPhpSapiModuleName()
+        , calledFromFunc
+    );
+}
+
 void elasticApmModuleInit( int moduleType, int moduleNumber )
 {
     auto const &sapi = ELASTICAPM_G(globals)->sapi_;
@@ -265,9 +281,10 @@ void elasticApmModuleInit( int moduleType, int moduleNumber )
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureLoggerInitialConfigIsLatest( tracer ) );
     ELASTIC_APM_CALL_IF_FAILED_GOTO( ensureAllComponentsHaveLatestConfig( tracer ) );
 
-    logSupportabilityInfo( logLevel_debug );
-
     config = getTracerCurrentConfigSnapshot( tracer );
+
+    logImportantAgentInfo( config, __FUNCTION__ );
+    logSupportabilityInfo( logLevel_debug );
 
     if ( ! config->enabled )
     {
@@ -326,6 +343,8 @@ void elasticApmModuleShutdown( int moduleType, int moduleNumber )
 
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
+
+    logImportantAgentInfo( config, __FUNCTION__ );
 
     if ( ! config->enabled )
     {
