@@ -27,12 +27,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: package-parts-linux-x86-64
           path: agent/native/_build/linux-x86-64-release/
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: package-parts-linuxmusl-x86-64
           path: agent/native/_build/linuxmusl-x86-64-release/

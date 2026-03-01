@@ -55,7 +55,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Download package artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: packages-*
           path: ${{ env.BUILD_PACKAGES }}
@@ -68,7 +68,7 @@ jobs:
           ls -R ${{ env.BUILD_PACKAGES }}
 
       - name: generate build provenance
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: "${{ github.workspace }}/${{ env.BUILD_PACKAGES }}/*"
 
@@ -106,7 +106,7 @@ jobs:
       # this artifact name is used also in some other places,
       # such as ./.github/workflows/test-packages.yml.
       # Therefore v4 cannot be used at the moment.
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: signed-artifacts
           path: signed-artifacts.zip
@@ -141,7 +141,7 @@ jobs:
     steps:
 
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: signed-artifacts
           path: ${{ env.BUILD_PACKAGES }}
