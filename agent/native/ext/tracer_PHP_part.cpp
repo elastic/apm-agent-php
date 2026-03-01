@@ -373,7 +373,6 @@ void tracerPhpPartForwardCall( StringView phpFuncName, zend_execute_data* execut
         }
     }
 
-
     getArgsFromZendExecuteData( execute_data, g_maxInterceptedCallArgsCount, &( callArgs[ 0 ] ), &callArgsCount );
     tracerPhpPartLogArguments( logLevel_trace, callArgsCount, callArgs );
 
