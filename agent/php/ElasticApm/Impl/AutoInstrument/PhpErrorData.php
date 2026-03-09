@@ -30,8 +30,8 @@ namespace Elastic\Apm\Impl\AutoInstrument;
  */
 final class PhpErrorData
 {
-    /** @var ?int */
-    public $type = null;
+    /** @var int */
+    public $type;
 
     /** @var ?string */
     public $fileName = null;
@@ -39,9 +39,26 @@ final class PhpErrorData
     /** @var ?int */
     public $lineNumber = null;
 
-    /** @var ?string */
-    public $message = null;
+    /** @var string */
+    public $message;
 
-    /** @var null|array<string, mixed>[] */
+    /** @var array<string, mixed>[] */
     public $stackTrace = null;
+
+    /**
+     * @param array<string, mixed>[] $stackTrace
+     */
+    public function __construct(
+        int $type,
+        ?string $fileName,
+        ?int $lineNumber,
+        string $message,
+        array $stackTrace
+    ) {
+        $this->type = $type;
+        $this->fileName = $fileName;
+        $this->lineNumber = $lineNumber;
+        $this->message = $message;
+        $this->stackTrace = $stackTrace;
+    }
 }
