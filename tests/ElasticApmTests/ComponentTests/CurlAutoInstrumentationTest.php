@@ -96,7 +96,7 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
 
     public function testLocalClientServer(): void
     {
-        // OLD TODO: Sergey Kleyman: Implement: CurlAutoInstrumentationTest::testLocalClientServer
+        // OLD TODO: Implement: CurlAutoInstrumentationTest::testLocalClientServer
         if (PHP_MAJOR_VERSION < 9) {
             self::dummyAssert();
             return;
@@ -125,7 +125,7 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
 
     public function testLocalClientExternalServer(): void
     {
-        // OLD TODO: Sergey Kleyman: Implement: CurlAutoInstrumentationTest::testLocalClientExternalServer
+        // OLD TODO: Implement: CurlAutoInstrumentationTest::testLocalClientExternalServer
         self::dummyAssert();
     }
 }

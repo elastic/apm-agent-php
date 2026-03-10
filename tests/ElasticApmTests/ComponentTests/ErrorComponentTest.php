@@ -26,6 +26,7 @@ namespace ElasticApmTests\ComponentTests;
 use Elastic\Apm\ElasticApm;
 use Elastic\Apm\Impl\Config\AllOptionsMetadata;
 use Elastic\Apm\Impl\Config\OptionNames;
+use Elastic\Apm\Impl\Constants;
 use Elastic\Apm\Impl\StackTraceFrame;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
@@ -193,10 +194,10 @@ final class ErrorComponentTest extends ComponentTestCaseBase
     {
         $result = (new DataProviderForTestBuilder())
             ->addBoolKeyedDimensionAllValuesCombinable(self::INCLUDE_IN_ERROR_REPORTING_KEY)
-            ->addBoolKeyedDimensionAllValuesCombinable(OptionNames::CAPTURE_ERRORS)
-            ->addBoolKeyedDimensionAllValuesCombinable(OptionNames::CAPTURE_ERRORS_WITH_PHP_PART)
-            ->addKeyedDimensionAllValuesCombinable(OptionNames::CAPTURE_EXCEPTIONS, [null, false, true])
-            ->addKeyedDimensionAllValuesCombinable(OptionNames::DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG, [false, true])
+            ->addAgentBoolConfigOptionKeyedDimensionAllValuesCombinable(OptionNames::CAPTURE_ERRORS)
+            ->addAgentBoolConfigOptionKeyedDimensionAllValuesCombinable(OptionNames::CAPTURE_ERRORS_WITH_PHP_PART)
+            ->addAgentNullableBoolConfigOptionKeyedDimensionAllValuesCombinable(OptionNames::CAPTURE_EXCEPTIONS)
+            ->addAgentBoolConfigOptionKeyedDimensionAllValuesCombinable(OptionNames::DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG)
             ->build();
 
         return DataProviderForTestBuilder::convertEachDataSetToMixedMap(self::adaptKeyValueToSmoke($result));
@@ -226,6 +227,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         $expectedErrorCount = $isErrorExpected ? 1 : 0;
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->errors($expectedErrorCount));
         $dbgCtx->add(compact('dataFromAgent'));
+
         self::assertCount($expectedErrorCount, $dataFromAgent->idToError);
         if (!$isErrorExpected) {
             return;
@@ -302,6 +304,14 @@ final class ErrorComponentTest extends ComponentTestCaseBase
 
     public static function appCodeForTestPhpErrorUncaughtExceptionWrapper(bool $justReturnLineNumber = false): int
     {
+        if (!$justReturnLineNumber) {
+            /**
+             * We set display_errors to 0 to ensure HTTP status 500 is returned on PHP error.
+             * For more details see https://bugs.php.net/bug.php?id=50921
+             */
+            ini_set('display_errors', '0');
+        }
+
         return $justReturnLineNumber ? __LINE__ : appCodeForTestPhpErrorUncaughtException();
     }
 
@@ -337,12 +347,7 @@ final class ErrorComponentTest extends ComponentTestCaseBase
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestPhpErrorUncaughtExceptionWrapper']),
             function (AppCodeRequestParams $appCodeRequestParams): void {
                 if ($appCodeRequestParams instanceof HttpAppCodeRequestParams) {
-                    /**
-                     * It seems it depends on 'display_errors' whether 200 or 500 is returned on PHP error.
-                     * We ignore HTTP status since it's not the main point of the test case.
-                     * For more details see https://bugs.php.net/bug.php?id=50921
-                     */
-                    $appCodeRequestParams->expectedHttpResponseStatusCode = null;
+                    $appCodeRequestParams->expectedHttpResponseStatusCode = HttpConstantsForTests::STATUS_INTERNAL_SERVER_ERROR;
                 }
             }
         );
@@ -364,6 +369,11 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         $expectedErrorCount = $isErrorExpected ? 1 : 0;
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->errors($expectedErrorCount));
         $dbgCtx->add(compact('dataFromAgent'));
+
+        if (self::isMainAppCodeHostHttp()) {
+            self::assertSame(Constants::OUTCOME_FAILURE, $dataFromAgent->singleTransaction()->outcome);
+        }
+
         self::assertCount($expectedErrorCount, $dataFromAgent->idToError);
         if (!$isErrorExpected) {
             return;
@@ -468,6 +478,11 @@ final class ErrorComponentTest extends ComponentTestCaseBase
         $expectedErrorCount = $isErrorExpected ? 1 : 0;
         $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->errors($expectedErrorCount));
         $dbgCtx->add(compact('dataFromAgent'));
+
+        if (self::isMainAppCodeHostHttp()) {
+            self::assertSame(Constants::OUTCOME_FAILURE, $dataFromAgent->singleTransaction()->outcome);
+        }
+
         self::assertCount($expectedErrorCount, $dataFromAgent->idToError);
         if (!$isErrorExpected) {
             return;

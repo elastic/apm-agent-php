@@ -345,6 +345,12 @@ final class TransactionForExtensionRequest
 
     private function beforeHttpEnd(TransactionInterface $tx): void
     {
+        ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log(
+            'Entered',
+            ['tx' => ['result' => $tx->getResult(), 'outcome' => $tx->getOutcome()], 'lastThrown' => $this->lastThrown, "ini_get('display_errors')" => ini_get('display_errors')]
+        );
+
         if ($tx->getResult() === null) {
             $this->discoverHttpResult($tx);
         }
@@ -449,6 +455,9 @@ final class TransactionForExtensionRequest
         if ($this->prevExceptionHandler !== null) {
             ($this->prevExceptionHandler)($thrown);
         }
+
+        // Re-throw because otherwise HTTP status will be 200 instead of 500
+        throw $thrown;
     }
 
     public function onShutdown(): void
