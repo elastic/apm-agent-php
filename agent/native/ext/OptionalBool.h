@@ -35,9 +35,11 @@ static inline String optionalBoolToString( OptionalBool optionalBoolValue )
     return optionalBoolValue.isSet ? "not set" : boolToString( optionalBoolValue.value );
 }
 
+#define ELASTIC_APM_MAKE_NOT_SET_OPTIONAL_BOOL() ((OptionalBool){ .isSet = false, .value = false })
+
 static inline OptionalBool makeNotSetOptionalBool()
 {
-    return (OptionalBool){ .isSet = false, .value = false };
+    return ELASTIC_APM_MAKE_NOT_SET_OPTIONAL_BOOL();
 }
 
 static inline OptionalBool makeSetOptionalBool( bool value )

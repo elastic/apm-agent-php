@@ -72,7 +72,7 @@ final class InferredSpansComponentTest extends ComponentTestCaseBase
     public function dataProviderForTestInferredSpans(): iterable
     {
         $result = (new DataProviderForTestBuilder())
-            // OLD TODO: Sergey Kleyman: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
+            // OLD TODO: Implement: test with PROFILING_INFERRED_SPANS_ENABLED set to true
             // ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::IS_INFERRED_SPANS_ENABLED_KEY)
             ->addKeyedDimensionOnlyFirstValueCombinable(self::IS_INFERRED_SPANS_ENABLED_KEY, DataProviderForTestBuilder::isLongRunMode() ? [true, false] : [false])
             ->addBoolKeyedDimensionOnlyFirstValueCombinable(self::IS_TRANSACTION_SAMPLED_KEY)

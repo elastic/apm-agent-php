@@ -39,12 +39,14 @@ function appCodeForTestPhpErrorUncaughtExceptionImpl2()
     throw new Exception('Message for caught exception');
 }
 
-const APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_ERROR_LINE_NUMBER = 57;
+const APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_ERROR_LINE_NUMBER = 59;
 
 /**
  * @return never
  *
  * @throws Exception
+ *
+ * @noinspection PhpReturnDocTypeMismatchInspection
  */
 function appCodeForTestPhpErrorUncaughtExceptionImpl()
 {
@@ -54,10 +56,10 @@ function appCodeForTestPhpErrorUncaughtExceptionImpl()
     }
 
     TestCase::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_ERROR_LINE_NUMBER, __LINE__ + 1);
-    throw new Exception(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_MESSAGE);
+    throw new Exception(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_MESSAGE); // <- APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_ERROR_LINE_NUMBER
 }
 
-const APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_CALL_TO_IMPL_LINE_NUMBER = 70;
+const APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_CALL_TO_IMPL_LINE_NUMBER = 72;
 
 /**
  * @return never
@@ -67,5 +69,5 @@ const APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_CALL_TO_IMPL_LINE_NUMBER = 
 function appCodeForTestPhpErrorUncaughtException(): int
 {
     TestCase::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_CALL_TO_IMPL_LINE_NUMBER, __LINE__ + 1);
-    appCodeForTestPhpErrorUncaughtExceptionImpl();
+    appCodeForTestPhpErrorUncaughtExceptionImpl(); // <- APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_CALL_TO_IMPL_LINE_NUMBER
 }

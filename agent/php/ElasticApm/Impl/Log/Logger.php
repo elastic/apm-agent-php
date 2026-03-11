@@ -197,6 +197,11 @@ final class Logger implements LoggableInterface
         return $this->isEnabledForLevel(Level::TRACE);
     }
 
+    public function maxEnabledLevel(): int
+    {
+        return $this->data->backend->maxEnabledLevel();
+    }
+
     /**
      * @param mixed $value
      *

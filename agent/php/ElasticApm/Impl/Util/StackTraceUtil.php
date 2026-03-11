@@ -261,6 +261,7 @@ final class StackTraceUtil
         return $outFrames;
     }
 
+    /** @noinspection PhpUnusedParameterInspection */
     public static function buildApmFormatFunctionForClassMethod(?string $classicName, ?bool $isStaticMethod, ?string $methodName): ?string
     {
         if ($methodName === null) {
@@ -476,41 +477,6 @@ final class StackTraceUtil
         $frameForThrowLocation = [StackTraceUtil::FILE_KEY => $throwable->getFile(), StackTraceUtil::LINE_KEY => $throwable->getLine()];
         return $this->convertPhpToApmFormat(IterableUtil::prepend($frameForThrowLocation, $throwable->getTrace()), $maxNumberOfFrames);
     }
-
-    // TODO: Sergey Kleyman: REMOVE:
-    // /**
-    //  * @param iterable<ClassicFormatStackTraceFrame> $inFrames
-    //  * @param ?positive-int                          $maxNumberOfFrames
-    //  *
-    //  * @return StackTraceFrame[]
-    //  */
-    // private static function convertClassicToApmFormat(iterable $inFrames, ?int $maxNumberOfFrames): array
-    // {
-    //     /** @var StackTraceFrame[] $outFrames */
-    //     $outFrames = [];
-    //
-    //     /** @var ?ClassicFormatStackTraceFrame $prevInFrame */
-    //     $prevInFrame = null;
-    //     foreach ($inFrames as $currentInFrame) {
-    //         if ($currentInFrame->file === null) {
-    //             $isOutFrameEmpty = true;
-    //             $outFrame = new StackTraceFrame(self::FILE_NAME_NOT_AVAILABLE_SUBSTITUTE, self::LINE_NUMBER_NOT_AVAILABLE_SUBSTITUTE);
-    //         } else {
-    //             $isOutFrameEmpty = false;
-    //             $outFrame = new StackTraceFrame($currentInFrame->file, $currentInFrame->line ?? self::LINE_NUMBER_NOT_AVAILABLE_SUBSTITUTE);
-    //         }
-    //         if ($prevInFrame !== null && $prevInFrame->function !== null) {
-    //             $isOutFrameEmpty = false;
-    //             $outFrame->function = self::buildApmFormatFunctionForClassMethod($prevInFrame->class, $prevInFrame->isStaticMethod, $prevInFrame->function);
-    //         }
-    //         if (!$isOutFrameEmpty && !self::addToOutputFrames($outFrame, $maxNumberOfFrames, /* ref */ $outFrames)) {
-    //             break;
-    //         }
-    //         $prevInFrame = $currentInFrame;
-    //     }
-    //
-    //     return $outFrames;
-    // }
 
     /**
      * @param iterable<ClassicFormatStackTraceFrame> $inputFrames

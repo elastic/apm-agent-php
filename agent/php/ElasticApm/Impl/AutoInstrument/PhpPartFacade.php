@@ -29,6 +29,7 @@ use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Tracer;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\Assert;
+use Elastic\Apm\Impl\Util\BoolUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
 use Elastic\Apm\Impl\Util\ElasticApmExtensionUtil;
 use Elastic\Apm\Impl\Util\HiddenConstructorTrait;
@@ -273,22 +274,31 @@ final class PhpPartFacade
         );
     }
 
-    private static function ensureHaveLastErrorData(
-        TransactionForExtensionRequest $transactionForExtensionRequest
-    ): void {
-        if (!$transactionForExtensionRequest->getConfig()->captureErrors()) {
-            return;
-        }
+    private static function ensureHaveLastErrorData(TransactionForExtensionRequest $transactionForExtensionRequest): void
+    {
+        BootstrapStageLogger::logDebug(
+            'Entered'
+            . '; captureErrors: ' . BoolUtil::toString($transactionForExtensionRequest->getConfig()->captureErrors())
+            . '; captureExceptions: ' . BoolUtil::nullableToString($transactionForExtensionRequest->getConfig()->captureExceptions())
+            . '; captureErrorsWithPhpPart: ' . BoolUtil::toString($transactionForExtensionRequest->getConfig()->captureErrorsWithPhpPart())
+            . '; shouldCaptureExceptions: ' . BoolUtil::toString($transactionForExtensionRequest->getConfig()->shouldCaptureExceptions()),
+            __LINE__,
+            __FUNCTION__
+        );
 
-        /**
-         * The last thrown should be fetched before last PHP error because if the error is for "Uncaught Exception"
-         * agent will use the last thrown exception
-         */
-        self::ensureHaveLastThrown($transactionForExtensionRequest);
-        self::ensureHaveLastPhpError($transactionForExtensionRequest);
+        if (!$transactionForExtensionRequest->getConfig()->captureErrorsWithPhpPart()) {
+             // The last thrown should be fetched before last PHP error because if the error is for "Uncaught Exception"
+             // agent will use the last thrown exception
+            if ($transactionForExtensionRequest->getConfig()->shouldCaptureExceptions()) {
+                self::ensureHaveLastThrownCapturedByNativePart($transactionForExtensionRequest);
+            }
+            if ($transactionForExtensionRequest->getConfig()->captureErrors()) {
+                self::ensureHaveLastPhpErrorCapturedByNativePart($transactionForExtensionRequest);
+            }
+        }
     }
 
-    private static function ensureHaveLastThrown(TransactionForExtensionRequest $transactionForExtensionRequest): void
+    private static function ensureHaveLastThrownCapturedByNativePart(TransactionForExtensionRequest $transactionForExtensionRequest): void
     {
         /**
          * elastic_apm_* functions are provided by the elastic_apm extension
@@ -303,7 +313,7 @@ final class PhpPartFacade
             return;
         }
 
-        $transactionForExtensionRequest->setLastThrown($lastThrown);
+        $transactionForExtensionRequest->setLastThrownCapturedByNativePart($lastThrown);
     }
 
     /**
@@ -431,7 +441,7 @@ final class PhpPartFacade
         return $result;
     }
 
-    private static function ensureHaveLastPhpError(TransactionForExtensionRequest $transactionForExtensionRequest): void
+    private static function ensureHaveLastPhpErrorCapturedByNativePart(TransactionForExtensionRequest $transactionForExtensionRequest): void
     {
         /**
          * elastic_apm_* functions are provided by the elastic_apm extension
@@ -462,7 +472,7 @@ final class PhpPartFacade
         }
         /** @var array<array-key, mixed> $lastPhpErrorData */
 
-        $transactionForExtensionRequest->onPhpError(self::buildPhpErrorData($lastPhpErrorData));
+        $transactionForExtensionRequest->onPhpErrorCapturedByNativePart(self::buildPhpErrorData($lastPhpErrorData));
     }
 
     /**

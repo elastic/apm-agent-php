@@ -45,6 +45,11 @@ final class BoolUtil
         return $val ? 'true' : 'false';
     }
 
+    public static function nullableToString(?bool $val): string
+    {
+        return $val === null ? 'null' : self::toString($val);
+    }
+
     public static function toInt(bool $val): int
     {
         return $val ? self::INT_FOR_TRUE : self::INT_FOR_FALSE;

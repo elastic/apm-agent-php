@@ -47,7 +47,7 @@ final class SharedCode
      */
     public static function configTransactionMaxSpansVariants(int $testingDepth): iterable
     {
-        // OLD TODO: Sergey Kleyman: UNCOMMENT and remove the "if" block below
+        // OLD TODO: UNCOMMENT and remove the "if" block below
         // yield null;
         if ($testingDepth >= self::TESTING_DEPTH_1) {
             yield null;

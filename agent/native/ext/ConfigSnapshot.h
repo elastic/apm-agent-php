@@ -41,12 +41,16 @@ struct ConfigSnapshot
     bool astProcessDebugDumpConvertedBackToSource = false;
     String astProcessDebugDumpForPathPrefix = nullptr;
     String astProcessDebugDumpOutDir = nullptr;
-    OptionalBool asyncBackendComm = {false, false};
+    OptionalBool asyncBackendComm = ELASTIC_APM_MAKE_NOT_SET_OPTIONAL_BOOL();
     String bootstrapPhpPartFile = nullptr;
     bool breakdownMetrics = false;
     bool captureErrors = false;
+    bool captureErrorsWithPhpPart = false;
+    OptionalBool captureExceptions = ELASTIC_APM_MAKE_NOT_SET_OPTIONAL_BOOL();
+    String debugDiagnosticsFile = nullptr;
     String devInternal = nullptr;
     bool devInternalBackendCommLogVerbose = false;
+    bool devInternalCaptureErrorsOnlyToLog = false;
     String disableInstrumentations = nullptr;
     bool disableSend = false;
     bool enabled = false;
@@ -88,5 +92,4 @@ struct ConfigSnapshot
     String transactionSampleRate = nullptr;
     String urlGroups = nullptr;
     bool verifyServerCert = false;
-    String debugDiagnosticsFile = nullptr;
 };
