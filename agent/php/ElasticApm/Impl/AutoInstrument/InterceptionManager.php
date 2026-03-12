@@ -97,24 +97,24 @@ final class InterceptionManager
                 'interceptedCallArgs'       => $this->logger->possiblySecuritySensitive($interceptedCallArgs),
             ]
         );
-        $loggerProxyTrace = $localLogger->ifTraceLevelEnabledNoLine(__FUNCTION__);
+        $loggerProxy = $localLogger->ifDebugLevelEnabledNoLine(__FUNCTION__);
 
-        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Entered');
+        $loggerProxy && $loggerProxy->log(__LINE__, 'Entered');
 
         $interceptRegistration = ArrayUtil::getValueIfKeyExistsElse($interceptRegistrationId, $this->interceptedCallRegistrations, null);
         if ($interceptRegistration === null) {
-            ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('There is no registration with the given interceptRegistrationId');
+            ($loggerProxyError = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxyError->log('There is no registration with the given interceptRegistrationId');
             return false;
         }
         $localLogger->prependAllToContext(compact('interceptRegistration'));
 
-        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Calling preHook...');
+        $loggerProxy && $loggerProxy->log(__LINE__, 'Calling preHook...');
         try {
             $preHookRetVal = ($interceptRegistration->preHook)($thisObj, $interceptedCallArgs);
         } catch (Throwable $throwable) {
-            ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->logThrowable(
+            ($loggerProxyError = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxyError->logThrowable(
                 $throwable,
                 'preHook has let a Throwable to escape'
             );
@@ -128,7 +128,7 @@ final class InterceptionManager
             $this->interceptedCallInProgressPreHookRetVal = $preHookRetVal;
         }
 
-        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'preHook completed successfully', ['shouldCallPostHook' => $shouldCallPostHook]);
+        $loggerProxy && $loggerProxy->log(__LINE__, 'preHook completed successfully', ['shouldCallPostHook' => $shouldCallPostHook]);
         return $shouldCallPostHook;
     }
 
@@ -149,28 +149,28 @@ final class InterceptionManager
                 'interceptRegistration'   => $this->interceptedCallInProgressRegistration,
             ]
         );
-        $loggerProxyTrace = $localLogger->ifTraceLevelEnabledNoLine(__FUNCTION__);
-        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Entered');
+        $loggerProxy = $localLogger->ifDebugLevelEnabledNoLine(__FUNCTION__);
+        $loggerProxy && $loggerProxy->log(__LINE__, 'Entered');
 
         if ($this->interceptedCallInProgressRegistrationId === null) {
-            ($loggerProxy = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->log('There is no intercepted call in progress');
+            ($loggerProxyError = $this->logger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxyError->log('There is no intercepted call in progress');
             return;
         }
         assert($this->interceptedCallInProgressRegistration !== null);
         assert($this->interceptedCallInProgressPreHookRetVal !== null);
 
-        $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'Calling postHook...');
+        $loggerProxy && $loggerProxy->log(__LINE__, 'Calling postHook...');
         try {
             ($this->interceptedCallInProgressPreHookRetVal)(
                 $numberOfStackFramesToSkip + 1,
                 $hasExitedByException,
                 $returnValueOrThrown
             );
-            $loggerProxyTrace && $loggerProxyTrace->log(__LINE__, 'postHook completed without throwing');
+            $loggerProxy && $loggerProxy->log(__LINE__, 'postHook completed without throwing');
         } catch (Throwable $throwable) {
-            ($loggerProxy = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
-            && $loggerProxy->logThrowable($throwable, 'postHook has thrown');
+            ($loggerProxyError = $localLogger->ifErrorLevelEnabled(__LINE__, __FUNCTION__))
+            && $loggerProxyError->logThrowable($throwable, 'postHook has thrown');
         }
 
         $this->interceptedCallInProgressRegistrationId = null;
