@@ -55,6 +55,12 @@ To check for security updates, go to [Security announcements for the Elastic sta
 
 % ### Fixes [elastic-apm-php-agent-versionext-fixes]
 
+## 1.16.0 [elastic-apm-php-agent-1160-release-notes]
+**Release date:** March 11, 2026
+
+### Features and enhancements [elastic-apm-php-agent-1160-features-enhancements]
+* Added configuration option to switch error capture from native to PHP [#1415](https://github.com/elastic/apm-agent-php/pull/1415)
+
 ## 1.15.1 [elastic-apm-php-agent-1151-release-notes]
 **Release date:** June 27, 2025
 
