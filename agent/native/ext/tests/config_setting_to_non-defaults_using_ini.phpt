@@ -9,6 +9,7 @@ elastic_apm.log_level=CRITICAL
 elastic_apm.log_level_file=TRACE
 elastic_apm.log_level_syslog=TRACE
 elastic_apm.log_level_win_sys_debug=CRITICAL
+elastic_apm.max_send_queue_size=456MB
 elastic_apm.secret_token=non-default_secret_token_123
 elastic_apm.server_url=https://non-default_server_url:4321/some/path
 elastic_apm.service_name=Non-default Service Name
@@ -64,6 +65,13 @@ if (elasticApmIsOsWindows()) {
     elasticApmAssertSame("ini_get('elastic_apm.log_level_win_sys_debug')", ini_get('elastic_apm.log_level_win_sys_debug'), 'CRITICAL');
     elasticApmAssertSame("elastic_apm_get_config_option_by_name('log_level_win_sys_debug')", elastic_apm_get_config_option_by_name('log_level_win_sys_debug'), ELASTIC_APM_LOG_LEVEL_CRITICAL);
 }
+
+//////////////////////////////////////////////
+///////////////  max_send_queue_size
+
+elasticApmAssertSame("ini_get('elastic_apm.max_send_queue_size')", ini_get('elastic_apm.max_send_queue_size'), '456MB');
+
+elasticApmAssertSame("elastic_apm_get_config_option_by_name('max_send_queue_size')", elastic_apm_get_config_option_by_name('max_send_queue_size'), 456.0 * 1024 * 1024);
 
 //////////////////////////////////////////////
 ///////////////  secret_token
