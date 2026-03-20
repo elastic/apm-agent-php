@@ -37,7 +37,7 @@ jobs:
       contents: write
     env:
       GITHUB_TOKEN: ${{ github.token }}
-      TAG_NAME: v1.16.20
+      TAG_NAME: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v6
 
