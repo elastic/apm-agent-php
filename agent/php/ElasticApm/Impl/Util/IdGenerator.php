@@ -37,34 +37,6 @@ final class IdGenerator
 
     public static function generateId(int $idLengthInBytes): string
     {
-        return self::convertBinaryIdToString(self::generateBinaryId($idLengthInBytes));
-    }
-
-    /**
-     * @param array<int> $binaryId
-     *
-     * @return string
-     */
-    private static function convertBinaryIdToString(array $binaryId): string
-    {
-        $result = '';
-        for ($i = 0; $i < count($binaryId); ++$i) {
-            $result .= sprintf('%02x', $binaryId[$i]);
-        }
-        return $result;
-    }
-
-    /**
-     * @param int $idLengthInBytes
-     *
-     * @return array<int>
-     */
-    private static function generateBinaryId(int $idLengthInBytes): array
-    {
-        $result = [];
-        for ($i = 0; $i < $idLengthInBytes; ++$i) {
-            $result[] = mt_rand(0, 255);
-        }
-        return $result;
+        return bin2hex(random_bytes($idLengthInBytes));
     }
 }
