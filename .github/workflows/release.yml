@@ -16,21 +16,10 @@ env:
 
 jobs:
 
-  release-started:
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags')
-    steps:
-      - uses: elastic/oblt-actions/slack/send@v1
-        with:
-          bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
-          channel-id: "#apm-agent-php"
-          message: |
-            :runner: [${{ github.repository }}] Release *${{ github.ref_name }}* has been triggered : (<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|here> for further details)
-
   build:
     uses: ./.github/workflows/build.yml
     with:
-      build_arch: all
+      build_arch: x86_64
 
   build-packages:
     permissions:
@@ -40,17 +29,15 @@ jobs:
       - build
     uses: ./.github/workflows/build-packages.yml
 
-  sign:
-    runs-on: ubuntu-latest
+  release:
     needs:
       - build-packages
-    env:
-      BUCKET_NAME: "apm-agent-php"
+    runs-on: ubuntu-latest
     permissions:
-      artifact-metadata: write
-      attestations: write
       contents: write
-      id-token: write
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      TAG_NAME: v1.16.20
     steps:
       - uses: actions/checkout@v6
 
@@ -59,6 +46,7 @@ jobs:
         with:
           pattern: packages-*
           path: ${{ env.BUILD_PACKAGES }}
+
       - name: Moving packages out of folders
         run: |
           pushd ${{ env.BUILD_PACKAGES }}
@@ -67,122 +55,12 @@ jobs:
           popd
           ls -R ${{ env.BUILD_PACKAGES }}
 
-      - name: generate build provenance
-        uses: actions/attest@v4
-        with:
-          subject-path: "${{ github.workspace }}/${{ env.BUILD_PACKAGES }}/*"
-
-      ## NOTE: The name of the zip should match the name of the folder to be zipped.
-      - name: Prepare packages to be signed
-        run: zip -r packages.zip packages/
-        working-directory: build
-
-      - uses: elastic/oblt-actions/google/auth@v1
-        with:
-          project-number: '911195782929'
-
-      - id: 'upload-file'
-        uses: 'google-github-actions/upload-cloud-storage@v3'
-        with:
-          path: "${{ env.BUILD_PACKAGES }}.zip"
-          destination: "${{ env.BUCKET_NAME }}/${{ github.run_id }}"
-
-      - id: buildkite-run
-        uses: elastic/oblt-actions/buildkite/run@v1
-        with:
-          token: ${{ secrets.BUILDKITE_TOKEN }}
-          pipeline: observability-robots-php-release
-          wait-for: true
-          env-vars: |
-            BUNDLE_URL=https://storage.googleapis.com/${{ env.BUCKET_NAME }}/${{ steps.upload-file.outputs.uploaded }}
-
-      - uses: elastic/oblt-actions/buildkite/download-artifact@v1
-        with:
-          build-number: ${{ steps.buildkite-run.outputs.number }}
-          path: signed-artifacts.zip
-          pipeline: ${{ steps.buildkite-run.outputs.pipeline }}
-          token: ${{ secrets.BUILDKITE_TOKEN }}
-
-      # this artifact name is used also in some other places,
-      # such as ./.github/workflows/test-packages.yml.
-      # Therefore v4 cannot be used at the moment.
-      - uses: actions/upload-artifact@v7
-        with:
-          name: signed-artifacts
-          path: signed-artifacts.zip
-
-  generate-test-packages-matrix:
-    if: startsWith(github.ref, 'refs/tags')
-    uses: ./.github/workflows/generate-matrix.yml
-
-  test-packages:
-    if: startsWith(github.ref, 'refs/tags')
-    needs:
-      - sign
-      - generate-test-packages-matrix
-    permissions:
-      contents: read
-      packages: read
-    uses: ./.github/workflows/test-packages.yml
-    with:
-      include: ${{ needs.generate-test-packages-matrix.outputs.include }}
-      max-parallel: 40
-      package-name: 'signed-artifacts'
-
-  release:
-    needs:
-      - test-packages
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      GITHUB_TOKEN: ${{ github.token }}
-      TAG_NAME: ${{ github.ref_name }}
-    steps:
-
-      - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v8
-        with:
-          name: signed-artifacts
-          path: ${{ env.BUILD_PACKAGES }}
-
-      - name: Unzip signed packages
-        run: unzip ${PACKAGE_FILE} && rm ${PACKAGE_FILE}
-        working-directory: ${{ env.BUILD_PACKAGES }}
-        env:
-          PACKAGE_FILE: "signed-artifacts.zip"
-
-      - name: Create draft release
-        if: startsWith(github.ref, 'refs/tags')
-        run: make -f .ci/Makefile draft-release
-
-      - name: Verify draft release
-        if: startsWith(github.ref, 'refs/tags')
-        run: ORIGINAL_PACKAGES_LOCATION=${{ env.BUILD_PACKAGES }} make -f .ci/Makefile download-verify
-
-      - name: Publish release
-        if: startsWith(github.ref, 'refs/tags')
-        run: make -f .ci/Makefile github-release-ready
-
-  notify:
-    if: always()
-    needs:
-      - build
-      - build-packages
-      - generate-test-packages-matrix
-      - release
-      - sign
-      - test-packages
-    runs-on: ubuntu-latest
-    steps:
-      - id: check
-        uses: elastic/oblt-actions/check-dependent-jobs@v1
-        with:
-          jobs: ${{ toJSON(needs) }}
-      - if: startsWith(github.ref, 'refs/tags')
-        uses: elastic/oblt-actions/slack/notify-result@v1
-        with:
-          bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
-          channel-id: "#apm-agent-php"
-          status: ${{ steps.check.outputs.status }}
-          message: "[${{ github.repository }}] Release (<${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}|${{ github.ref_name }}>)"
+      - name: Create GitHub release
+        run: |
+          gh release create "${TAG_NAME}" \
+            --title "${TAG_NAME}" \
+            --notes "Ecentria fork release. Changes from upstream v1.16.0:
+          - Add configurable max send queue size (#1441)
+          - Fix span ID collisions: use random_bytes() instead of mt_rand() (#1443)" \
+            --repo ${{ github.repository }} \
+            ${{ env.BUILD_PACKAGES }}/*.*
