@@ -28,7 +28,6 @@
 #include "Tracer.h"
 #include "ConfigSnapshot.h"
 #include "util.h"
-#include "util_for_PHP.h"
 #include "basic_macros.h"
 #include "backend_comm_backoff.h"
 
@@ -798,6 +797,15 @@ ResultCode backgroundBackendCommThreadFunc_shouldBreakLoop(
 
         if ( compareAbsTimeSpecs( &sharedStateSnapshot->shouldExitBy, &now ) < 0 )
         {
+            StringView serializedEvents = stringBufferToView( sharedStateSnapshot->firstDataToSendNode->serializedEvents );
+            ELASTIC_APM_LOG_WARNING(
+                    "Async shutdown drain timed out with queued events still pending - remaining queued events will be dropped"
+                    "; total size of queued events: %" PRIu64
+                    "; first pending batch ID: %" PRIu64
+                    "; first pending batch size: %" PRIu64
+                    , (UInt64) sharedStateSnapshot->dataToSendTotalSize
+                    , (UInt64) sharedStateSnapshot->firstDataToSendNode->id
+                    , (UInt64) serializedEvents.length );
             *shouldBreakLoop = true;
             goto success;
         }
