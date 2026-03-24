@@ -132,9 +132,11 @@ ADD_COMPILE_DEFINITIONS( ELASTIC_APM_NON_PROD_UNIT_TEST )
 
 
 target_include_directories(unit_tests PRIVATE
+                                ${CONAN_INCLUDE_DIRS_LIBCURL}
                                 ${CONAN_INCLUDE_DIRS_LIBUNWIND} )
 
 target_link_libraries( unit_tests PRIVATE CONAN_PKG::cmocka
+                                PRIVATE CONAN_PKG::libcurl
                                 PRIVATE CONAN_PKG::libunwind
                                 Threads::Threads
                                 m

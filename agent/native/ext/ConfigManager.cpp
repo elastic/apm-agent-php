@@ -117,6 +117,7 @@ typedef struct DurationOptionAdditionalMetadata DurationOptionAdditionalMetadata
 struct SizeOptionAdditionalMetadata
 {
     SizeUnits defaultUnits = sizeUnits_byte;
+    Int64 minValidValueInBytes = INT64_MIN;
 };
 typedef struct SizeOptionAdditionalMetadata SizeOptionAdditionalMetadata;
 
@@ -427,7 +428,14 @@ static ResultCode parseSizeValue( const OptionMetadata* optMeta, String rawValue
     ResultCode parseResultCode = parseSize( stringToView( rawValue )
                                                 , optMeta->additionalData.sizeData.defaultUnits
                                                 , /* out */ &parsedValue->u.sizeValue );
-    if ( parseResultCode == resultSuccess ) parsedValue->type = parsedOptionValueType_size;
+    if ( parseResultCode == resultSuccess )
+    {
+        if ( sizeToBytes( parsedValue->u.sizeValue ) < optMeta->additionalData.sizeData.minValidValueInBytes )
+        {
+            return resultParsingFailed;
+        }
+        parsedValue->type = parsedOptionValueType_size;
+    }
     return parseResultCode;
 }
 
@@ -667,7 +675,7 @@ static OptionMetadata buildDurationOptionMetadata(
     };
 }
 
-[[maybe_unused]] static OptionMetadata buildSizeOptionMetadata(
+static OptionMetadata buildSizeOptionMetadata(
         String name
         , StringView iniName
         , bool isSecret
@@ -676,6 +684,7 @@ static OptionMetadata buildDurationOptionMetadata(
         , SetConfigSnapshotFieldFunc setFieldFunc
         , GetConfigSnapshotFieldFunc getFieldFunc
         , SizeUnits defaultUnits
+        , Int64 minValidValueInBytes
 )
 {
     return (OptionMetadata)
@@ -692,7 +701,7 @@ static OptionMetadata buildDurationOptionMetadata(
         .setField = setFieldFunc,
         .getField = getFieldFunc,
         .parsedValueToZval = &parsedSizeValueToZval,
-        .additionalData = (OptionAdditionalMetadata){ .sizeData = (SizeOptionAdditionalMetadata){ .defaultUnits = defaultUnits } }
+        .additionalData = (OptionAdditionalMetadata){ .sizeData = (SizeOptionAdditionalMetadata){ .defaultUnits = defaultUnits, .minValidValueInBytes = minValidValueInBytes } }
     };
 }
 
@@ -827,6 +836,7 @@ ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevelSyslog )
 #   ifdef PHP_WIN32
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( LogLevel, logLevelWinSysDebug )
 #   endif
+ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( sizeValue, maxSendQueueSize )
 #   if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
 ELASTIC_APM_DEFINE_ENUM_FIELD_ACCESS_FUNCS( MemoryTrackingLevel, memoryTrackingLevel )
 #   endif
@@ -881,6 +891,9 @@ ELASTIC_APM_DEFINE_FIELD_ACCESS_FUNCS( stringValue, debugDiagnosticsFile )
 
 #define ELASTIC_APM_INIT_DURATION_METADATA( fieldName, optName, defaultValue, defaultUnits, isNegativeValid ) \
     ELASTIC_APM_INIT_METADATA_EX( buildDurationOptionMetadata, fieldName, optName, /* isSecret */ false, /* isDynamic */ false, defaultValue, defaultUnits, isNegativeValid )
+
+#define ELASTIC_APM_INIT_SIZE_METADATA( fieldName, optName, defaultValue, defaultUnits, minValidValueInBytes ) \
+    ELASTIC_APM_INIT_METADATA_EX( buildSizeOptionMetadata, fieldName, optName, /* isSecret */ false, /* isDynamic */ false, defaultValue, defaultUnits, minValidValueInBytes )
 
 #define ELASTIC_APM_INIT_SECRET_METADATA( buildFunc, fieldName, optName, defaultValue ) \
     ELASTIC_APM_INIT_METADATA_EX( buildFunc, fieldName, optName, /* isSecret */ true, /* isDynamic */ false, defaultValue )
@@ -1114,6 +1127,13 @@ static void initOptionsMetadata( OptionMetadata* optsMeta )
             logLevelWinSysDebug,
             ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_WIN_SYS_DEBUG );
     #endif
+
+    ELASTIC_APM_INIT_SIZE_METADATA(
+            maxSendQueueSize,
+            ELASTIC_APM_CFG_OPT_NAME_MAX_SEND_QUEUE_SIZE,
+            /* defaultValue: */ makeSize( 10, sizeUnits_mebibyte ),
+            /* defaultUnits: */ sizeUnits_mebibyte,
+            /* minValidValueInBytes: */ 1 );
 
     #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     ELASTIC_APM_ENUM_INIT_METADATA(
