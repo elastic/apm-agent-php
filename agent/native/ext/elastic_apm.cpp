@@ -363,7 +363,9 @@ PHP_MSHUTDOWN_FUNCTION(elastic_apm)
     // which might deadlock in forked child
     ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
 
+    ELASTIC_APM_LOG_DEBUG( "Entered PHP_MSHUTDOWN_FUNCTION(elastic_apm) - calling elasticApmModuleShutdown()" );
     elasticApmModuleShutdown( type, module_number );
+    ELASTIC_APM_LOG_DEBUG( "Returned from elasticApmModuleShutdown() in PHP_MSHUTDOWN_FUNCTION(elastic_apm)" );
 
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
