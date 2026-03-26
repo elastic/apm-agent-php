@@ -33,10 +33,43 @@
 #include "elastic_apm_assert.h"
 #include "elastic_apm_alloc.h"
 #include "tracer_PHP_part.h"
+#ifndef PHP_WIN32
+#   include <unistd.h>
+#   include <fcntl.h>
+#   include <time.h>
+#endif
 #include "PhpBridge.h"
 #include "CommonUtils.h"
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_EXT_INFRA
+
+#ifndef PHP_WIN32
+#define ELASTIC_APM_DIAG_FILE "/tmp/elastic_apm_mshutdown_diag.log"
+
+static void elasticApmDiagWrite( const char* msg )
+{
+    int fd = open( ELASTIC_APM_DIAG_FILE, O_WRONLY | O_CREAT | O_APPEND, 0644 );
+    if ( fd >= 0 )
+    {
+        struct timespec ts;
+        clock_gettime( CLOCK_REALTIME, &ts );
+        char buf[512];
+        int len = snprintf( buf, sizeof(buf), "[%ld.%09ld] [PID:%d] %s\n",
+                            (long)ts.tv_sec, ts.tv_nsec, (int)getpid(), msg );
+        if ( len > 0 )
+        {
+            // cast to void to suppress unused-result warning
+            (void)write( fd, buf, (size_t)len );
+        }
+        close( fd );
+    }
+}
+
+static void elasticApmAtExitHandler( void )
+{
+    elasticApmDiagWrite( "atexit handler called - process is exiting normally" );
+}
+#endif
 
 ZEND_DECLARE_MODULE_GLOBALS( elastic_apm )
 
@@ -298,6 +331,9 @@ static PHP_GINIT_FUNCTION(elastic_apm)
 }
 
 static PHP_GSHUTDOWN_FUNCTION(elastic_apm) {
+#ifndef PHP_WIN32
+    elasticApmDiagWrite( "PHP_GSHUTDOWN_FUNCTION entered" );
+#endif
     ELASTIC_APM_LOG_DIRECT_DEBUG( "%s: GSHUTDOWN called; parent PID: %d", __FUNCTION__, (int)getParentProcessId() );
     if (elastic_apm_globals->globals) {
         delete elastic_apm_globals->globals;
@@ -346,6 +382,11 @@ PHP_MINIT_FUNCTION(elastic_apm)
 
     elasticApmModuleInit( type, module_number );
 
+#ifndef PHP_WIN32
+    atexit( elasticApmAtExitHandler );
+    elasticApmDiagWrite( "MINIT completed - atexit handler registered" );
+#endif
+
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
     finally:
@@ -357,11 +398,19 @@ PHP_MINIT_FUNCTION(elastic_apm)
 
 PHP_MSHUTDOWN_FUNCTION(elastic_apm)
 {
+#ifndef PHP_WIN32
+    elasticApmDiagWrite( "PHP_MSHUTDOWN_FUNCTION entered (before any extension code)" );
+#endif
+
     ResultCode resultCode;
 
     // We SHOULD NOT log before resetting state if forked because logging might be using thread synchronization
     // which might deadlock in forked child
     ELASTIC_APM_CALL_IF_FAILED_GOTO( elasticApmApiEntered( __FILE__, __LINE__, __FUNCTION__ ) );
+
+#ifndef PHP_WIN32
+    elasticApmDiagWrite( "PHP_MSHUTDOWN_FUNCTION passed elasticApmApiEntered" );
+#endif
 
     ELASTIC_APM_LOG_DEBUG( "Entered PHP_MSHUTDOWN_FUNCTION(elastic_apm) - calling elasticApmModuleShutdown()" );
     elasticApmModuleShutdown( type, module_number );
@@ -370,9 +419,15 @@ PHP_MSHUTDOWN_FUNCTION(elastic_apm)
     // We ignore errors because we want the monitored application to continue working
     // even if APM encountered an issue that prevent it from working
     finally:
+#ifndef PHP_WIN32
+    elasticApmDiagWrite( "PHP_MSHUTDOWN_FUNCTION exiting (returning SUCCESS)" );
+#endif
     return SUCCESS;
 
     failure:
+#ifndef PHP_WIN32
+    elasticApmDiagWrite( "PHP_MSHUTDOWN_FUNCTION hit failure path" );
+#endif
     goto finally;
 }
 
