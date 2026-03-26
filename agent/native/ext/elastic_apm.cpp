@@ -58,8 +58,8 @@ static void elasticApmDiagWrite( const char* msg )
                             (long)ts.tv_sec, ts.tv_nsec, (int)getpid(), msg );
         if ( len > 0 )
         {
-            // cast to void to suppress unused-result warning
-            (void)write( fd, buf, (size_t)len );
+            ssize_t rc = write( fd, buf, (size_t)len );
+            (void)rc;
         }
         close( fd );
     }
