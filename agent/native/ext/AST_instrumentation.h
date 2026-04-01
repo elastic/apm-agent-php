@@ -45,7 +45,7 @@ zend_ast_decl** findChildSlotForStandaloneFunctionAst( zend_ast* rootAst, String
 zend_ast_decl* findClassAst( zend_ast* rootAst, StringView nameSpace, StringView className );
 zend_ast_decl** findChildSlotForMethodAst( zend_ast_decl* astClass, StringView methodName, size_t minParamsCount );
 
-ResultCode insertAstForFunctionPreHook( zend_ast_decl* funcAstDecl, ArgCaptureSpecArrayView argCaptureSpecs );
+ResultCode insertAstForFunctionPreHook( zend_ast_decl *parentClass, zend_ast_decl* funcAstDecl, ArgCaptureSpecArrayView argCaptureSpecs );
 ResultCode appendDirectCallToInstrumentation( zend_ast_decl** pAstChildSlot, StringView constNameForMethodName );
 ResultCode wrapStandaloneFunctionAstWithPrePostHooks( zend_ast_decl** pAstChildSlot );
 
