@@ -74,6 +74,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
         OptionNames::LOG_LEVEL,
         OptionNames::LOG_LEVEL_STDERR,
         OptionNames::LOG_LEVEL_SYSLOG,
+        OptionNames::MAX_SEND_QUEUE_SIZE,
         OptionNames::PROFILING_INFERRED_SPANS_ENABLED,
         OptionNames::SERVER_TIMEOUT,
         OptionNames::SPAN_COMPRESSION_ENABLED,
@@ -137,6 +138,16 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             'not valid'    => null,
         ];
 
+        $sizeRawToParsedValues = [
+            '100MB'         => 100.0 * 1024 * 1024,
+            "\t 78 mB \n"   => 78.0 * 1024 * 1024,
+            '1MB'           => 1.0 * 1024 * 1024,
+            '10'            => 10.0 * 1024 * 1024,
+            '0'             => null,
+            '-1MB'          => null,
+            'not valid'     => null,
+        ];
+
         $intRawToParsedValues = [
             "\n\t 123 " => 123,
             'not valid' => null,
@@ -182,6 +193,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
             OptionNames::LOG_LEVEL                      => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_STDERR               => $logLevelRawToParsedValues,
             OptionNames::LOG_LEVEL_SYSLOG               => $logLevelRawToParsedValues,
+            OptionNames::MAX_SEND_QUEUE_SIZE            => $sizeRawToParsedValues,
             OptionNames::NON_KEYWORD_STRING_MAX_LENGTH  => $intRawToParsedValues,
             OptionNames::PROFILING_INFERRED_SPANS_ENABLED
                                                         => $boolRawToParsedValues(/* valueToExclude: */ true),
