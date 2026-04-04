@@ -70,6 +70,11 @@ final class AllOptionsMetadata
         return new IntOptionMetadata(/* min */ 0, /* max */ null, $default);
     }
 
+    private static function buildPositiveSizeMetadata(int $defaultInBytes, int $defaultUnits): SizeOptionMetadata
+    {
+        return new SizeOptionMetadata(/* min */ 1.0, /* max */ null, $defaultUnits, floatval($defaultInBytes));
+    }
+
     /**
      * @return array<string, OptionMetadata<mixed>> Option name to metadata
      */
@@ -103,6 +108,7 @@ final class AllOptionsMetadata
             OptionNames::LOG_LEVEL                                  => new NullableLogLevelOptionMetadata(),
             OptionNames::LOG_LEVEL_STDERR                           => new NullableLogLevelOptionMetadata(),
             OptionNames::LOG_LEVEL_SYSLOG                           => new NullableLogLevelOptionMetadata(),
+            OptionNames::MAX_SEND_QUEUE_SIZE                        => self::buildPositiveSizeMetadata(OptionDefaultValues::MAX_SEND_QUEUE_SIZE, SizeUnits::MEGABYTES),
             OptionNames::NON_KEYWORD_STRING_MAX_LENGTH              => self::buildPositiveOrZeroIntMetadata(/* default */ 10 * 1024),
             OptionNames::PROFILING_INFERRED_SPANS_ENABLED           => new BoolOptionMetadata(/* default */ false),
             OptionNames::PROFILING_INFERRED_SPANS_MIN_DURATION      => self::buildDurationMetadataInMilliseconds(/* default */ 0),
