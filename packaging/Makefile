@@ -1,6 +1,7 @@
 SHELL = /bin/bash
 MAKEFLAGS += --no-print-directory
 IMAGE:=php-packaging
+IMAGE_APK_V3:=php-packaging-apk-v3
 IMAGE_TAG:=latest
 NAME:=apm-agent-php
 VERSION?=$(shell grep 'VERSION' ../agent/php/ElasticApm/ElasticApm.php | cut -d= -f2 | tr -d " " | sed "s/'\(.*\)'.*/\1/g")
@@ -12,6 +13,11 @@ GIT_SHA?=$(shell git rev-parse HEAD || echo "unknown")
 RELEASE_VERSION?=
 GITHUB_RELEASES_URL=https://github.com/elastic/apm-agent-php/releases/download
 BUILD_ARCH := $(if $(BUILD_ARCH),$(BUILD_ARCH),"x86-64")
+
+DOCKER_PLATFORM := linux/amd64
+ifeq ($(BUILD_ARCH), arm64)
+	DOCKER_PLATFORM := linux/arm64
+endif
 
 ifeq ($(shell [ $(PHP_VERSION) \< 8.4 ] && echo true), true)
   RPM_IMAGE_VERSION = 0.0.3 # PHP < 8.4 - image using centos
@@ -43,7 +49,7 @@ prepare: ## Build docker image for the packaging
 	docker build --build-arg IMAGE_TAG=$(IMAGE_TAG) -t $(IMAGE) . || exit 1
 
 .PHONY: build-docker-images
-build-docker-images: prepare prepare-apk prepare-deb prepare-rpm prepare-tar prepare-deb-apache prepare-deb-fpm ## Build all the docker images
+build-docker-images: prepare prepare-apk-v3-image prepare-apk prepare-deb prepare-rpm prepare-tar prepare-deb-apache prepare-deb-fpm ## Build all the docker images
 	@echo 'Build docker images'
 
 create-%: prepare  ## Create the specific package
@@ -64,7 +70,27 @@ create-%: prepare  ## Create the specific package
 
 .PHONY: apk
 apk: FPM_FLAGS="--depends=bash"
-apk: create-apk  ## Create the apk installer
+apk: create-apk  ## Create the apk v2 installer (Alpine <=3.20)
+
+.PHONY: prepare-apk-v3-image
+prepare-apk-v3-image: ## Build docker image for APK v3 packaging
+	docker build -t $(IMAGE_APK_V3) -f Dockerfile.apk-v3 . || exit 1
+
+.PHONY: apk-v3
+apk-v3: prepare-apk-v3-image  ## Create the apk v3 installer (Alpine 3.21+)
+	@echo "::group::$@"
+	@echo "Creating APK v3 package..."
+	mkdir -p $(PWD)/$(OUTPUT)
+	docker run --rm \
+		-v $(PWD):/app \
+		-e NAME=$(NAME) \
+		-e VERSION=$(VERSION) \
+		-e OUTPUT=$(OUTPUT) \
+		-e PHP_AGENT_DIR=$(PHP_AGENT_DIR) \
+		-e BUILD_ARCH=$(BUILD_ARCH) \
+		-e GIT_SHA=$(GIT_SHA) \
+		-w /app $(IMAGE_APK_V3)
+	@echo "::endgroup::"
 
 .PHONY: deb
 deb: create-deb  ## Create the deb installer
@@ -80,7 +106,7 @@ version:  ## Show the fpm version
 	docker run --rm $(IMAGE) --version || exit 1
 
 .PHONY: package
-package: apk deb rpm tar  ## Create all the installers
+package: apk apk-v3 deb rpm tar  ## Create all the installers
 
 .PHONY: info
 info: apk-info deb-info rpm-info tar-info  ## Show the package metadata for all the installers
