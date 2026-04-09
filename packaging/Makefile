@@ -25,6 +25,10 @@ ifneq ($(PHP_VERSION), 7.2)
 	SEL_DISTRO := bullseye
 endif
 
+ifeq ($(PHP_VERSION), 8.5)
+	SEL_DISTRO := bookworm
+endif
+
 .PHONY: help
 .DEFAULT_GOAL := help
 help: ## Display this help text
