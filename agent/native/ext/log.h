@@ -31,6 +31,9 @@
 #include "TextOutputStream.h"
 #include "platform.h"
 
+#define ELASTIC_APM_PRINTF_STRING_VIEW_FMT_SPEC() "%.*s"
+#define ELASTIC_APM_PRINTF_STD_STRING_VIEW_ARG(stdStrVw) (static_cast<int>((stdStrVw).length())), ((stdStrVw).data())
+
 extern String logLevelNames[ numberOfLogLevels ];
 
 enum LogSinkType

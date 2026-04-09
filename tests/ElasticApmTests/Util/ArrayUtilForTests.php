@@ -187,4 +187,35 @@ final class ArrayUtilForTests
             $list[] = $value;
         }
     }
+
+    /**
+     * @template TKey of array-key
+     * @template TValue
+     *
+     * @param array<TKey, TValue> $arr
+     *
+     * @return array<TKey, TValue>
+     */
+    public static function sortByKey(array &$arr, ?int $flags = null): array
+    {
+        if ($flags === null) {
+            ksort($arr);
+        } else {
+            ksort($arr, $flags);
+        }
+        return $arr;
+    }
+
+    /**
+     * @template TKey of array-key
+     * @template TValue
+     *
+     * @param array<TKey, TValue> $arr
+     *
+     * @return array<TKey, TValue>
+     */
+    public static function sortCloneByKey(array $arr, ?int $flags = null): array
+    {
+        return self::sortByKey($arr, $flags);
+    }
 }

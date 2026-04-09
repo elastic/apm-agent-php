@@ -28,11 +28,14 @@ use Elastic\Apm\Impl\Log\LoggableInterface;
 use Elastic\Apm\Impl\Log\LogStreamInterface;
 use Elastic\Apm\Impl\Util\ArrayUtil;
 use Elastic\Apm\Impl\Util\DbgUtil;
+use IteratorAggregate;
+use Traversable;
 
 /**
  * @implements ArrayAccess<string, mixed>
+ * @implements IteratorAggregate<string, string>
  */
-class MixedMap implements LoggableInterface, ArrayAccess
+class MixedMap implements LoggableInterface, ArrayAccess, IteratorAggregate
 {
     /** @var array<string, mixed> */
     private $map;
@@ -59,7 +62,6 @@ class MixedMap implements LoggableInterface, ArrayAccess
         }
         /**
          * @var array<string, mixed> $array
-         * @noinspection PhpRedundantVariableDocTypeInspection
          */
         return $array;
     }
@@ -111,9 +113,26 @@ class MixedMap implements LoggableInterface, ArrayAccess
         return $value;
     }
 
+    public function hasKey(string $key): bool
+    {
+        return array_key_exists($key, $this->map);
+    }
+
     public function getBool(string $key): bool
     {
         return self::getBoolFrom($key, $this->map);
+    }
+
+    public function getNullableBool(string $key): ?bool
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
+        $value = $this->get($key);
+        if ($value === null || is_bool($value)) {
+            return $value;
+        }
+
+        $dbgCtx->add(['value type' => DbgUtil::getType($value), 'value' => $value]);
+        TestCaseBase::fail('Value is not a bool');
     }
 
     /**
@@ -193,7 +212,10 @@ class MixedMap implements LoggableInterface, ArrayAccess
         if ($value !== null) {
             TestCaseBase::assertGreaterThanOrEqual(0, $value);
         }
-        /** @var null|positive-int|0 $value */
+        /**
+         * @var null|positive-int|0 $value
+         * @noinspection PhpVarTagWithoutVariableNameInspection
+         */
         $dbgCtx->pop();
         return $value;
     }
@@ -216,7 +238,10 @@ class MixedMap implements LoggableInterface, ArrayAccess
         AssertMessageStack::newScope(/* out */ $dbgCtx, array_merge(['this' => $this], AssertMessageStack::funcArgs()));
         $value = $this->getInt($key);
         TestCaseBase::assertGreaterThanOrEqual(0, $value);
-        /** @var positive-int|0 $value */
+        /**
+         * @var positive-int|0 $value
+         * @noinspection PhpVarTagWithoutVariableNameInspection
+         */
         $dbgCtx->pop();
         return $value;
     }
@@ -313,6 +338,18 @@ class MixedMap implements LoggableInterface, ArrayAccess
     {
         TestCaseBase::assertArrayHasKey($offset, $this->map);
         unset($this->map[$offset]);
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @return Traversable<string, mixed>
+     */
+    public function getIterator(): Traversable
+    {
+        foreach ($this->map as $key => $value) {
+            yield $key => $value;
+        }
     }
 
     public function toLog(LogStreamInterface $stream): void

@@ -70,6 +70,41 @@ If this configuration option is set to `true` the agent will collect and report 
 Also see [PHP errors as APM error events](/reference/configuration.md#configure-php-error-reporting).
 
 
+
+## `capture_errors_with_php_part` [config-capture-errors-with-php-part]
+
+| Environment variable name | Option name in `php.ini` |
+| --- | --- |
+| `ELASTIC_APM_CAPTURE_ERRORS_WITH_PHP_PART` | `elastic_apm.capture_errors_with_php_part` |
+
+| Default | Type |
+|---------| --- |
+| false   | Boolean |
+
+If this configuration option is set to `false` (the default) the agent will capture errors and exceptions using native API.
+If this configuration option is set to `true` the agent will capture errors and exceptions using PHP user-land API.
+
+Also see [PHP errors as APM error events](/reference/configuration.md#configure-php-error-reporting).
+
+
+
+## `capture_exceptions` [config-capture-exceptions]
+
+| Environment variable name | Option name in `php.ini` |
+| --- | --- |
+| `ELASTIC_APM_CAPTURE_EXCEPTIONS` | `elastic_apm.capture_exceptions` |
+
+| Default | Type |
+| --- | --- |
+| true | Boolean |
+
+If this configuration option is set to `true` the agent will capture exceptions and report error events for transaction with failure outcome.
+If this configuration option is not set then [`capture_errors`](#config-capture-errors) takes effect.
+Set it to `true`/`false` to enable/disable the collection of exceptions and reporting them as APM error events regardless of [`capture_errors`](#config-capture-errors).
+
+Also see [PHP errors as APM error events](/reference/configuration.md#configure-php-error-reporting).
+
+
 ## `disable_instrumentations` [config-disable-instrumentations]
 
 | Environment variable name | Option name in `php.ini` |

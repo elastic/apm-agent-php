@@ -42,13 +42,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         if: ${{ inputs.package-name }}
         with:
           name: ${{ inputs.package-name }}
           path: ${{ env.BUILD_PACKAGES }}
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         if: ${{ ! inputs.package-name }}
         with:
           pattern: 'package*'
@@ -56,7 +56,7 @@ jobs:
           path: ${{ env.BUILD_PACKAGES }}
 
       - name: Log in to the Container registry
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -70,12 +70,12 @@ jobs:
         env:
           PACKAGE_FILE: "${{ inputs.package-name }}.zip"
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: package-parts-linux-x86-64
           path: agent/native/_build/linux-x86-64-release
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: package-parts-linuxmusl-x86-64
           path: agent/native/_build/linuxmusl-x86-64-release
@@ -124,7 +124,7 @@ jobs:
           \;
 
       - if: success() || failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-${{ env.ELASTIC_APM_PHP_TESTS_MATRIX_ROW }}
           path: build/*junit.xml
@@ -140,7 +140,7 @@ jobs:
           find . -name "syslog" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
           find . -name "messages" -exec bash -c 'cp {} "../syslog-files/${ELASTIC_APM_PHP_TESTS_MATRIX_ROW//[^[:alnum:]]/-}-$(basename {})"' \;
       - if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         continue-on-error: true
         with:
           name: syslogs-${{ env.ELASTIC_APM_PHP_TESTS_MATRIX_ROW }}

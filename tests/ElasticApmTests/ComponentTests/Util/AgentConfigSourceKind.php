@@ -24,7 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Log\LoggableInterface;
-use Elastic\Apm\Impl\Log\LoggableTrait;
+use Elastic\Apm\Impl\Log\LogStreamInterface;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -33,8 +33,6 @@ use Elastic\Apm\Impl\Log\LoggableTrait;
  */
 final class AgentConfigSourceKind implements LoggableInterface
 {
-    use LoggableTrait;
-
     /** @var ?self */
     private static $iniFile = null;
 
@@ -89,5 +87,10 @@ final class AgentConfigSourceKind implements LoggableInterface
     {
         self::ensureInited();
         return self::$all; // @phpstan-ignore-line
+    }
+
+    public function toLog(LogStreamInterface $stream): void
+    {
+        $stream->toLogAs($this->asString);
     }
 }

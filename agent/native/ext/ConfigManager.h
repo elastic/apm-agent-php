@@ -74,8 +74,11 @@ enum OptionId
     optionId_bootstrapPhpPartFile,
     optionId_breakdownMetrics,
     optionId_captureErrors,
+    optionId_captureErrorsWithPhpPart,
+    optionId_captureExceptions,
     optionId_devInternal,
     optionId_devInternalBackendCommLogVerbose,
+    optionId_devInternalCaptureErrorsOnlyToLog,
     optionId_disableInstrumentations,
     optionId_disableSend,
     optionId_enabled,
@@ -257,16 +260,16 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #define ELASTIC_APM_CFG_OPT_NAME_BOOTSTRAP_PHP_PART_FILE "bootstrap_php_part_file"
 #define ELASTIC_APM_CFG_OPT_NAME_BREAKDOWN_METRICS "breakdown_metrics"
 
-/**
- * Internal configuration option (not included in public documentation)
- */
 #define ELASTIC_APM_CFG_OPT_NAME_CAPTURE_ERRORS "capture_errors"
+#define ELASTIC_APM_CFG_OPT_NAME_CAPTURE_ERRORS_WITH_PHP_PART "capture_errors_with_php_part"
+#define ELASTIC_APM_CFG_OPT_NAME_CAPTURE_EXCEPTIONS "capture_exceptions"
 
 /**
  * Internal configuration option (not included in public documentation)
  */
 #define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL "dev_internal"
 #define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_BACKEND_COMM_LOG_VERBOSE "dev_internal_backend_comm_log_verbose"
+#define ELASTIC_APM_CFG_OPT_NAME_DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG "dev_internal_capture_errors_only_to_log"
 
 #define ELASTIC_APM_CFG_OPT_NAME_DISABLE_INSTRUMENTATIONS "disable_instrumentations"
 #define ELASTIC_APM_CFG_OPT_NAME_DISABLE_SEND "disable_send"

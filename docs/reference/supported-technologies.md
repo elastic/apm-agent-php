@@ -11,6 +11,10 @@ applies_to:
 
 # Supported technologies [supported-technologies]
 
+The Elastic APM PHP Agent supports the technologies listed below.
+
+Elastic supports OpenTelemetry, which allows logs, metrics, and trace signal collection for many of these technologies. Consider using the [EDOT PHP SDK](elastic-otel-php://reference/edot-php/index.md) for observability data so you continue to get the full power of Elastic's platform.
+
 If the agent doesn’t support your favorite technology yet, you can vote for it by participating in [our survey](https://docs.google.com/forms/d/e/1FAIpQLSf8c3BJVMqaeuqpq-t3_Q4NilNcdsrzK1qJ4Qo9JpJslrmYzA/viewform). We will use the results to add support for the most requested technologies.
 
 

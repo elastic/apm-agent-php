@@ -99,6 +99,9 @@ class HttpAppCodeHostHandle extends AppCodeHostHandle
         );
         $this->afterAppCodeInvocation($appCodeInvocation);
 
+        ($loggerProxy = $localLogger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))
+        && $loggerProxy->log('HTTP response status code: ' . $response->getStatusCode());
+
         if ($requestParams->expectedHttpResponseStatusCode !== null) {
             TestCase::assertSame(
                 $requestParams->expectedHttpResponseStatusCode,

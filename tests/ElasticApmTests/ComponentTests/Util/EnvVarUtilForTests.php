@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests\Util;
 
 use Elastic\Apm\Impl\Util\StaticClassTrait;
+use ElasticApmTests\Util\ArrayUtilForTests;
 use PHPUnit\Framework\Assert;
 
 final class EnvVarUtilForTests
@@ -62,6 +63,6 @@ final class EnvVarUtilForTests
      */
     public static function getAll(): array
     {
-        return getenv();
+        return ArrayUtilForTests::sortCloneByKey(getenv());
     }
 }
