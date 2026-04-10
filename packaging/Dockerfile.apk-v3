@@ -1,0 +1,16 @@
+FROM alpine:3.21
+
+RUN apk add --no-cache alpine-sdk sudo
+
+RUN adduser -D builder \
+    && addgroup builder abuild \
+    && echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+RUN su builder -c "abuild-keygen -a -n" \
+    && cp /home/builder/.abuild/*.pub /etc/apk/keys/
+
+COPY create-apk-v3.sh /bin/
+RUN chmod +x /bin/create-apk-v3.sh
+
+WORKDIR /app
+ENTRYPOINT ["/bin/create-apk-v3.sh"]

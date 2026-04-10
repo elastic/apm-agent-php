@@ -51,13 +51,27 @@ validate_agent_installation() {
 #### MAIN ####
 ##############
 if [ "${TYPE}" = "release-github" ] ; then
-    PACKAGE=apm-agent-php_${VERSION}_all.apk
+    if apk --version 2>&1 | grep -q "apk-tools 3"; then
+        echo "Detected apk-tools v3, downloading APK v3 format package"
+        APKARCH=$(apk --print-arch)
+        PKGVER=$(echo ${VERSION} | tr '-' '_')
+        PACKAGE=apm-agent-php-${PKGVER}-r0.${APKARCH}.apk
+    else
+        echo "Detected apk-tools v2, downloading APK v2 format package"
+        PACKAGE=apm-agent-php_${VERSION}_all.apk
+    fi
     download "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
     apk add --allow-untrusted --verbose --no-cache "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
 else
     ls -l $BUILD_PACKAGES
-    ## Install apk package and configure the agent accordingly
-    apk add --allow-untrusted --verbose --no-cache $BUILD_PACKAGES/*.apk
+    ## Install apk package - select v2 or v3 format based on apk-tools version
+    if apk --version 2>&1 | grep -q "apk-tools 3"; then
+        echo "Detected apk-tools v3, installing APK v3 format package"
+        apk add --allow-untrusted --verbose --no-cache $BUILD_PACKAGES/apm-agent-php-*-r0.*.apk
+    else
+        echo "Detected apk-tools v2, installing APK v2 format package"
+        apk add --allow-untrusted --verbose --no-cache $BUILD_PACKAGES/apm-agent-php_*.apk
+    fi
 fi
 
 validate_if_agent_is_enabled

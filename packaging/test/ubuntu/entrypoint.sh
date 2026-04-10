@@ -61,7 +61,7 @@ if [[ "${TYPE}" == "deb" || "${TYPE}" == "deb-uninstall" ]] ; then
 elif [ "${TYPE}" == "release-github" ] ; then
     PACKAGE=apm-agent-php_${VERSION}_all.deb
     download "${PACKAGE}" "${BUILD_RELEASES_FOLDER}" "${GITHUB_RELEASES_URL}/v${VERSION}"
-    dpkg-sig --verify "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
+    gpg --verify "${BUILD_RELEASES_FOLDER}/${PACKAGE}.asc" "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
     dpkg -i "${BUILD_RELEASES_FOLDER}/${PACKAGE}"
 elif [ "${TYPE}" == "release-tar-github" ] ; then
     PACKAGE=apm-agent-php-linux-x86-64.tar

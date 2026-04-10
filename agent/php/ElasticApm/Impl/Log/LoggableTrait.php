@@ -83,7 +83,9 @@ trait LoggableTrait
                     continue;
                 }
 
-                $reflectionProperty->setAccessible(true);
+                if (PHP_VERSION_ID < 80100) {
+                    $reflectionProperty->setAccessible(true);
+                }
                 $propName = $reflectionProperty->name;
                 if (array_key_exists($propName, $customPropValues)) {
                     continue;

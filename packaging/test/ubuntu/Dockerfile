@@ -14,7 +14,6 @@ RUN if [ ${PHP_VERSION} = 7.2 ] && [ ${SEL_DISTRO} = buster ]; then \
 RUN apt-get -qq update \
     && apt-get -qq -y --no-install-recommends install apt-transport-https \
     && apt-get -qq -y --no-install-recommends install \
-        dpkg-sig \
         gnupg \
         gnupg2 \
         git \
