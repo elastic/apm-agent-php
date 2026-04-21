@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        BUILD_ARCH: ["x86-64", "arm64"]
+        BUILD_ARCH: ["x86-64"]
     env:
       BUILD_ARCH: ${{ matrix.BUILD_ARCH }}
     steps:
