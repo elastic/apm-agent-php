@@ -57,6 +57,7 @@ final class OptionNames
     public const LOG_LEVEL = 'log_level';
     public const LOG_LEVEL_SYSLOG = 'log_level_syslog';
     public const LOG_LEVEL_STDERR = 'log_level_stderr';
+    public const MAX_SEND_QUEUE_SIZE = 'max_send_queue_size';
     public const NON_KEYWORD_STRING_MAX_LENGTH = 'non_keyword_string_max_length';
     public const PROFILING_INFERRED_SPANS_ENABLED = 'profiling_inferred_spans_enabled';
     public const PROFILING_INFERRED_SPANS_MIN_DURATION = 'profiling_inferred_spans_min_duration';

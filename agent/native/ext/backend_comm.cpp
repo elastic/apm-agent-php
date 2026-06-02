@@ -28,7 +28,6 @@
 #include "Tracer.h"
 #include "ConfigSnapshot.h"
 #include "util.h"
-#include "util_for_PHP.h"
 #include "basic_macros.h"
 #include "backend_comm_backoff.h"
 
@@ -660,8 +659,6 @@ static void freeDataToSendQueue( DataToSendQueue* dataQueue )
     }
 }
 
-#define ELASTIC_APM_MAX_QUEUE_SIZE_IN_BYTES (10 * 1024 * 1024)
-
 struct BackgroundBackendComm
 {
     Mutex* mutex;
@@ -669,6 +666,7 @@ struct BackgroundBackendComm
     Thread* thread;
     DataToSendQueue dataToSendQueue;
     size_t dataToSendTotalSize;
+    UInt64 maxQueueSizeInBytes;
     size_t nextEventsBatchId;
     bool shouldExit;
     TimeSpec shouldExitBy;
@@ -799,6 +797,15 @@ ResultCode backgroundBackendCommThreadFunc_shouldBreakLoop(
 
         if ( compareAbsTimeSpecs( &sharedStateSnapshot->shouldExitBy, &now ) < 0 )
         {
+            StringView serializedEvents = stringBufferToView( sharedStateSnapshot->firstDataToSendNode->serializedEvents );
+            ELASTIC_APM_LOG_WARNING(
+                    "Async shutdown drain timed out with queued events still pending - remaining queued events will be dropped"
+                    "; total size of queued events: %" PRIu64
+                    "; first pending batch ID: %" PRIu64
+                    "; first pending batch size: %" PRIu64
+                    , (UInt64) sharedStateSnapshot->dataToSendTotalSize
+                    , (UInt64) sharedStateSnapshot->firstDataToSendNode->id
+                    , (UInt64) serializedEvents.length );
             *shouldBreakLoop = true;
             goto success;
         }
@@ -1051,6 +1058,9 @@ ResultCode newBackgroundBackendComm( const ConfigSnapshot* config, BackgroundBac
 
     ResultCode resultCode;
     BackgroundBackendComm* backgroundBackendComm = NULL;
+    Int64 maxQueueSizeInBytes = sizeToBytes( config->maxSendQueueSize );
+
+    ELASTIC_APM_ASSERT( maxQueueSizeInBytes > 0, "maxQueueSizeInBytes: %" PRId64, maxQueueSizeInBytes );
 
     ELASTIC_APM_MALLOC_INSTANCE_IF_FAILED_GOTO( BackgroundBackendComm, /* out */ backgroundBackendComm );
     backgroundBackendComm->condVar = NULL;
@@ -1058,6 +1068,7 @@ ResultCode newBackgroundBackendComm( const ConfigSnapshot* config, BackgroundBac
     backgroundBackendComm->thread = NULL;
     initDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
     backgroundBackendComm->dataToSendTotalSize = 0;
+    backgroundBackendComm->maxQueueSizeInBytes = (UInt64) maxQueueSizeInBytes;
     backgroundBackendComm->nextEventsBatchId = 1;
     backgroundBackendComm->shouldExit = false;
     ELASTIC_APM_CALL_IF_FAILED_GOTO( newMutex( &( backgroundBackendComm->mutex ), /* dbgDesc */ "Background backend communications" ) );
@@ -1179,15 +1190,21 @@ ResultCode enqueueEventsToSendToApmServer( StringView userAgentHttpHeader, Strin
     bool shouldUnlockMutex = false;
     UInt64 id;
     BackgroundBackendComm* backgroundBackendComm = g_backgroundBackendComm;
+    UInt64 totalSizeAfterEnqueue;
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( lockMutex( backgroundBackendComm->mutex, &shouldUnlockMutex, __FUNCTION__ ) );
 
-    if ( backgroundBackendComm->dataToSendTotalSize >= ELASTIC_APM_MAX_QUEUE_SIZE_IN_BYTES )
+    totalSizeAfterEnqueue = (UInt64) backgroundBackendComm->dataToSendTotalSize + (UInt64) serializedEvents.length;
+    if ( totalSizeAfterEnqueue > backgroundBackendComm->maxQueueSizeInBytes )
     {
         ELASTIC_APM_LOG_ERROR(
-                "Already queued events are above max queue size - dropping these events"
+                "Queueing these events would exceed max queue size - dropping these events"
                 "; size of already queued events: %" PRIu64
-                , (UInt64) backgroundBackendComm->dataToSendTotalSize );
+                "; size of events to queue: %" PRIu64
+                "; max queue size: %" PRIu64
+                , (UInt64) backgroundBackendComm->dataToSendTotalSize
+                , (UInt64) serializedEvents.length
+                , backgroundBackendComm->maxQueueSizeInBytes );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 

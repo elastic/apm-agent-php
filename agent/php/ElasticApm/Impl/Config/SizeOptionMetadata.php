@@ -21,22 +21,26 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\Util;
+namespace Elastic\Apm\Impl\Config;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
+ *
+ * @extends OptionWithDefaultValueMetadata<float>
  */
-final class IdGenerator
+final class SizeOptionMetadata extends OptionWithDefaultValueMetadata
 {
-    use StaticClassTrait;
-
-    /** @var int */
-    public const TRACE_ID_SIZE_IN_BYTES = 16;
-
-    public static function generateId(int $idLengthInBytes): string
-    {
-        return bin2hex(random_bytes($idLengthInBytes));
+    public function __construct(
+        ?float $minValidValueInBytes,
+        ?float $maxValidValueInBytes,
+        int $defaultUnits,
+        float $defaultValueInBytes
+    ) {
+        parent::__construct(
+            new SizeOptionParser($minValidValueInBytes, $maxValidValueInBytes, $defaultUnits),
+            $defaultValueInBytes
+        );
     }
 }

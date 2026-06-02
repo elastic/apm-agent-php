@@ -21,22 +21,38 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\Util;
+namespace Elastic\Apm\Impl\Config;
+
+use Elastic\Apm\Impl\Util\StaticClassTrait;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
  */
-final class IdGenerator
+final class SizeUnits
 {
     use StaticClassTrait;
 
-    /** @var int */
-    public const TRACE_ID_SIZE_IN_BYTES = 16;
+    public const BYTES = 0;
+    public const KILOBYTES = self::BYTES + 1;
+    public const MEGABYTES = self::KILOBYTES + 1;
+    public const GIGABYTES = self::MEGABYTES + 1;
 
-    public static function generateId(int $idLengthInBytes): string
-    {
-        return bin2hex(random_bytes($idLengthInBytes));
-    }
+    public const BYTES_SUFFIX = 'B';
+    public const KILOBYTES_SUFFIX = 'KB';
+    public const MEGABYTES_SUFFIX = 'MB';
+    public const GIGABYTES_SUFFIX = 'GB';
+
+    /**
+     * @var array<array{string, int}> Array should be in descending order of suffix length
+     *
+     * @see \ElasticApmTests\UnitTests\UtilTests\SizeUnitsTest::testSuffixAndIdIsInDescendingOrderOfSuffixLength
+     */
+    public static $suffixAndIdPairs = [
+        [self::GIGABYTES_SUFFIX, self::GIGABYTES],
+        [self::MEGABYTES_SUFFIX, self::MEGABYTES],
+        [self::KILOBYTES_SUFFIX, self::KILOBYTES],
+        [self::BYTES_SUFFIX, self::BYTES],
+    ];
 }

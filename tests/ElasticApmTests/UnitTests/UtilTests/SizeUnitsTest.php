@@ -21,22 +21,24 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\Util;
+namespace ElasticApmTests\UnitTests\UtilTests;
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
-final class IdGenerator
+use Elastic\Apm\Impl\Config\SizeUnits;
+use PHPUnit\Framework\TestCase;
+
+class SizeUnitsTest extends TestCase
 {
-    use StaticClassTrait;
-
-    /** @var int */
-    public const TRACE_ID_SIZE_IN_BYTES = 16;
-
-    public static function generateId(int $idLengthInBytes): string
+    public function testSuffixAndIdIsInDescendingOrderOfSuffixLength(): void
     {
-        return bin2hex(random_bytes($idLengthInBytes));
+        /** @var int|null $prevSuffixLength */
+        $prevSuffixLength = null;
+        foreach (SizeUnits::$suffixAndIdPairs as $suffixAndIdPair) {
+            $suffix = $suffixAndIdPair[0];
+            $suffixLength = strlen($suffix);
+            if ($prevSuffixLength !== null) {
+                self::assertLessThanOrEqual($prevSuffixLength, $suffixLength);
+            }
+            $prevSuffixLength = $suffixLength;
+        }
     }
 }
