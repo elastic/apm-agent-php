@@ -33,7 +33,7 @@ jobs:
       DOCKERFILE: ${{ matrix.dockerfile }}
       LOOPS: '50'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Prepare
         run: make -f .ci/Makefile prepare
