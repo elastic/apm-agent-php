@@ -55,6 +55,16 @@ To check for security updates, go to [Security announcements for the Elastic sta
 
 % ### Fixes [elastic-apm-php-agent-versionext-fixes]
 
+## 1.17.0 [elastic-apm-php-agent-1170-release-notes]
+
+### Features and enhancements [elastic-apm-php-agent-1170-features-enhancements]
+
+- Add experimental PHP 8.5 compatibility [#1397](https://github.com/elastic/apm-agent-php/pull/1397)
+
+### Fixes [elastic-apm-php-agent-1170-fixes]
+
+- bump guzzlehttp/guzzle to fix security vulnerability in tests (non-production) [#1484](https://github.com/elastic/apm-agent-php/pull/1484)
+
 ## 1.16.0 [elastic-apm-php-agent-1160-release-notes]
 **Release date:** March 11, 2026
 
