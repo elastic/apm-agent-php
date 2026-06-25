@@ -27,20 +27,14 @@ jobs:
             "pull_requests": "read"
           }
     - name: Assign issues with milestones to project
-      uses: elastic/assign-one-project-github-action@1.2.2
+      uses: actions/add-to-project@v1.0.2
       if: github.event.issue && github.event.issue.milestone
       with:
-        project: 'https://github.com/orgs/elastic/projects/454'
-        project_id: '5882982'
-        column_name: 'Planned'
-      env:
-        MY_GITHUB_TOKEN: ${{ steps.get_token.outputs.token }}
+        project-url: https://github.com/orgs/elastic/projects/454
+        github-token: ${{ steps.get_token.outputs.token }}
     - name: Assign new pull requests to project
-      uses: elastic/assign-one-project-github-action@1.2.2
+      uses: actions/add-to-project@v1.0.2
       if: github.event.action == 'opened' && github.event.pull_request
       with:
-        project: 'https://github.com/orgs/elastic/projects/454'
-        project_id: '5882982'
-        column_name: 'In Progress'
-      env:
-        MY_GITHUB_TOKEN: ${{ steps.get_token.outputs.token }}
+        project-url: https://github.com/orgs/elastic/projects/454
+        github-token: ${{ steps.get_token.outputs.token }}
