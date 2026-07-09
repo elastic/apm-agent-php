@@ -15,6 +15,9 @@ on:
         description: "Matrix of architectures to build for"
         value: ${{ jobs.setup-build-matrix.outputs.matrix-combinations }}
 
+permissions:
+  contents: none
+
 jobs:
   setup-build-matrix:
     name: setup-build-matrix
