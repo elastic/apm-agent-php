@@ -156,6 +156,13 @@ final class TestCaseHandle implements LoggableInterface
         return $this->additionalHttpAppCodeHost;
     }
 
+    public function getDataFromAgentWithoutWaiting(): DataFromAgentPlusRaw
+    {
+        $dataFromAgentAccumulator = new DataFromAgentPlusRawAccumulator();
+        $dataFromAgentAccumulator->addReceiverEvents($this->mockApmServer->fetchNewData(/* shouldWait */ false));
+        return $dataFromAgentAccumulator->getAccumulatedData();
+    }
+
     public function waitForDataFromAgent(ExpectedEventCounts $expectedEventCounts, bool $shouldValidate = true): DataFromAgentPlusRaw
     {
         TestCaseBase::assertNotEmpty($this->appCodeInvocations);

@@ -96,7 +96,7 @@ final class AllOptionsMetadata
             OptionNames::DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG    => new BoolOptionMetadata(/* default */ false),
             OptionNames::DISABLE_INSTRUMENTATIONS                   => new NullableWildcardListOptionMetadata(),
             OptionNames::DISABLE_SEND                               => new BoolOptionMetadata(/* default */ false),
-            OptionNames::ENABLED                                    => new BoolOptionMetadata(/* default */ true),
+            OptionNames::ENABLED                                    => new BoolOptionMetadata(/* default */ false),
             OptionNames::ENVIRONMENT                                => new NullableStringOptionMetadata(),
             OptionNames::GLOBAL_LABELS                              => new NullableLabelsOptionMetadata(),
             OptionNames::HOSTNAME                                   => new NullableStringOptionMetadata(),

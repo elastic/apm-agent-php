@@ -60,6 +60,9 @@ final class ConfigSnapshotForTests implements LoggableInterface
     /** @var bool */
     public $deleteTempPhpIni;
 
+    /** @var ?bool */
+    public $agentEnabledConfigDefault = null;
+
     /** @var ?WildcardListMatcher */
     public $envVarsToPassThrough;
 

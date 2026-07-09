@@ -27,6 +27,8 @@ export ELASTIC_APM_PHP_TESTS_APP_CODE_HOST_KINDS_SHORT_NAMES=("${ELASTIC_APM_PHP
 export ELASTIC_APM_PHP_TESTS_LEAF_GROUPS_SHORT_NAMES=(no_ext_svc with_ext_svc)
 export ELASTIC_APM_PHP_TESTS_GROUPS_SHORT_NAMES=("${ELASTIC_APM_PHP_TESTS_LEAF_GROUPS_SHORT_NAMES[@]}" smoke)
 
+export ELASTIC_APM_PHP_TESTS_AGENT_ENABLED_CONFIG_DEFAULT=false
+
 function ensureSyslogIsRunningImpl () {
     if ps -ef | grep -v 'grep' | grep -q 'syslogd' ; then
         echo 'Syslog is already started.'
