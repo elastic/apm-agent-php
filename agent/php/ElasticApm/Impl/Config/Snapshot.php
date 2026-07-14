@@ -161,6 +161,9 @@ final class Snapshot implements LoggableInterface
     /** @var ?int */
     private $logLevelSyslog;
 
+    /** @var float - In bytes */
+    private $maxSendQueueSize;
+
     /** @var int */
     private $nonKeywordStringMaxLength;
 
@@ -355,6 +358,11 @@ final class Snapshot implements LoggableInterface
     public function hostname(): ?string
     {
         return $this->hostname;
+    }
+
+    public function maxSendQueueSize(): float
+    {
+        return $this->maxSendQueueSize;
     }
 
     public function nonKeywordStringMaxLength(): int

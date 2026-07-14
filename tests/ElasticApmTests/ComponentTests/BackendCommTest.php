@@ -24,8 +24,10 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\RangeUtil;
+use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
@@ -81,6 +83,34 @@ final class BackendCommTest extends ComponentTestCaseBase
             self::assertSame($txNames[$txIndex], $tx->name);
             ++$txIndex;
         }
+    }
+
+    public function testSingleOversizedBatchIsDroppedWhenMaxSendQueueSizeIsTooSmall(): void
+    {
+        if (self::skipIfMainAppCodeHostIsNotHttp()) {
+            return;
+        }
+
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeHostParams): void {
+                $appCodeHostParams->setAgentOption(OptionNames::ASYNC_BACKEND_COMM, 'true');
+                $appCodeHostParams->setAgentOption(OptionNames::MAX_SEND_QUEUE_SIZE, '1B');
+            }
+        );
+
+        $txName = __FUNCTION__;
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestNumberOfConnections']),
+            function (AppCodeRequestParams $appCodeRequestParams) use ($txName): void {
+                $appCodeRequestParams->setAppCodeArgs([self::TRANSACTION_NAME_KEY => $txName]);
+            }
+        );
+
+        // Any serialized batch is larger than 1 byte, so it should be dropped before it reaches the mock APM server.
+        usleep(500 * 1000);
+
+        self::assertSame([], $testCaseHandle->fetchNewDataFromMockApmServer(/* shouldWait */ false));
     }
 
     private const WAIT_FOR_RECONNECT_COUNT_KEY = 'wait_for_reconnect_count';

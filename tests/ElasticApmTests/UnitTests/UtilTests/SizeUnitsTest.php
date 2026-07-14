@@ -21,21 +21,24 @@
 
 declare(strict_types=1);
 
-namespace Elastic\Apm\Impl\Config;
+namespace ElasticApmTests\UnitTests\UtilTests;
 
-use Elastic\Apm\Impl\Util\StaticClassTrait;
+use Elastic\Apm\Impl\Config\SizeUnits;
+use PHPUnit\Framework\TestCase;
 
-/**
- * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
- *
- * @internal
- */
-final class OptionDefaultValues
+class SizeUnitsTest extends TestCase
 {
-    use StaticClassTrait;
-
-    public const MAX_SEND_QUEUE_SIZE = 10 * 1024 * 1024;
-    public const SPAN_STACK_TRACE_MIN_DURATION = 5;
-    public const STACK_TRACE_LIMIT = 50;
-    public const TRANSACTION_MAX_SPANS = 500;
+    public function testSuffixAndIdIsInDescendingOrderOfSuffixLength(): void
+    {
+        /** @var int|null $prevSuffixLength */
+        $prevSuffixLength = null;
+        foreach (SizeUnits::$suffixAndIdPairs as $suffixAndIdPair) {
+            $suffix = $suffixAndIdPair[0];
+            $suffixLength = strlen($suffix);
+            if ($prevSuffixLength !== null) {
+                self::assertLessThanOrEqual($prevSuffixLength, $suffixLength);
+            }
+            $prevSuffixLength = $suffixLength;
+        }
+    }
 }

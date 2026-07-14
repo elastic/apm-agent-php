@@ -25,6 +25,7 @@
 #include "LogLevel.h"
 #include "OptionalBool.h"
 #include "time_util.h" // Duration
+#include "util.h" // Size
 #include "elastic_apm_assert_enabled.h"
 
 struct ConfigSnapshot
@@ -68,6 +69,7 @@ struct ConfigSnapshot
         #ifdef PHP_WIN32
     LogLevel logLevelWinSysDebug = logLevel_off;
         #endif
+    Size maxSendQueueSize;
         #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     MemoryTrackingLevel memoryTrackingLevel = memoryTrackingLevel_off;
         #endif

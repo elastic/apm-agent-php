@@ -30,12 +30,29 @@ use Elastic\Apm\Impl\Util\StaticClassTrait;
  *
  * @internal
  */
-final class OptionDefaultValues
+final class SizeUnits
 {
     use StaticClassTrait;
 
-    public const MAX_SEND_QUEUE_SIZE = 10 * 1024 * 1024;
-    public const SPAN_STACK_TRACE_MIN_DURATION = 5;
-    public const STACK_TRACE_LIMIT = 50;
-    public const TRANSACTION_MAX_SPANS = 500;
+    public const BYTES = 0;
+    public const KILOBYTES = self::BYTES + 1;
+    public const MEGABYTES = self::KILOBYTES + 1;
+    public const GIGABYTES = self::MEGABYTES + 1;
+
+    public const BYTES_SUFFIX = 'B';
+    public const KILOBYTES_SUFFIX = 'KB';
+    public const MEGABYTES_SUFFIX = 'MB';
+    public const GIGABYTES_SUFFIX = 'GB';
+
+    /**
+     * @var array<array{string, int}> Array should be in descending order of suffix length
+     *
+     * @see \ElasticApmTests\UnitTests\UtilTests\SizeUnitsTest::testSuffixAndIdIsInDescendingOrderOfSuffixLength
+     */
+    public static $suffixAndIdPairs = [
+        [self::GIGABYTES_SUFFIX, self::GIGABYTES],
+        [self::MEGABYTES_SUFFIX, self::MEGABYTES],
+        [self::KILOBYTES_SUFFIX, self::KILOBYTES],
+        [self::BYTES_SUFFIX, self::BYTES],
+    ];
 }

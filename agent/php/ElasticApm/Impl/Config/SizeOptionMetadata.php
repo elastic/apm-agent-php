@@ -23,19 +23,24 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Config;
 
-use Elastic\Apm\Impl\Util\StaticClassTrait;
-
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
  *
  * @internal
+ *
+ * @extends OptionWithDefaultValueMetadata<float>
  */
-final class OptionDefaultValues
+final class SizeOptionMetadata extends OptionWithDefaultValueMetadata
 {
-    use StaticClassTrait;
-
-    public const MAX_SEND_QUEUE_SIZE = 10 * 1024 * 1024;
-    public const SPAN_STACK_TRACE_MIN_DURATION = 5;
-    public const STACK_TRACE_LIMIT = 50;
-    public const TRANSACTION_MAX_SPANS = 500;
+    public function __construct(
+        ?float $minValidValueInBytes,
+        ?float $maxValidValueInBytes,
+        int $defaultUnits,
+        float $defaultValueInBytes
+    ) {
+        parent::__construct(
+            new SizeOptionParser($minValidValueInBytes, $maxValidValueInBytes, $defaultUnits),
+            $defaultValueInBytes
+        );
+    }
 }

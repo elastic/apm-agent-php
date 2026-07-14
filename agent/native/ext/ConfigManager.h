@@ -96,6 +96,7 @@ enum OptionId
     #ifdef PHP_WIN32
     optionId_logLevelWinSysDebug,
     #endif
+    optionId_maxSendQueueSize,
     #if ( ELASTIC_APM_MEMORY_TRACKING_ENABLED_01 != 0 )
     optionId_memoryTrackingLevel,
     #endif
@@ -302,6 +303,8 @@ const ConfigSnapshot* getGlobalCurrentConfigSnapshot();
 #   ifdef PHP_WIN32
 #define ELASTIC_APM_CFG_OPT_NAME_LOG_LEVEL_WIN_SYS_DEBUG "log_level_win_sys_debug"
 #   endif
+
+#define ELASTIC_APM_CFG_OPT_NAME_MAX_SEND_QUEUE_SIZE "max_send_queue_size"
 
 /**
  * Internal configuration option (not included in public documentation)
