@@ -71,3 +71,33 @@ function appCodeForTestPhpErrorUncaughtException(): int
     TestCase::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_CALL_TO_IMPL_LINE_NUMBER, __LINE__ + 1);
     appCodeForTestPhpErrorUncaughtExceptionImpl(); // <- APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_CALL_TO_IMPL_LINE_NUMBER
 }
+
+const APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_SUBCLASS_MESSAGE = 'Message for uncaught RuntimeException subclass';
+
+const APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_SUBCLASS_ERROR_LINE_NUMBER = 89;
+
+/**
+ * @return never
+ *
+ * @throws \RuntimeException
+ *
+ * @noinspection PhpReturnDocTypeMismatchInspection
+ */
+function appCodeForTestPhpErrorUncaughtExceptionSubclassImpl()
+{
+    TestCase::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_SUBCLASS_ERROR_LINE_NUMBER, __LINE__ + 1);
+    throw new \RuntimeException(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_SUBCLASS_MESSAGE); // <- APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_SUBCLASS_ERROR_LINE_NUMBER
+}
+
+const APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_SUBCLASS_CALL_TO_IMPL_LINE_NUMBER = 102;
+
+/**
+ * @return never
+ *
+ * @throws \RuntimeException
+ */
+function appCodeForTestPhpErrorUncaughtExceptionSubclass(): int
+{
+    TestCase::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_SUBCLASS_CALL_TO_IMPL_LINE_NUMBER, __LINE__ + 1);
+    appCodeForTestPhpErrorUncaughtExceptionSubclassImpl(); // <- APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_SUBCLASS_CALL_TO_IMPL_LINE_NUMBER
+}

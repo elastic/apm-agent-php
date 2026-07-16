@@ -539,4 +539,116 @@ final class ErrorComponentTest extends ComponentTestCaseBase
             }
         );
     }
+
+    public static function appCodeForTestPhpErrorUncaughtExceptionSubclassWrapper(bool $justReturnLineNumber = false): int
+    {
+        if (!$justReturnLineNumber) {
+            ini_set('display_errors', '0');
+        }
+
+        return $justReturnLineNumber ? __LINE__ : appCodeForTestPhpErrorUncaughtExceptionSubclass();
+    }
+
+    private function implTestPhpErrorUncaughtExceptionSubclass(MixedMap $testArgs): void
+    {
+        AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
+
+        $captureErrorsOptVal = $testArgs->getBool(OptionNames::CAPTURE_ERRORS);
+        $captureErrorsWithPhpPartOptVal = $testArgs->getBool(OptionNames::CAPTURE_ERRORS_WITH_PHP_PART);
+        $captureExceptionsOptVal = $testArgs->getNullableBool(OptionNames::CAPTURE_EXCEPTIONS);
+        $shouldCaptureExceptionsDerivedCfg = $captureExceptionsOptVal ?? $captureErrorsOptVal;
+        $devInternalCaptureErrorsOnlyToLogOptVal = $testArgs->getBool(OptionNames::DEV_INTERNAL_CAPTURE_ERRORS_ONLY_TO_LOG);
+
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = self::ensureMainAppCodeHost($testCaseHandle, $testArgs);
+
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestPhpErrorUncaughtExceptionSubclassWrapper']),
+            function (AppCodeRequestParams $appCodeRequestParams): void {
+                if ($appCodeRequestParams instanceof HttpAppCodeRequestParams) {
+                    $appCodeRequestParams->expectedHttpResponseStatusCode = HttpConstantsForTests::STATUS_INTERNAL_SERVER_ERROR;
+                }
+            }
+        );
+
+        if ($captureErrorsWithPhpPartOptVal) {
+            $isErrorExpected = $shouldCaptureExceptionsDerivedCfg;
+        } else {
+            if (self::isMainAppCodeHostHttp()) {
+                $isErrorExpected = $captureErrorsOptVal || $shouldCaptureExceptionsDerivedCfg;
+            } else {
+                $isErrorExpected = $captureErrorsOptVal;
+            }
+        }
+        $isErrorExpected = $isErrorExpected && !$devInternalCaptureErrorsOnlyToLogOptVal;
+
+        $expectedErrorCount = $isErrorExpected ? 1 : 0;
+        $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->errors($expectedErrorCount));
+        $dbgCtx->add(compact('dataFromAgent'));
+
+        if (self::isMainAppCodeHostHttp()) {
+            self::assertSame(Constants::OUTCOME_FAILURE, $dataFromAgent->singleTransaction()->outcome);
+        }
+
+        self::assertCount($expectedErrorCount, $dataFromAgent->idToError);
+        if (!$isErrorExpected) {
+            return;
+        }
+
+        $err = $this->verifyError($dataFromAgent);
+
+        $appCodeFile = FileUtilForTests::listToPath([dirname(__FILE__), 'appCodeForTestPhpErrorUncaughtException.php']);
+        self::assertNotNull($err->exception);
+        self::assertNull($err->exception->module);
+        if ($shouldCaptureExceptionsDerivedCfg) {
+            $culpritFunction = __NAMESPACE__ . '\\appCodeForTestPhpErrorUncaughtExceptionSubclassImpl';
+            self::assertSame($culpritFunction, $err->culprit);
+
+            $defaultCode = (new \RuntimeException(''))->getCode();
+            self::assertSame($defaultCode, $err->exception->code);
+            self::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_SUBCLASS_MESSAGE, $err->exception->message);
+            self::assertSame('RuntimeException', $err->exception->type);
+            $expectedStackTraceTop = [
+                [
+                    self::STACK_TRACE_FILE_NAME   => $appCodeFile,
+                    self::STACK_TRACE_FUNCTION    => null,
+                    self::STACK_TRACE_LINE_NUMBER => APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_SUBCLASS_ERROR_LINE_NUMBER,
+                ],
+                [
+                    self::STACK_TRACE_FILE_NAME   => $appCodeFile,
+                    self::STACK_TRACE_FUNCTION    => __NAMESPACE__ . '\\appCodeForTestPhpErrorUncaughtExceptionSubclassImpl',
+                    self::STACK_TRACE_LINE_NUMBER => APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_SUBCLASS_CALL_TO_IMPL_LINE_NUMBER,
+                ],
+                [
+                    self::STACK_TRACE_FILE_NAME   => __FILE__,
+                    self::STACK_TRACE_FUNCTION    => __NAMESPACE__ . '\\appCodeForTestPhpErrorUncaughtExceptionSubclass',
+                    self::STACK_TRACE_LINE_NUMBER => self::appCodeForTestPhpErrorUncaughtExceptionSubclassWrapper(/* justReturnLineNumber */ true),
+                ],
+                [
+                    self::STACK_TRACE_FUNCTION => __CLASS__ . '::appCodeForTestPhpErrorUncaughtExceptionSubclassWrapper',
+                ],
+            ];
+            self::verifyAppCodeStackTraceTop($expectedStackTraceTop, $err);
+        } else { // if ($shouldCaptureExceptionsDerivedCfg)
+            self::assertNull($err->culprit);
+
+            self::assertNotNull($err->exception->message);
+            self::assertStringContainsString(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_SUBCLASS_MESSAGE, $err->exception->message);
+            self::assertNotNull($err->exception->stacktrace);
+            self::assertCount(0, $err->exception->stacktrace);
+        }
+    }
+
+    /**
+     * @dataProvider dataProviderForTestsForErrorCausedByException
+     */
+    public function testPhpErrorUncaughtExceptionSubclass(MixedMap $testArgs): void
+    {
+        self::runAndEscalateLogLevelOnFailure(
+            self::buildDbgDescForTestWithArtgs(__CLASS__, __FUNCTION__, $testArgs),
+            function () use ($testArgs): void {
+                $this->implTestPhpErrorUncaughtExceptionSubclass($testArgs);
+            }
+        );
+    }
 }
