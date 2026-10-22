@@ -12,7 +12,8 @@ declare(strict_types=1);
 
 class Holder
 {
-    public array $data;
+    /** @var array<mixed> */
+    public $data;
 
     public function __construct()
     {
