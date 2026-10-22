@@ -55,6 +55,12 @@ To check for security updates, go to [Security announcements for the Elastic sta
 
 % ### Fixes [elastic-apm-php-agent-versionext-fixes]
 
+## 1.17.1 [elastic-apm-php-agent-1171-release-notes]
+
+### Fixes [elastic-apm-php-agent-1171-fixes]
+
+- Fix crash (SIGSEGV) at the end of a request on PHP versions containing the "Avoid state corruption via bailout" security fix (for example PHP 8.3.36). PHP objects held by the agent are now released before the PHP executor shutdown [#1510](https://github.com/elastic/apm-agent-php/pull/1510)
+
 ## 1.17.0 [elastic-apm-php-agent-1170-release-notes]
 
 ### Features and enhancements [elastic-apm-php-agent-1170-features-enhancements]
