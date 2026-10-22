@@ -610,6 +610,12 @@ void elasticApmRequestShutdown()
 
     tracerPhpPartOnRequestShutdown();
 
+    // Release the captured error while the executor is still alive: its stack trace holds
+    // references to request objects. By post-deactivate shutdown_executor() has freed them, and
+    // since PHP 8.2.35 / 8.3.36 fast shutdown also sets EG(objects_store).object_buckets to NULL,
+    // so a release there dereferences NULL in zend_objects_store_del().
+    ELASTICAPM_G(lastErrorData).reset(nullptr);
+
     // there is no guarantee that following code will be executed - in case of error on php side
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
