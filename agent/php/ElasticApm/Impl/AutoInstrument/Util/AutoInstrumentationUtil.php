@@ -214,6 +214,17 @@ final class AutoInstrumentationUtil
      *
      * @return bool
      */
+    public function verifyIsNullableString($actualValue, ?string $dbgParamName = null): bool
+    {
+        return $this->verifyType($actualValue === null || is_string($actualValue), '?string', $actualValue, $dbgParamName);
+    }
+
+    /**
+     * @param mixed   $actualValue
+     * @param ?string $dbgParamName
+     *
+     * @return bool
+     */
     public function verifyIsInt($actualValue, ?string $dbgParamName = null): bool
     {
         return $this->verifyType(is_int($actualValue), 'int', $actualValue, $dbgParamName);

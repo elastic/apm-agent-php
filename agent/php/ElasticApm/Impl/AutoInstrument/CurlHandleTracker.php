@@ -83,6 +83,15 @@ final class CurlHandleTracker implements LoggableInterface
     /** @var ?string */
     private $httpMethod = 'GET';
 
+    /**
+     * Set via CURLOPT_CUSTOMREQUEST (null means not set or reset by the app).
+     * When set libcurl sends it instead of $httpMethod (derived from CURLOPT_POST, CURLOPT_NOBODY, etc.)
+     * regardless of the order in which the options were set.
+     *
+     * @var ?string
+     */
+    private $customHttpMethod = null;
+
     /** @var mixed[] */
     private $headersSetByApp = [];
 
@@ -109,6 +118,7 @@ final class CurlHandleTracker implements LoggableInterface
 
         $copy->url = $this->url;
         $copy->httpMethod = $this->httpMethod;
+        $copy->customHttpMethod = $this->customHttpMethod;
         $copy->headersSetByApp = $this->headersSetByApp;
 
         return $copy;
@@ -307,11 +317,13 @@ final class CurlHandleTracker implements LoggableInterface
                 if (!$getOptionValue(/* ref */ $optionValue)) {
                     return;
                 }
-                if (!$this->util->verifyIsString($optionValue)) {
+                // null is a valid value - it resets the custom request
+                // so libcurl goes back to the method derived from the other options (not necessarily GET)
+                if (!$this->util->verifyIsNullableString($optionValue)) {
                     return;
                 }
-                /** @var string $optionValue */
-                $this->httpMethod = $optionValue;
+                /** @var ?string $optionValue */
+                $this->customHttpMethod = $optionValue;
                 break;
 
             case CURLOPT_HTTPHEADER:
@@ -412,9 +424,14 @@ final class CurlHandleTracker implements LoggableInterface
         }
     }
 
+    private function effectiveHttpMethod(): ?string
+    {
+        return $this->customHttpMethod ?? $this->httpMethod;
+    }
+
     private function curlExecPreHook(): void
     {
-        $httpMethod = $this->httpMethod ?? ('<' . 'UNKNOWN HTTP METHOD' . '>');
+        $httpMethod = $this->effectiveHttpMethod() ?? ('<' . 'UNKNOWN HTTP METHOD' . '>');
         $host = null;
         if ($this->url !== null) {
             $host = UrlUtil::extractHostPart($this->url);
@@ -540,8 +557,9 @@ final class CurlHandleTracker implements LoggableInterface
 
     private function setContextPreHook(): void
     {
-        if ($this->httpMethod !== null) {
-            $this->span->context()->http()->setMethod($this->httpMethod);
+        $httpMethod = $this->effectiveHttpMethod();
+        if ($httpMethod !== null) {
+            $this->span->context()->http()->setMethod($httpMethod);
         }
 
         if ($this->url !== null) {
