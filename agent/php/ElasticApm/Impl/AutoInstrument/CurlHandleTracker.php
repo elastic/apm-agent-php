@@ -181,6 +181,7 @@ final class CurlHandleTracker implements LoggableInterface
         switch ($funcId) {
             case CurlAutoInstrumentation::CURL_SETOPT_ID:
             case CurlAutoInstrumentation::CURL_SETOPT_ARRAY_ID:
+            case CurlAutoInstrumentation::CURL_RESET_ID:
                 // nothing to do until post-hook when we will know if the call succeeded
                 return;
 
@@ -223,6 +224,10 @@ final class CurlHandleTracker implements LoggableInterface
 
             case CurlAutoInstrumentation::CURL_EXEC_ID:
                 $this->curlExecPostHook($numberOfStackFramesToSkip + 1, $returnValue);
+                return;
+
+            case CurlAutoInstrumentation::CURL_RESET_ID:
+                $this->curlResetPostHook();
                 return;
 
             default:
@@ -422,6 +427,16 @@ final class CurlHandleTracker implements LoggableInterface
                 }
             );
         }
+    }
+
+    private function curlResetPostHook(): void
+    {
+        // curl_reset() sets all the options back to their default values
+        // so for example CURLOPT_CUSTOMREQUEST set before the reset should not affect requests after it
+        $this->url = null;
+        $this->httpMethod = self::GET_HTTP_METHOD;
+        $this->customHttpMethod = null;
+        $this->headersSetByApp = [];
     }
 
     private function effectiveHttpMethod(): ?string

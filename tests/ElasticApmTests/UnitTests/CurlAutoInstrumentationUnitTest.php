@@ -101,9 +101,10 @@ final class CurlAutoInstrumentationUnitTest extends TracerUnitTestCaseBase
      */
     private function callIntercepted(string $funcName, array $args)
     {
-        self::assertArrayHasKey($funcName, $this->funcNameToPreHook);
         self::assertIsCallable($funcName);
-        $postHook = ($this->funcNameToPreHook[$funcName])($args);
+        // Functions that were not registered for interception are called without any hooks
+        $preHook = $this->funcNameToPreHook[$funcName] ?? null;
+        $postHook = ($preHook === null) ? null : $preHook($args);
         // HTTP method is captured in curl_exec's pre-hook so there is no need to actually send the request
         $retVal = ($funcName === 'curl_exec') ? true : call_user_func_array($funcName, $args);
         if ($postHook !== null) {
@@ -285,6 +286,34 @@ final class CurlAutoInstrumentationUnitTest extends TracerUnitTestCaseBase
 
         $this->execInTransaction($originalHandle);
         $this->execInTransaction($copiedHandle);
+
+        self::assertSame(['DELETE example.com / DELETE', 'POST example.org / POST'], $this->spanNameAndHttpMethodPairs());
+        $this->assertNothingLoggedAtWarningOrWorse();
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public function dataProviderForTestResetHandleDoesNotKeepCustomRequest(): iterable
+    {
+        yield 'curl_setopt' => ['curl_setopt'];
+        yield 'curl_setopt_array' => ['curl_setopt_array'];
+    }
+
+    /**
+     * Handle reuse the way Guzzle does it: curl_reset() between requests
+     *
+     * @dataProvider dataProviderForTestResetHandleDoesNotKeepCustomRequest
+     */
+    public function testResetHandleDoesNotKeepCustomRequest(string $setOptFunc): void
+    {
+        $curlHandle = $this->callIntercepted('curl_init', [self::URL]);
+        $this->setOptions($setOptFunc, $curlHandle, [[CURLOPT_CUSTOMREQUEST, 'DELETE']]);
+        $this->execInTransaction($curlHandle);
+
+        $this->callIntercepted('curl_reset', [$curlHandle]);
+        $this->setOptions($setOptFunc, $curlHandle, [[CURLOPT_URL, 'http://example.org/'], [CURLOPT_POST, true]]);
+        $this->execInTransaction($curlHandle);
 
         self::assertSame(['DELETE example.com / DELETE', 'POST example.org / POST'], $this->spanNameAndHttpMethodPairs());
         $this->assertNothingLoggedAtWarningOrWorse();
