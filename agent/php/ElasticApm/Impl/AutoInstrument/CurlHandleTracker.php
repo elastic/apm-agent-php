@@ -83,6 +83,15 @@ final class CurlHandleTracker implements LoggableInterface
     /** @var ?string */
     private $httpMethod = 'GET';
 
+    /**
+     * Set via CURLOPT_CUSTOMREQUEST (null means not set or reset by the app).
+     * When set libcurl sends it instead of $httpMethod (derived from CURLOPT_POST, CURLOPT_NOBODY, etc.)
+     * regardless of the order in which the options were set.
+     *
+     * @var ?string
+     */
+    private $customHttpMethod = null;
+
     /** @var mixed[] */
     private $headersSetByApp = [];
 
@@ -109,6 +118,7 @@ final class CurlHandleTracker implements LoggableInterface
 
         $copy->url = $this->url;
         $copy->httpMethod = $this->httpMethod;
+        $copy->customHttpMethod = $this->customHttpMethod;
         $copy->headersSetByApp = $this->headersSetByApp;
 
         return $copy;
@@ -171,6 +181,7 @@ final class CurlHandleTracker implements LoggableInterface
         switch ($funcId) {
             case CurlAutoInstrumentation::CURL_SETOPT_ID:
             case CurlAutoInstrumentation::CURL_SETOPT_ARRAY_ID:
+            case CurlAutoInstrumentation::CURL_RESET_ID:
                 // nothing to do until post-hook when we will know if the call succeeded
                 return;
 
@@ -213,6 +224,10 @@ final class CurlHandleTracker implements LoggableInterface
 
             case CurlAutoInstrumentation::CURL_EXEC_ID:
                 $this->curlExecPostHook($numberOfStackFramesToSkip + 1, $returnValue);
+                return;
+
+            case CurlAutoInstrumentation::CURL_RESET_ID:
+                $this->curlResetPostHook();
                 return;
 
             default:
@@ -307,11 +322,13 @@ final class CurlHandleTracker implements LoggableInterface
                 if (!$getOptionValue(/* ref */ $optionValue)) {
                     return;
                 }
-                if (!$this->util->verifyIsString($optionValue)) {
+                // null is a valid value - it resets the custom request
+                // so libcurl goes back to the method derived from the other options (not necessarily GET)
+                if (!$this->util->verifyIsNullableString($optionValue)) {
                     return;
                 }
-                /** @var string $optionValue */
-                $this->httpMethod = $optionValue;
+                /** @var ?string $optionValue */
+                $this->customHttpMethod = $optionValue;
                 break;
 
             case CURLOPT_HTTPHEADER:
@@ -412,9 +429,24 @@ final class CurlHandleTracker implements LoggableInterface
         }
     }
 
+    private function curlResetPostHook(): void
+    {
+        // curl_reset() sets all the options back to their default values
+        // so for example CURLOPT_CUSTOMREQUEST set before the reset should not affect requests after it
+        $this->url = null;
+        $this->httpMethod = self::GET_HTTP_METHOD;
+        $this->customHttpMethod = null;
+        $this->headersSetByApp = [];
+    }
+
+    private function effectiveHttpMethod(): ?string
+    {
+        return $this->customHttpMethod ?? $this->httpMethod;
+    }
+
     private function curlExecPreHook(): void
     {
-        $httpMethod = $this->httpMethod ?? ('<' . 'UNKNOWN HTTP METHOD' . '>');
+        $httpMethod = $this->effectiveHttpMethod() ?? ('<' . 'UNKNOWN HTTP METHOD' . '>');
         $host = null;
         if ($this->url !== null) {
             $host = UrlUtil::extractHostPart($this->url);
@@ -540,8 +572,9 @@ final class CurlHandleTracker implements LoggableInterface
 
     private function setContextPreHook(): void
     {
-        if ($this->httpMethod !== null) {
-            $this->span->context()->http()->setMethod($this->httpMethod);
+        $httpMethod = $this->effectiveHttpMethod();
+        if ($httpMethod !== null) {
+            $this->span->context()->http()->setMethod($httpMethod);
         }
 
         if ($this->url !== null) {
