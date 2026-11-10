@@ -38,7 +38,11 @@ final class ProcessData implements SerializableDataInterface, LoggableInterface
     /** @var int */
     public $pid;
 
-    /** @inheritDoc */
+    /**
+     * @inheritDoc
+     *
+     * @return array<string, mixed>
+     */
     public function jsonSerialize()
     {
         return ['pid' => $this->pid];

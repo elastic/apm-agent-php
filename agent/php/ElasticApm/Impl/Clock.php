@@ -54,6 +54,9 @@ final class Clock implements ClockInterface
         $this->hasMonotonicTimeSource = function_exists('hrtime');
     }
 
+    /**
+     * @param-out float $last
+     */
     private function checkAgainstUpdateLast(string $dbgSourceDesc, float $current, /* ref */ ?float &$last): float
     {
         if ($last !== null) {

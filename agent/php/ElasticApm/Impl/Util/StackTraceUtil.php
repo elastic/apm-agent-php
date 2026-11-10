@@ -151,12 +151,12 @@ final class StackTraceUtil
     }
 
     /**
-     * @param array<array<mixed>> $phpFormatFrames
-     * @param int                 $offset
-     * @param ?positive-int       $maxNumberOfFrames
-     * @param bool                $keepElasticApmFrames
-     * @param bool                $includeArgs
-     * @param bool                $includeThisObj
+     * @param array<array<string, mixed>> $phpFormatFrames
+     * @param int                         $offset
+     * @param ?positive-int               $maxNumberOfFrames
+     * @param bool                        $keepElasticApmFrames
+     * @param bool                        $includeArgs
+     * @param bool                        $includeThisObj
      *
      * @return ClassicFormatStackTraceFrame[]
      *
@@ -179,12 +179,12 @@ final class StackTraceUtil
     }
 
     /**
-     * @param ?array<mixed>          $prevPhpFormatFrame
-     * @param iterable<array<mixed>> $phpFormatFrames
-     * @param ?positive-int          $maxNumberOfFrames
-     * @param bool                   $keepElasticApmFrames
-     * @param bool                   $includeArgs
-     * @param bool                   $includeThisObj
+     * @param ?array<string, mixed>          $prevPhpFormatFrame
+     * @param iterable<array<string, mixed>> $phpFormatFrames
+     * @param ?positive-int                  $maxNumberOfFrames
+     * @param bool                           $keepElasticApmFrames
+     * @param bool                           $includeArgs
+     * @param bool                           $includeThisObj
      *
      * @return ClassicFormatStackTraceFrame[]
      */

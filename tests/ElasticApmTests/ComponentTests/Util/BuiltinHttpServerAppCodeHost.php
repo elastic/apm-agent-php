@@ -84,8 +84,8 @@ final class BuiltinHttpServerAppCodeHost extends AppCodeHostBase
         AmbientContextForTests::reconfigure(
             new RequestHeadersRawSnapshotSource(
                 function (string $headerName): ?string {
-                    $headerKey = 'HTTP_' . $headerName;
-                    return array_key_exists($headerKey, $_SERVER) ? $_SERVER[$headerKey] : null;
+                    $headerValue = $_SERVER['HTTP_' . $headerName] ?? null;
+                    return is_string($headerValue) ? $headerValue : null;
                 }
             )
         );

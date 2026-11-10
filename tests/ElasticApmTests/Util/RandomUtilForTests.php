@@ -76,11 +76,12 @@ final class RandomUtilForTests
     }
 
     /**
-     * @param array<mixed> $totalSet
+     * @template T
      *
-     * @param int          $subSetSize
+     * @param array<T> $totalSet
+     * @param int      $subSetSize
      *
-     * @return array<mixed>
+     * @return list<T>
      */
     public static function arrayRandValues(array $totalSet, int $subSetSize): array
     {

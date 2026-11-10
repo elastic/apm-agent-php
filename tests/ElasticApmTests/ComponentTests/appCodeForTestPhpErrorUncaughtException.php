@@ -23,8 +23,8 @@ declare(strict_types=1);
 
 namespace ElasticApmTests\ComponentTests;
 
+use ElasticApmTests\Util\TestCaseBase;
 use Exception;
-use PHPUnit\Framework\TestCase;
 use Throwable;
 
 const APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_MESSAGE = 'Message for uncaught exception';
@@ -55,7 +55,7 @@ function appCodeForTestPhpErrorUncaughtExceptionImpl()
     } catch (Throwable $throwable) {
     }
 
-    TestCase::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_ERROR_LINE_NUMBER, __LINE__ + 1);
+    TestCaseBase::assertSameLineNumber(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_ERROR_LINE_NUMBER, __LINE__ + 1);
     throw new Exception(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_MESSAGE); // <- APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_ERROR_LINE_NUMBER
 }
 
@@ -68,6 +68,6 @@ const APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_CALL_TO_IMPL_LINE_NUMBER = 
  */
 function appCodeForTestPhpErrorUncaughtException(): int
 {
-    TestCase::assertSame(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_CALL_TO_IMPL_LINE_NUMBER, __LINE__ + 1);
+    TestCaseBase::assertSameLineNumber(APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_CALL_TO_IMPL_LINE_NUMBER, __LINE__ + 1);
     appCodeForTestPhpErrorUncaughtExceptionImpl(); // <- APP_CODE_FOR_TEST_PHP_ERROR_UNCAUGHT_EXCEPTION_CALL_TO_IMPL_LINE_NUMBER
 }

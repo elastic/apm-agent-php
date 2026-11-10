@@ -84,7 +84,6 @@ final class CurlHandleWrappedForTests implements LoggableInterface
             $this->lastVerboseOutput = $verboseOutput;
         }
 
-        TestCase::assertNotNull($retVal, $assertMsg);
         return $retVal;
     }
 

@@ -148,6 +148,9 @@ final class SelectPhpUnitConfigFile
     {
         $optNameToValue = [];
         $optNameToValue[self::TESTS_TYPE_CMD_LINE_OPT_NAME] =& $testsType;
+        // $optNameToValue has entries for options before they are parsed (to bind them to out parameters)
+        // so we need to track separately which options were present on the command line
+        $parsedOptNames = [];
 
         $isFirstArg = true;
         foreach ($cmdLineArgs as $cmdLineArg) {
@@ -160,6 +163,7 @@ final class SelectPhpUnitConfigFile
             foreach (self::ALL_CMD_LINE_OPT_NAMES as $optName) {
                 if (($optValue = $this->extractCommandLineOptionValue($cmdLineArg, $optName)) !== null) {
                     $optNameToValue[$optName] = $optValue;
+                    $parsedOptNames[] = $optName;
                     $isKnownOption = true;
                     break;
                 }
@@ -173,7 +177,7 @@ final class SelectPhpUnitConfigFile
         }
 
         foreach (self::ALL_MANDATORY_CMD_LINE_OPT_NAMES as $optName) {
-            if (!array_key_exists($optName, $optNameToValue)) {
+            if (!in_array($optName, $parsedOptNames, /* strict */ true)) {
                 $this->fail(
                     'Mandatory command line option is missing',
                     ['optName' => $optName, 'cmdLineArgs' => $cmdLineArgs, 'parsed args' => $optNameToValue]
@@ -206,7 +210,7 @@ final class SelectPhpUnitConfigFile
             // Limit to 2 parts since we are only interested in MAJOR part of the version
             $partsAsStrings = explode(/* separator */ '.', $outputPartStartingWithVersion, /* limit */ 2);
             ArrayUtilForTests::append(/* from */ ['partsAsStrings' => $partsAsStrings], /* to, ref */ $dbgCtx);
-            if ((!is_array($partsAsStrings)) || (count($partsAsStrings) < 2)) {
+            if (count($partsAsStrings) < 2) {
                 $this->fail('Failed to separate MAJOR part of the version', $dbgCtx);
             }
             $majorPartAsString = $partsAsStrings[0];

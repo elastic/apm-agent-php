@@ -192,7 +192,6 @@ final class TraceValidator
                 $transactionIdToParentId[$transactionId] = $parentSpan->transactionId;
             }
         }
-        TestCaseBase::assertNotNull($rootTransaction);
         self::assertGraphIsTree($rootTransaction->id, $transactionIdToParentId);
     }
 

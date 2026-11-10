@@ -230,6 +230,9 @@ final class DbConnectionStringParser implements LoggableInterface
         }
     }
 
+    /**
+     * @param-out string $dbName
+     */
     private static function extractDbNameSQLite(string $dbConnectionString, int $startIndex, ?string &$dbName): void
     {
         if ($startIndex === strlen($dbConnectionString)) {
@@ -245,6 +248,9 @@ final class DbConnectionStringParser implements LoggableInterface
         $dbName = substr($dbConnectionString, $startIndex);
     }
 
+    /**
+     * @param-out string $dbName
+     */
     private static function extractDbNameODBC(string $dbConnectionString, int $startIndex, ?string &$dbName): void
     {
         $dbName = 'DSN=' . substr($dbConnectionString, $startIndex);

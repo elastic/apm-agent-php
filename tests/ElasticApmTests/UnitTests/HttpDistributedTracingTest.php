@@ -240,6 +240,8 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
         foreach ($headers as $header) {
             self::assertIsArray($header);
             self::assertCount(2, $header);
+            self::assertIsString($header[0]);
+            self::assertIsString($header[1]);
             if (strtolower($header[0]) === 'traceparent') {
                 $traceParentHeaderValues[] = $header[1];
             }

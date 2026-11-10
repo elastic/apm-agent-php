@@ -143,9 +143,9 @@ final class ProcessUtilForTests
     }
 
     /**
-     * @param string                               $adaptedCmd
-     * @param array<string, string>                $envVars
-     * @param array<array{string, string, string}> $descriptorSpec
+     * @param string                                    $adaptedCmd
+     * @param array<string, string>                     $envVars
+     * @param array<int, array{string, string, string}> $descriptorSpec
      *
      * @return int
      */

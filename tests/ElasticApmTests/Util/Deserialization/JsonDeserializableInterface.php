@@ -28,7 +28,7 @@ namespace ElasticApmTests\Util\Deserialization;
 interface JsonDeserializableInterface
 {
     /**
-     * @param array<string, mixed> $decodedJson
+     * @param array<mixed> $decodedJson
      *
      * @noinspection PhpUnused
      */

@@ -125,7 +125,7 @@ final class ArrayUtilTest extends TestCaseBase
         ];
         $level1ValRef =& $myArr['level 1 - a'];
         self::assertArrayHasKey('level 2 - a', $level1ValRef);
-        self::assertSame('value for level 2 - a', $level1ValRef['level 2 - a']);
+        self::assertSame('value for level 2 - a', $level1ValRef['level 2 - a']); // @phpstan-ignore staticMethod.alreadyNarrowedType (verifies PHP reference semantics)
         unset($level1ValRef['level 2 - a']);
         self::assertArrayNotHasKey('level 2 - a', $myArr['level 1 - a']);
         self::assertArrayHasKey('level 2 - b', $myArr['level 1 - a']);

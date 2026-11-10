@@ -519,13 +519,16 @@ final class TransactionForExtensionRequest
 
     private function discoverCliName(): string
     {
-        global $argc, $argv;
+        // Read $argc and $argv via $GLOBALS because they are not always set
+        // (for example when register_argc_argv is off)
+        // and `global $argc, $argv;` would create them as null if they are missing
+        $argc = $GLOBALS['argc'] ?? null;
+        $argv = $GLOBALS['argv'] ?? null;
 
-        /** @noinspection PhpConditionAlreadyCheckedInspection */
         if (
-            !isset($argc)
+            !is_int($argc)
             || ($argc <= 0)
-            || !isset($argv)
+            || !is_array($argv)
             || (count($argv) == 0)
             || !is_string($argv[0])
             || TextUtil::isEmptyString($argv[0])
@@ -542,6 +545,7 @@ final class TransactionForExtensionRequest
         if (
             ($argc < 2)
             || (count($argv) < 2)
+            || !is_string($argv[1])
             || ($cliScriptName !== self::LARAVEL_ARTISAN_COMMAND_SCRIPT)
         ) {
             ($loggerProxy = $this->logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__))

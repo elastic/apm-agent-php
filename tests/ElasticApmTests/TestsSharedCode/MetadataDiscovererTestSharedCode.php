@@ -92,7 +92,11 @@ final class MetadataDiscovererTestSharedCode
              */
             function () use ($genDataSets, $adaptDataSets): iterable {
                 $dataSets = $genDataSets();
-                return $adaptDataSets === null ? $dataSets : $adaptDataSets($dataSets);
+                if ($adaptDataSets !== null) {
+                    /** @var iterable<array<string, mixed>> $dataSets */
+                    $dataSets = $adaptDataSets($dataSets);
+                }
+                return $dataSets;
             }
         );
     }

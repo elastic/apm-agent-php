@@ -46,7 +46,7 @@ trait StackTraceUtilTestDummyCodeTrait
                 $expectationsForCaptureInApmFormatCall
                     = StackTraceFrameExpectations::fromClassMethod($srcLoc->fileName, $srcLoc->lineNumber, StackTraceUtil::class, /* isStatic */ false, 'captureInApmFormat');
                 array_unshift(/* ref */ $expectations, $expectationsForCaptureInApmFormatCall);
-                TestCaseBase::assertSame(__LINE__ + 1, $captureInApmFormatCallLineNumber);
+                TestCaseBase::assertSameLineNumber(__LINE__ + 1, $captureInApmFormatCallLineNumber);
                 return new StackTraceUtilTestDummyCodeRetVal($expectations, $args->stackTraceUtil->captureInApmFormat(/* offset */ 0, /* maxNumberOfFrames */ null));
             }
 
@@ -92,7 +92,7 @@ trait StackTraceUtilTestDummyCodeTrait
             $expectationsForCaptureInApmFormatCall
                 = StackTraceFrameExpectations::fromClassMethod($srcLoc->fileName, $srcLoc->lineNumber, StackTraceUtil::class, /* isStatic */ false, 'captureInApmFormat');
             array_unshift(/* ref */ $expectations, $expectationsForCaptureInApmFormatCall);
-            TestCaseBase::assertSame(__LINE__ + 1, $captureInApmFormatCallLineNumber);
+            TestCaseBase::assertSameLineNumber(__LINE__ + 1, $captureInApmFormatCallLineNumber);
             return new StackTraceUtilTestDummyCodeRetVal($expectations, $args->stackTraceUtil->captureInApmFormat(/* offset */ 0, /* maxNumberOfFrames */ null));
         }
 
@@ -112,7 +112,7 @@ trait StackTraceUtilTestDummyCodeTrait
             $expectationsForCaptureInApmFormatCall
                 = StackTraceFrameExpectations::fromClassMethod($srcLoc->fileName, $srcLoc->lineNumber, StackTraceUtil::class, /* isStatic */ false, 'captureInApmFormat');
             array_unshift(/* ref */ $expectations, $expectationsForCaptureInApmFormatCall);
-            TestCaseBase::assertSame(__LINE__ + 1, $captureInApmFormatCallLineNumber);
+            TestCaseBase::assertSameLineNumber(__LINE__ + 1, $captureInApmFormatCallLineNumber);
             return new StackTraceUtilTestDummyCodeRetVal($expectations, $args->stackTraceUtil->captureInApmFormat(/* offset */ 0, /* maxNumberOfFrames */ null));
         }
 
@@ -140,7 +140,7 @@ trait StackTraceUtilTestDummyCodeTrait
             $expectationsForCaptureInApmFormatCall
                 = StackTraceFrameExpectations::fromClassMethod($srcLoc->fileName, $srcLoc->lineNumber, StackTraceUtil::class, /* isStatic */ false, 'captureInApmFormat');
             array_unshift(/* ref */ $expectations, $expectationsForCaptureInApmFormatCall);
-            TestCaseBase::assertSame(__LINE__ + 1, $captureInApmFormatCallLineNumber);
+            TestCaseBase::assertSameLineNumber(__LINE__ + 1, $captureInApmFormatCallLineNumber);
             return new StackTraceUtilTestDummyCodeRetVal($expectations, $args->stackTraceUtil->captureInApmFormat(/* offset */ 0, /* maxNumberOfFrames */ null));
         }
 
@@ -168,7 +168,7 @@ trait StackTraceUtilTestDummyCodeTrait
             $expectationsForCaptureInApmFormatCall
                 = StackTraceFrameExpectations::fromClassMethod($srcLoc->fileName, $srcLoc->lineNumber, StackTraceUtil::class, /* isStatic */ false, 'captureInApmFormat');
             array_unshift(/* ref */ $expectations, $expectationsForCaptureInApmFormatCall);
-            TestCaseBase::assertSame(__LINE__ + 1, $captureInApmFormatCallLineNumber);
+            TestCaseBase::assertSameLineNumber(__LINE__ + 1, $captureInApmFormatCallLineNumber);
             return new StackTraceUtilTestDummyCodeRetVal($expectations, $args->stackTraceUtil->captureInApmFormat(/* offset */ 0, /* maxNumberOfFrames */ null));
         }
 

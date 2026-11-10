@@ -218,11 +218,11 @@ class StackTraceUtilTest extends TestCaseBase
     /**
      * @param MixedMap                $testArgs
      * @param array<string, mixed>[] &$expectedFramesProps
-     * @param array<string, mixed>   &$dbgStackTrace
+     * @param ?array<mixed>          &$dbgStackTrace
      *
      * @return StackTraceFrame[]
      *
-     * @param-out array<string, mixed> $dbgStackTrace
+     * @param-out array<mixed> $dbgStackTrace
      */
     private function helper1ForTestCaptureInApmFormatMultipleTestFrames(MixedMap $testArgs, array &$expectedFramesProps, ?array &$dbgStackTrace): array
     {
@@ -233,11 +233,11 @@ class StackTraceUtilTest extends TestCaseBase
     /**
      * @param MixedMap                $testArgs
      * @param array<string, mixed>[] &$expectedFramesProps
-     * @param array<string, mixed>   &$dbgStackTrace
+     * @param ?array<mixed>          &$dbgStackTrace
      *
      * @return StackTraceFrame[]
      *
-     * @param-out array<string, mixed> $dbgStackTrace
+     * @param-out array<mixed> $dbgStackTrace
      */
     private static function helper2StaticForTestCaptureInApmFormatMultipleTestFrames(MixedMap $testArgs, array &$expectedFramesProps, ?array &$dbgStackTrace): array
     {
@@ -251,7 +251,10 @@ class StackTraceUtilTest extends TestCaseBase
         };
 
         array_unshift(/* ref */ $expectedFramesProps, [StackTraceUtil::LINE_KEY => __LINE__ + 1]);
-        return dummyFuncForTestsWithoutNamespace($func);
+        $result = dummyFuncForTestsWithoutNamespace($func);
+        // $dbgStackTrace is set by $func (captured by reference)
+        self::assertIsArray($dbgStackTrace);
+        return $result;
     }
 
     /**
@@ -295,7 +298,9 @@ class StackTraceUtilTest extends TestCaseBase
         ++$fullStackFrameIndex;
         if ($shouldHaveFrame($fullStackFrameIndex)) {
             $frame = $actualCapturedStackTrace[$actualCapturedStackTraceFrameIndex];
-            $apmFormatFunction = StackTraceUtil::buildApmFormatFunctionForClassMethod(__CLASS__, /* isStatic */ true, $expectedFramesProps[$fullStackFrameIndex - 1][StackTraceUtil::FUNCTION_KEY]);
+            $expectedFunction = $expectedFramesProps[$fullStackFrameIndex - 1][StackTraceUtil::FUNCTION_KEY];
+            self::assertIsString($expectedFunction);
+            $apmFormatFunction = StackTraceUtil::buildApmFormatFunctionForClassMethod(__CLASS__, /* isStatic */ true, $expectedFunction);
             self::assertSame($apmFormatFunction, $frame->function);
             self::assertSame(DUMMY_FUNC_FOR_TESTS_WITHOUT_NAMESPACE_CALLABLE_FILE_NAME, $frame->filename);
             self::assertSame($expectedFramesProps[$fullStackFrameIndex][StackTraceUtil::LINE_KEY], $frame->lineno);
@@ -508,6 +513,23 @@ class StackTraceUtilTest extends TestCaseBase
     private const CALL_KINDS_SEQUENCE_KEY = 'call_kinds_sequence';
 
     /**
+     * @param StackTraceUtilTestDummyCodeCallKind[]  $src
+     * @param int                                   &$offset
+     * @param int                                    $countToAppend
+     * @param StackTraceUtilTestDummyCodeCallKind[] &$result
+     *
+     * @param-out int                                   $offset
+     * @param-out StackTraceUtilTestDummyCodeCallKind[] $result
+     */
+    private static function appendElementsFrom(array $src, int &$offset, int $countToAppend, array &$result): void
+    {
+        foreach (RangeUtil::generateUpTo($countToAppend) as $ignored) {
+            $result[] = $src[$offset];
+            $offset = ($offset + 1) % count($src);
+        }
+    }
+
+    /**
      * @return iterable<string, array{MixedMap}>
      */
     public function dataProviderForTestCaptureInApmFormatOnDummyCode(): iterable
@@ -543,24 +565,9 @@ class StackTraceUtilTest extends TestCaseBase
         };
 
         /**
-         * @param StackTraceUtilTestDummyCodeCallKind[]  $src
-         * @param int                                    $offset
-         * @param int                                    $countToAppend
-         * @param StackTraceUtilTestDummyCodeCallKind[] &$result
-         *
-         * @return void
-         */
-        $appendElementsFrom = function (array $src, int &$offset, int $countToAppend, array &$result): void {
-            foreach (RangeUtil::generateUpTo($countToAppend) as $ignored) {
-                $result[] = $src[$offset];
-                $offset = ($offset + 1) % count($src);
-            }
-        };
-
-        /**
          * @return iterable<StackTraceUtilTestDummyCodeCallKind[]>
          */
-        $genSequencesForTrampolineSpecialCases = function () use ($codeToHide, $appCode, $appendElementsFrom): iterable {
+        $genSequencesForTrampolineSpecialCases = function () use ($codeToHide, $appCode): iterable {
             $appCodeDirectCallKindsNextIndex = 0;
             $appCodeTrampolineCallKindsNextIndex = 0;
             $codeToHideDirectCallKindsNextIndex = 0;
@@ -581,9 +588,9 @@ class StackTraceUtilTest extends TestCaseBase
                                 $directCallKinds = $appCode->directCallKinds();
                                 $directCallKindsNextIndex =& $appCodeDirectCallKindsNextIndex;
                             }
-                            $appendElementsFrom($directCallKinds, /* ref */ $directCallKindsNextIndex, $beforeSeqLen, /* ref */ $result);
-                            $appendElementsFrom($trampolineCallKinds, /* ref */ $trampolineCallKindsNextIndex, $midTrampSeqLen, /* ref */ $result);
-                            $appendElementsFrom($directCallKinds, /* ref */ $directCallKindsNextIndex, $afterSeqLen, /* ref */ $result);
+                            self::appendElementsFrom($directCallKinds, /* ref */ $directCallKindsNextIndex, $beforeSeqLen, /* ref */ $result);
+                            self::appendElementsFrom($trampolineCallKinds, /* ref */ $trampolineCallKindsNextIndex, $midTrampSeqLen, /* ref */ $result);
+                            self::appendElementsFrom($directCallKinds, /* ref */ $directCallKindsNextIndex, $afterSeqLen, /* ref */ $result);
                             yield $result;
                         }
                     }
@@ -657,7 +664,7 @@ class StackTraceUtilTest extends TestCaseBase
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
         try {
-            $thisFuncAsCallable = [__CLASS__, __FUNCTION__];
+            $thisFuncAsCallable = [$this, __FUNCTION__];
             $depthBeforeCallUserFunc = $testArgs->getInt(self::DEPTH_BEFORE_CALL_USER_FUNC_KEY);
             $depthAfterCallUserFunc = $testArgs->getInt(self::DEPTH_AFTER_CALL_USER_FUNC_KEY);
             self::assertLessThanOrEqual($depthBeforeCallUserFunc + $depthAfterCallUserFunc, $depth);
@@ -682,7 +689,7 @@ class StackTraceUtilTest extends TestCaseBase
             );
             array_unshift($framesExpectations, $framesExpectationForCallToThisFuncByCallUserFunc);
             $callArgs = [$testArgs, $depth + 1, $framesExpectations];
-            self::assertSame(__LINE__ + 2, $callUserFuncLine);
+            self::assertSameLineNumber(__LINE__ + 2, $callUserFuncLine);
             /** @var array{StackTraceFrameExpectations[], StackTraceFrame[]} $retVal */
             $retVal = $isCallUserFuncArrayVariant ? call_user_func_array($thisFuncAsCallable, $callArgs) : call_user_func($thisFuncAsCallable, ...$callArgs);
             return $retVal;
@@ -827,11 +834,11 @@ class StackTraceUtilTest extends TestCaseBase
     /**
      * @param MixedMap                $testArgs
      * @param array<string, mixed>[] &$expectedFramesProps
-     * @param array<string, mixed>   &$dbgStackTrace
+     * @param ?array<mixed>          &$dbgStackTrace
      *
      * @return ClassicFormatStackTraceFrame[]
      *
-     * @param-out array<string, mixed> $dbgStackTrace
+     * @param-out array<mixed> $dbgStackTrace
      */
     private function helper1ForTestCaptureInClassicFormatMultipleTestFrames(MixedMap $testArgs, array &$expectedFramesProps, ?array &$dbgStackTrace): array
     {
@@ -842,11 +849,11 @@ class StackTraceUtilTest extends TestCaseBase
     /**
      * @param MixedMap                $testArgs
      * @param array<string, mixed>[] &$expectedFramesProps
-     * @param array<string, mixed>   &$dbgStackTrace
+     * @param ?array<mixed>          &$dbgStackTrace
      *
      * @return ClassicFormatStackTraceFrame[]
      *
-     * @param-out array<string, mixed> $dbgStackTrace
+     * @param-out array<mixed> $dbgStackTrace
      */
     private static function helper2StaticForTestCaptureInClassicFormatMultipleTestFrames(MixedMap $testArgs, array &$expectedFramesProps, ?array &$dbgStackTrace): array
     {
@@ -863,7 +870,10 @@ class StackTraceUtilTest extends TestCaseBase
         };
 
         array_unshift(/* ref */ $expectedFramesProps, [StackTraceUtil::LINE_KEY => __LINE__ + 1]);
-        return dummyFuncForTestsWithoutNamespace($func);
+        $result = dummyFuncForTestsWithoutNamespace($func);
+        // $dbgStackTrace is set by $func (captured by reference)
+        self::assertIsArray($dbgStackTrace);
+        return $result;
     }
 
     /**
@@ -1126,6 +1136,8 @@ class StackTraceUtilTest extends TestCaseBase
      * @param ?int                   &$lineWithCallToDummyFunc
      * @param null|StackTraceFrame[] &$directlyCapturedStackTrace
      *
+     * @param-out int $lineWithCallToDummyFunc
+     *
      * @throws DummyExceptionForTests
      */
     private static function helperForTestConvertThrowableTraceToApmFormat(MixedMap $testArgs, ?int &$lineWithThrow, ?int &$lineWithCallToDummyFunc, ?array &$directlyCapturedStackTrace): void
@@ -1162,6 +1174,9 @@ class StackTraceUtilTest extends TestCaseBase
         }
         $dbgCtx->add(['lineWithThrow' => $lineWithThrow, 'directlyCapturedStackTrace' => $directlyCapturedStackTrace, 'thrownExStackTrace' => $thrownStackTrace]);
         self::assertNotNull($thrownStackTrace);
+        // $lineWithThrow and $directlyCapturedStackTrace are set by reference by a closure inside the helper
+        self::assertIsInt($lineWithThrow);
+        self::assertIsArray($directlyCapturedStackTrace);
 
         if ($maxNumberOfFrames === 0) {
             self::assertEmpty($directlyCapturedStackTrace);
@@ -1346,7 +1361,7 @@ class StackTraceUtilTest extends TestCaseBase
 
         if ($addDummyLocationToSleepFunc) {
             $inputFrame =& $input[3];
-            self::assertSame('handleAutomaticCapturing', $inputFrame['function']);
+            self::assertSame('handleAutomaticCapturing', $inputFrame['function']); // @phpstan-ignore staticMethod.alreadyNarrowedType (guards the index into the test input above)
             self::assertArrayNotHasKey('file', $inputFrame);
             self::assertArrayNotHasKey('line', $inputFrame);
             $inputFrame['file'] = 'dummy_file_for_internal_func_sleep.php';

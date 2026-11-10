@@ -400,13 +400,17 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
             self::assertSame($expectedSpan[self::NAME_KEY], $actualSpan->name);
             self::assertSame(InferredSpanExpectationsBuilder::DEFAULT_SPAN_TYPE, $actualSpan->type);
             if (array_key_exists(self::PARENT_INDEX_KEY, $expectedSpan)) {
-                $expectedParentSpanId = $actualSpansSortedAsExpected[$expectedSpan[self::PARENT_INDEX_KEY]]->id;
+                $expectedParentIndex = $expectedSpan[self::PARENT_INDEX_KEY];
+                self::assertIsInt($expectedParentIndex);
+                $expectedParentSpanId = $actualSpansSortedAsExpected[$expectedParentIndex]->id;
                 self::assertSame($expectedParentSpanId, $actualSpan->parentId);
             } else {
                 self::assertSame($actualTx->id, $actualSpan->parentId);
             }
             self::assertSame($expectedSpan[self::START_TIME_KEY], $actualSpan->timestamp);
-            $durationInMicroSeconds = $expectedSpan[self::END_TIME_KEY] - $expectedSpan[self::START_TIME_KEY];
+            $expectedEndTime = $expectedSpan[self::END_TIME_KEY];
+            self::assertIsInt($expectedEndTime);
+            $durationInMicroSeconds = $expectedEndTime - $expectedSpan[self::START_TIME_KEY];
             self::assertSame(TimeUtil::microsecondsToMilliseconds($durationInMicroSeconds), $actualSpan->duration);
 
             /** @var string[] $expectedStackTraceAsLetterList */
@@ -1295,7 +1299,6 @@ class InferredSpansBuilderTest extends MockClockTracerUnitTestCaseBase
             $spanName = ($topFrame->file !== null && $topFrame->line !== null) ? ($topFrame->file . ':' . $topFrame->line) : self::UNKNOWN_SPAN_NAME;
         }
 
-        self::assertNotNull($spanName);
         return $spanName;
     }
 

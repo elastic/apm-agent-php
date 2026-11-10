@@ -61,7 +61,7 @@ class SpanStackTraceUnitTest extends TracerUnitTestCaseBase
 
         $tx = ElasticApm::beginCurrentTransaction(__FUNCTION__, 'test_TX_type');
 
-        /** @var array<string, mixed> $expectedData */
+        /** @var array<string, array<string, mixed>> $expectedData */
         $expectedData = [];
 
         $createSpanApis = SpanStackTraceTestSharedCode::allSpanCreatingApis(/* ref */ $expectedData);

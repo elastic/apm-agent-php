@@ -52,8 +52,8 @@ final class LoggableToJsonEncodable
     private static $isDtoObjectCache = [];
 
     /**
-     * @param array<string, mixed> $value
-     * @param int                  $depth
+     * @param array<array-key, mixed> $value
+     * @param int                     $depth
      *
      * @return array<string, mixed>
      */
@@ -324,18 +324,11 @@ final class LoggableToJsonEncodable
      * @param object $object
      * @param int    $depth
      *
-     * @return string|array<string, mixed>
-     * @phpstan-return array<string, mixed>
+     * @return array<string, mixed>
      */
-    private static function convertDtoObject(object $object, int $depth)
+    private static function convertDtoObject(object $object, int $depth): array
     {
-        $class = get_class($object);
-        try {
-            $currentClass = new ReflectionClass($class);
-            /** @phpstan-ignore-next-line */
-        } catch (ReflectionException $ex) {
-            return LoggingSubsystem::onInternalFailure('Failed to reflect', ['class' => $class], $ex);
-        }
+        $currentClass = new ReflectionClass(get_class($object));
 
         $nameToValue = [];
         while (true) {
