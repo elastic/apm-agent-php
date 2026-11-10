@@ -134,6 +134,7 @@ class AssertMessageStackTest extends TestCase
          * @param Pair<string, array<string, mixed>>[] $expectedContextsStackFromCaller
          */
         $secondFunc = function (array $expectedContextsStackFromCaller): void {
+            /** @var Pair<string, array<string, mixed>>[] $expectedContextsStackFromCaller */
             AssertMessageStack::newScope(/* out */ $dbgCtx, ['my context' => 'func entry']);
             $expectedContextsStack = self::newExpectedScope(__FUNCTION__, ['my context' => 'func entry'], $expectedContextsStackFromCaller);
             self::assertSameValueInArray('my context', 'func entry', self::getTopActualScope());
@@ -197,6 +198,7 @@ class AssertMessageStackTest extends TestCase
          * @param Pair<string, array<string, mixed>>[] $expectedContextsStackFromCaller
          */
         $secondFunc = function (array $expectedContextsStackFromCaller) use ($SubScopeShouldExitEarly): void {
+            /** @var Pair<string, array<string, mixed>>[] $expectedContextsStackFromCaller */
             AssertMessageStack::newScope(/* out */ $dbgCtx, ['my context' => 'before sub-scope']);
             $expectedContextsStackOutsideSubScope = self::newExpectedScope(__FUNCTION__, ['my context' => 'before sub-scope'], $expectedContextsStackFromCaller);
             self::assertSameValueInArray('my context', 'before sub-scope', self::getTopActualScope());

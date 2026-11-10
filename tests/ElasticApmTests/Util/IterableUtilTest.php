@@ -78,6 +78,10 @@ final class IterableUtilTest extends TestCaseBase
          * @return void
          */
         $test = function (array $inputIterables, array $expectedOutput): void {
+            /**
+             * @var iterable<mixed>[] $inputIterables
+             * @var mixed[][]         $expectedOutput
+             */
             AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
             $dbgCtx->add(['count($inputIterables)' => count($inputIterables)]);
             $i = 0;

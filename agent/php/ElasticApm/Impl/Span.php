@@ -135,7 +135,7 @@ final class Span extends ExecutionSegment implements SpanInterface, SpanToSendIn
     }
 
     /** @inheritDoc */
-    public function parentExecutionSegment(): ?ExecutionSegment
+    public function parentExecutionSegment(): ExecutionSegment
     {
         return $this->parentExecutionSegment;
     }

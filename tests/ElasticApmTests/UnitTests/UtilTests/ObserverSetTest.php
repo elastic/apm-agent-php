@@ -53,7 +53,7 @@ class ObserverSetTest extends TestCaseBase
 
         $observers->remove($callback);
         $observers->callCallbacks('testArg3');
-        self::assertNull($argCallbackCalledWith);
+        self::assertNull($argCallbackCalledWith); // @phpstan-ignore staticMethod.alreadyNarrowedType (modified by reference in observer callback)
     }
 
     public function testAddRemoveTwo(): void
@@ -92,14 +92,14 @@ class ObserverSetTest extends TestCaseBase
 
         $observers->remove($callback1);
         $observers->callCallbacks(333.333);
-        self::assertNull($argCallback1CalledWith);
+        self::assertNull($argCallback1CalledWith); // @phpstan-ignore staticMethod.alreadyNarrowedType (modified by reference in observer callback)
         self::assertSame(333.333, $argCallback2CalledWith); // @phpstan-ignore-line
         /** @noinspection PhpConditionAlreadyCheckedInspection */
         $argCallback2CalledWith = null;
 
         $observers->remove($callback2);
         $observers->callCallbacks(4444.4444);
-        self::assertNull($argCallback1CalledWith);
-        self::assertNull($argCallback2CalledWith);
+        self::assertNull($argCallback1CalledWith); // @phpstan-ignore staticMethod.alreadyNarrowedType (modified by reference in observer callback)
+        self::assertNull($argCallback2CalledWith); // @phpstan-ignore staticMethod.alreadyNarrowedType (modified by reference in observer callback)
     }
 }

@@ -141,6 +141,13 @@ final class SerializationUtil
         }
     }
 
+    /**
+     * @template T of OptionalSerializableDataInterface
+     *
+     * @param ?T $value
+     *
+     * @param-out ?T $value
+     */
     public static function prepareForSerialization(?OptionalSerializableDataInterface &$value): int
     {
         if ($value === null) {

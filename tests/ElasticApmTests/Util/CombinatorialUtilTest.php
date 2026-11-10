@@ -76,6 +76,7 @@ class CombinatorialUtilTest extends TestCaseBase
          * @return array<array<string, mixed>>
          */
         $cartesianProductAsArray = function (array $iterables): array {
+            /** @var array<string, iterable<mixed>> $iterables */
             return IterableUtilForTests::toList(CombinatorialUtilForTests::cartesianProduct($iterables));
         };
 

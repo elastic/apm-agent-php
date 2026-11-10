@@ -110,8 +110,8 @@ class ServerApiSchemaValidationTest extends TestCaseBase
     }
 
     /**
-     * @param array<string, mixed> $deserializedJson
-     * @param array<string>        $pathToElement
+     * @param array<mixed>  $deserializedJson
+     * @param array<string> $pathToElement
      *
      * @return mixed
      */
@@ -139,6 +139,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
         $unknownPropertyName = 'dummy_property_added_to_corrupt_key';
         $unknownPropertyValue = 'dummy_property_added_to_corrupt_value';
         $deserializedEventToCorrupt = JsonUtilForTests::decode($serializedEvent, /* asAssocArray */ true);
+        self::assertIsArray($deserializedEventToCorrupt);
 
         /** @var array<mixed> $parentJsonNode */
         $parentJsonNode = &$this->findJsonElement(/* ref */ $deserializedEventToCorrupt, $pathToParentElement);
@@ -203,6 +204,7 @@ class ServerApiSchemaValidationTest extends TestCaseBase
         $wrongTypeValue
     ): void {
         $deserializedEventToCorrupt = JsonUtilForTests::decode($serializedEvent, /* asAssocArray */ true);
+        self::assertIsArray($deserializedEventToCorrupt);
         $propToCorrupt = &$this->findJsonElement(/* ref */ $deserializedEventToCorrupt, $pathToElement);
         $propToCorrupt = $wrongTypeValue;
 

@@ -117,8 +117,10 @@ class ErrorExceptionData implements OptionalSerializableDataInterface, LoggableI
             }
 
             $message = $throwable->getMessage();
+            // Exception::getMessage() returns the $message property as is
+            // and a subclass can assign a non-string value to that property
             /** @noinspection PhpConditionAlreadyCheckedInspection */
-            if (is_string($message)) {
+            if (is_string($message)) { // @phpstan-ignore function.alreadyNarrowedType
                 $result->message = $tracer->limitNullableNonKeywordString($message);
             }
 

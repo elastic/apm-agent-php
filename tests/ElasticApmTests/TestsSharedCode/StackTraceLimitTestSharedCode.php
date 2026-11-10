@@ -76,7 +76,11 @@ final class StackTraceLimitTestSharedCode
              */
             function () use ($genDataSets, $adaptDataSets): iterable {
                 $dataSets = $genDataSets();
-                return $adaptDataSets === null ? $dataSets : $adaptDataSets($dataSets);
+                if ($adaptDataSets !== null) {
+                    /** @var iterable<array<string, mixed>> $dataSets */
+                    $dataSets = $adaptDataSets($dataSets);
+                }
+                return $dataSets;
             }
         );
     }
@@ -112,6 +116,8 @@ final class StackTraceLimitTestSharedCode
                 $addAdditionalDepthToGetTotal($expectedMaxNumberOfFrames - $diff);
             }
         }
+        // $addAdditionalDepthToGetTotal adds only ($totalDepth - $baseStackTraceDepth) where $totalDepth > $baseStackTraceDepth
+        /** @var array<positive-int> $result */
         return $result;
     }
 
@@ -131,7 +137,7 @@ final class StackTraceLimitTestSharedCode
 
         $lineSpanEnd = __LINE__ + 3;
         if (!$isDummyCallToGetLineNumber) {
-            TestCaseBase::assertSame(__LINE__ + 1, $lineSpanEnd);
+            TestCaseBase::assertSameLineNumber(__LINE__ + 1, $lineSpanEnd);
             ElasticApm::getCurrentTransaction()->beginCurrentSpan($spanName, $spanType)->end();
         }
         return $lineSpanEnd;

@@ -193,6 +193,7 @@ final class ComponentTestsUtilTest extends ComponentTestCaseBase
                 )
             );
         }
+        /** @var array<string, int> $expectedLevels */
 
         $testCaseHandle = $this->getTestCaseHandle();
         $appCodeHost = $testCaseHandle->ensureMainAppCodeHost();

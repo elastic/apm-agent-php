@@ -145,7 +145,11 @@ final class InferredSpanFrame implements SpanToSendInterface, LoggableInterface
         $this->stackTrace = $stackTrace;
     }
 
-    /** @inheritDoc */
+    /**
+     * @inheritDoc
+     *
+     * @return array<string, mixed>
+     */
     public function jsonSerialize()
     {
         $result = [];

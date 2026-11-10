@@ -45,7 +45,7 @@ class MetadataDiscovererUnitTest extends TracerUnitTestCaseBase
     {
         // https://github.com/elastic/apm/blob/main/specs/agents/configuration.md#zero-configuration-support
         // ... the default value: unknown-${service.agent.name}-service ...
-        self::assertSame(
+        self::assertSame( // @phpstan-ignore staticMethod.alreadyNarrowedType (verifies that the constants comply with the spec)
             'unknown-' . MetadataDiscoverer::AGENT_NAME . '-service',
             MetadataDiscoverer::DEFAULT_SERVICE_NAME
         );

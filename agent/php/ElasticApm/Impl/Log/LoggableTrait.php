@@ -68,6 +68,7 @@ trait LoggableTrait
         }
 
         try {
+            /** @throws ReflectionException */
             $currentClass = new ReflectionClass(get_class($this));
         } /** @noinspection PhpRedundantCatchClauseInspection */ catch (ReflectionException $ex) {
             $stream->toLogAs(

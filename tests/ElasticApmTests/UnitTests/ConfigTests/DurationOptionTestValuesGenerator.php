@@ -72,6 +72,7 @@ final class DurationOptionTestValuesGenerator implements OptionTestValuesGenerat
          * @return float
          */
         $noUnits = function ($valueWithoutUnits): float {
+            /** @var float|int $valueWithoutUnits */
             return DurationOptionParser::convertToMilliseconds(
                 floatval($valueWithoutUnits),
                 $this->optionParser->defaultUnits()

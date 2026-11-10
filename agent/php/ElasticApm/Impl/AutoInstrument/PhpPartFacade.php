@@ -287,8 +287,8 @@ final class PhpPartFacade
         );
 
         if (!$transactionForExtensionRequest->getConfig()->captureErrorsWithPhpPart()) {
-             // The last thrown should be fetched before last PHP error because if the error is for "Uncaught Exception"
-             // agent will use the last thrown exception
+            // The last thrown should be fetched before last PHP error because if the error is for "Uncaught Exception"
+            // agent will use the last thrown exception
             if ($transactionForExtensionRequest->getConfig()->shouldCaptureExceptions()) {
                 self::ensureHaveLastThrownCapturedByNativePart($transactionForExtensionRequest);
             }
@@ -448,6 +448,7 @@ final class PhpPartFacade
          *
          * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
          * @phpstan-ignore-next-line
+         * @var array<mixed>|string|null $lastPhpErrorData
          */
         $lastPhpErrorData = \elastic_apm_get_last_php_error();
         if ($lastPhpErrorData === null) {

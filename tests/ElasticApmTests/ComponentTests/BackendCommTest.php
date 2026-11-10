@@ -106,12 +106,7 @@ final class BackendCommTest extends ComponentTestCaseBase
 
     public static function mockApmServerBehaviorForTestBackoff(MockApmServer $mockApmServer, MixedMap $args): MockApmServerBehavior
     {
-        /**
-         * @var class-string $anonymousClassNameForLogger
-         * @noinspection PhpRedundantVariableDocTypeInspection
-         */
-        $anonymousClassNameForLogger = __CLASS__ . '_' . __FUNCTION__;
-        $logger = BackendCommTest::getLoggerStatic(__NAMESPACE__, $anonymousClassNameForLogger, __FILE__);
+        $logger = BackendCommTest::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__)->addContext('function', __FUNCTION__);
         return new class ($mockApmServer, $args, $logger) extends MockApmServerBehavior {
             /** @var Logger */
             private $logger;
