@@ -44,6 +44,10 @@ final class DbAutoInstrumentationUtil
 
     public static function beginDbSpan(?string $className, string $funcName, string $dbType, ?string $dbName, ?string $statement): SpanInterface
     {
+        if ($statement !== null) {
+            $statement = DbStatementSanitizer::sanitize($statement);
+        }
+
         $span = AutoInstrumentationUtil::beginCurrentSpan(
             $statement ?? AutoInstrumentationUtil::buildSpanNameFromCall($className, $funcName),
             Constants::SPAN_TYPE_DB,
