@@ -35,6 +35,7 @@ use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Tracer;
 use PDO;
 use PDOStatement;
+use ReflectionClass;
 
 /**
  * Code in this file is part of implementation internals and thus it is not covered by the backward compatibility.
@@ -104,21 +105,77 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
             return;
         }
 
-        $this->interceptPDOConstruct($ctx);
-        $this->interceptPDOExec($ctx);
-        $this->interceptPDOQuery($ctx);
-        $this->interceptPDOPrepare($ctx);
+        foreach (array_merge([self::PDO_CLASS_NAME], self::findInternalPdoSubclasses()) as $pdoClassName) {
+            $this->interceptPDOClass($ctx, $pdoClassName);
+        }
         $this->interceptPDOStatementExecute($ctx);
-
-        $this->interceptPDOMethodToSpanAsFuncCall($ctx, 'beginTransaction');
-        $this->interceptPDOMethodToSpanAsFuncCall($ctx, 'commit');
-        $this->interceptPDOMethodToSpanAsFuncCall($ctx, 'rollBack');
     }
 
-    private function interceptPDOConstruct(RegistrationContextInterface $ctx): void
+    /**
+     * Returns the names of internal (i.e., provided by PHP extensions) classes that extend PDO.
+     *
+     * PHP 8.4 introduced driver specific subclasses of PDO (Pdo\Mysql, Pdo\Pgsql, Pdo\Sqlite, etc.)
+     * returned by PDO::connect() and directly instantiable via `new Pdo\Pgsql(...)`.
+     * @link https://wiki.php.net/rfc/pdo_driver_specific_subclasses
+     *
+     * When an internal class extends another internal class, the engine copies the parent's zend_function
+     * for each inherited method into the subclass at the time the subclass is registered (see zend_duplicate_internal_function()
+     * in Zend/zend_inheritance.c) - i.e., during extension's MINIT, way before the tracer intercepts calls to PDO's methods.
+     * So the subclass' copies keep the original (not intercepted) handlers and have to be intercepted separately.
+     *
+     * Userland subclasses do not need special handling because they are linked when user code is executed,
+     * i.e., after the tracer replaced PDO methods' handlers, so they inherit already intercepted handlers.
+     *
+     * @return string[]
+     */
+    public static function findInternalPdoSubclasses(): array
+    {
+        $result = [];
+        foreach (get_declared_classes() as $className) {
+            if (is_subclass_of($className, PDO::class) && (new ReflectionClass($className))->isInternal()) {
+                $result[] = $className;
+            }
+        }
+        return $result;
+    }
+
+    private function interceptPDOClass(RegistrationContextInterface $ctx, string $className): void
+    {
+        $this->interceptPDOConstruct($ctx, $className);
+        // PDO::connect() was added in PHP 8.4
+        if (method_exists($className, 'connect')) {
+            $this->interceptPDOConnect($ctx, $className);
+        }
+        $this->interceptPDOExec($ctx, $className);
+        $this->interceptPDOQuery($ctx, $className);
+        $this->interceptPDOPrepare($ctx, $className);
+
+        $this->interceptPDOMethodToSpanAsFuncCall($ctx, $className, 'beginTransaction');
+        $this->interceptPDOMethodToSpanAsFuncCall($ctx, $className, 'commit');
+        $this->interceptPDOMethodToSpanAsFuncCall($ctx, $className, 'rollBack');
+    }
+
+    private function storeDbInfoFromDsn(PDO $pdo, string $dsn): void
+    {
+        /** @var ?string $dbType */
+        $dbType = null;
+        /** @var ?string $dbName */
+        $dbName = null;
+        $this->dataSourceNameParser->parse($dsn, /* ref */ $dbType, /* ref */ $dbName);
+        $mapToStoreForPdoObj = [];
+        if ($dbType !== null) {
+            $mapToStoreForPdoObj[DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_TYPE] = $dbType;
+        }
+        if ($dbName !== null) {
+            $mapToStoreForPdoObj[DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME] = $dbName;
+        }
+        $this->mapPerObject->setMultiple($pdo, $mapToStoreForPdoObj);
+    }
+
+    private function interceptPDOConstruct(RegistrationContextInterface $ctx, string $className): void
     {
         $ctx->interceptCallsToInternalMethod(
-            self::PDO_CLASS_NAME,
+            $className,
             '__construct',
             /**
              * @param ?object $interceptedCallThis
@@ -140,28 +197,75 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
                 }
                 /** @var string $dsn */
 
-                /** @var ?string $dbType */
-                $dbType = null;
-                /** @var ?string $dbName */
-                $dbName = null;
-                $this->dataSourceNameParser->parse($dsn, /* ref */ $dbType, /* ref */ $dbName);
-                $mapToStoreForPdoObj = [];
-                if ($dbType !== null) {
-                    $mapToStoreForPdoObj[DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_TYPE] = $dbType;
-                }
-                if ($dbName !== null) {
-                    $mapToStoreForPdoObj[DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME] = $dbName;
-                }
-                $this->mapPerObject->setMultiple($interceptedCallThis, $mapToStoreForPdoObj);
+                $this->storeDbInfoFromDsn($interceptedCallThis, $dsn);
                 return null; // no post-hook
             }
         );
     }
 
-    private function interceptPDOMethodToSpan(RegistrationContextInterface $ctx, string $methodName, bool $isFirstArgStatement): void
+    /**
+     * PDO::connect() (added in PHP 8.4) is a static factory method that creates the PDO object
+     * without calling PDO::__construct() so it has to be intercepted separately.
+     */
+    private function interceptPDOConnect(RegistrationContextInterface $ctx, string $className): void
     {
         $ctx->interceptCallsToInternalMethod(
-            self::PDO_CLASS_NAME,
+            $className,
+            'connect',
+            /**
+             * Pre-hook
+             *
+             * @param ?object $interceptedCallThis
+             * @param mixed[] $interceptedCallArgs
+             *
+             * @return null|callable(int, bool, mixed): void
+             */
+            function (
+                /** @noinspection PhpUnusedParameterInspection */ ?object $interceptedCallThis,
+                array $interceptedCallArgs
+            ): ?callable {
+                if (!$this->util->verifyMinArgsCount(1, $interceptedCallArgs)) {
+                    return null;
+                }
+                $dsn = $interceptedCallArgs[0];
+                if (!$this->util->verifyIsString($dsn)) {
+                    return null;
+                }
+                /** @var string $dsn */
+
+                /**
+                 * Post-hook
+                 *
+                 * @param int   $numberOfStackFramesToSkip
+                 * @param bool  $hasExitedByException
+                 * @param mixed $returnValueOrThrown Return value of the intercepted call or thrown object
+                 */
+                return function (
+                    int $numberOfStackFramesToSkip,
+                    bool $hasExitedByException,
+                    $returnValueOrThrown
+                ) use (
+                    $dsn
+                ): void {
+                    if ($hasExitedByException) {
+                        return;
+                    }
+
+                    if (!$this->util->verifyInstanceOf(PDO::class, $returnValueOrThrown)) {
+                        return;
+                    }
+                    /** @var PDO $returnValueOrThrown */
+
+                    $this->storeDbInfoFromDsn($returnValueOrThrown, $dsn);
+                };
+            }
+        );
+    }
+
+    private function interceptPDOMethodToSpan(RegistrationContextInterface $ctx, string $className, string $methodName, bool $isFirstArgStatement): void
+    {
+        $ctx->interceptCallsToInternalMethod(
+            $className,
             $methodName,
             /**
              * @param ?object $interceptedCallThis
@@ -187,30 +291,32 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
                 $dbType = $this->mapPerObject->getOr($interceptedCallThis, DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_TYPE, /* defaultValue */ Constants::SPAN_SUBTYPE_UNKNOWN);
                 /** @var ?string $dbName */
                 $dbName = $this->mapPerObject->getOr($interceptedCallThis, DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME, /* defaultValue */ null);
+                // Span name uses `PDO' as class name even for PDO subclasses (for example Pdo\Pgsql)
+                // so span names do not depend on how the PDO object was created
                 return AutoInstrumentationUtil::createInternalFuncPostHookFromEndSpan(DbAutoInstrumentationUtil::beginDbSpan(self::PDO_CLASS_NAME, $methodName, $dbType, $dbName, $statement));
             }
         );
     }
 
-    private function interceptPDOExec(RegistrationContextInterface $ctx): void
+    private function interceptPDOExec(RegistrationContextInterface $ctx, string $className): void
     {
-        $this->interceptPDOMethodToSpan($ctx, 'exec', /* isFirstArgStatement */ true);
+        $this->interceptPDOMethodToSpan($ctx, $className, 'exec', /* isFirstArgStatement */ true);
     }
 
-    private function interceptPDOQuery(RegistrationContextInterface $ctx): void
+    private function interceptPDOQuery(RegistrationContextInterface $ctx, string $className): void
     {
-        $this->interceptPDOMethodToSpan($ctx, 'query', /* isFirstArgStatement */ true);
+        $this->interceptPDOMethodToSpan($ctx, $className, 'query', /* isFirstArgStatement */ true);
     }
 
-    private function interceptPDOMethodToSpanAsFuncCall(RegistrationContextInterface $ctx, string $methodName): void
+    private function interceptPDOMethodToSpanAsFuncCall(RegistrationContextInterface $ctx, string $className, string $methodName): void
     {
-        $this->interceptPDOMethodToSpan($ctx, $methodName, /* isFirstArgStatement */ false);
+        $this->interceptPDOMethodToSpan($ctx, $className, $methodName, /* isFirstArgStatement */ false);
     }
 
-    private function interceptPDOPrepare(RegistrationContextInterface $ctx): void
+    private function interceptPDOPrepare(RegistrationContextInterface $ctx, string $className): void
     {
         $ctx->interceptCallsToInternalMethod(
-            self::PDO_CLASS_NAME,
+            $className,
             'prepare',
             /**
              * Pre-hook
