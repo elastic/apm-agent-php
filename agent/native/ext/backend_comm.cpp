@@ -31,8 +31,10 @@
 #include "util_for_PHP.h"
 #include "basic_macros.h"
 #include "backend_comm_backoff.h"
+#include "proxy_env_snapshot.h"
 
 #include <string_view>
+#include <stdlib.h>
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_BACKEND_COMM
 
@@ -313,6 +315,21 @@ void enableCurlVerboseMode( CURL* curlHandle )
     goto finally;
 }
 
+/**
+ * Proxy settings are resolved on the PHP thread before the sender thread is created (see takeProxyEnvSnapshot())
+ * so that libcurl does not call getenv() for them on the sender thread - see proxy_env_snapshot.h.
+ * Note: values are fixed when the sender thread is created, later putenv() calls do not affect them.
+ */
+static bool g_isProxyEnvSnapshotValid = false;
+static ProxyEnvSnapshot g_proxyEnvSnapshot;
+
+// Must be called on the PHP thread, before the thread that sends the data is created
+static void takeProxyEnvSnapshot( const char* serverUrl )
+{
+    g_proxyEnvSnapshot = resolveProxyEnvSnapshot( serverUrl, []( const char* name ) -> const char* { return getenv( name ); } );
+    g_isProxyEnvSnapshotValid = true;
+}
+
 ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* connectionData, StringView userAgentHttpHeader )
 {
     ResultCode resultCode;
@@ -345,6 +362,13 @@ ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* con
     }
 
     ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_WRITEFUNCTION, logResponse );
+
+    if ( g_isProxyEnvSnapshotValid )
+    {
+        // Empty string means "no proxy" and prevents libcurl from calling getenv()
+        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_PROXY, g_proxyEnvSnapshot.proxy.c_str() );
+        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_NOPROXY, g_proxyEnvSnapshot.noProxy.c_str() );
+    }
 
     if ( config->devInternalBackendCommLogVerbose )
     {
@@ -1062,6 +1086,8 @@ ResultCode newBackgroundBackendComm( const ConfigSnapshot* config, BackgroundBac
     backgroundBackendComm->shouldExit = false;
     ELASTIC_APM_CALL_IF_FAILED_GOTO( newMutex( &( backgroundBackendComm->mutex ), /* dbgDesc */ "Background backend communications" ) );
     ELASTIC_APM_CALL_IF_FAILED_GOTO( newConditionVariable( &( backgroundBackendComm->condVar ), /* dbgDesc */ "Background backend communications" ) );
+
+    takeProxyEnvSnapshot( config->serverUrl );
 
     resultCode = newThread( &( backgroundBackendComm->thread )
                             , &backgroundBackendCommThreadFunc
