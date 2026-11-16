@@ -31,8 +31,14 @@
  */
 struct ProxyEnvSnapshot
 {
-    std::string proxy;
+    std::string httpProxy;
+    std::string httpsProxy;
     std::string noProxy;
+
+    /**
+     * @param url APM Server URL, its scheme selects the proxy ("https" or anything else is treated as "http")
+     */
+    const std::string& proxyForUrl( const char* url ) const;
 };
 
 typedef const char* (* GetEnvFunc )( const char* name );
@@ -44,6 +50,7 @@ typedef const char* (* GetEnvFunc )( const char* name );
  * For no proxy list: "no_proxy", then "NO_PROXY".
  * Variables that are set to an empty string are treated as not set.
  *
- * @param serverUrl APM Server URL, its scheme selects the variable ("https" or anything else as "http")
+ * Both http and https proxies are resolved so the one matching the URL of each transfer can be chosen later,
+ * without reading the environment again.
  */
-ProxyEnvSnapshot resolveProxyEnvSnapshot( const char* serverUrl, GetEnvFunc getEnv );
+ProxyEnvSnapshot resolveProxyEnvSnapshot( GetEnvFunc getEnv );

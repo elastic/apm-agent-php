@@ -39,11 +39,18 @@ const char* fakeGetEnv( const char* name )
     return it == g_fakeEnv.end() ? nullptr : it->second.c_str();
 }
 
-ProxyEnvSnapshot resolve( const char* serverUrl, std::map< std::string, std::string > env )
+struct Resolved
+{
+    std::string proxy;
+    std::string noProxy;
+};
+
+Resolved resolve( const char* serverUrl, std::map< std::string, std::string > env )
 {
     g_fakeEnv = std::move( env );
     g_fakeEnvLookups.clear();
-    return resolveProxyEnvSnapshot( serverUrl, &fakeGetEnv );
+    ProxyEnvSnapshot snapshot = resolveProxyEnvSnapshot( &fakeGetEnv );
+    return { snapshot.proxyForUrl( serverUrl ), snapshot.noProxy };
 }
 } // namespace
 
@@ -51,7 +58,7 @@ static void test_noEnv( void** testFixtureState )
 {
     ELASTIC_APM_UNUSED( testFixtureState );
 
-    ProxyEnvSnapshot s = resolve( "http://localhost:8200", {} );
+    Resolved s = resolve( "http://localhost:8200", {} );
     ASSERT_STR_EQ( "", s.proxy.c_str() );
     ASSERT_STR_EQ( "", s.noProxy.c_str() );
 }
@@ -61,7 +68,7 @@ static void test_httpUsesLowercaseOnly( void** testFixtureState )
     ELASTIC_APM_UNUSED( testFixtureState );
 
     // httpoxy: HTTP_PROXY must never be used
-    ProxyEnvSnapshot s = resolve( "http://localhost:8200", { { "HTTP_PROXY", "http://evil:1" } } );
+    Resolved s = resolve( "http://localhost:8200", { { "HTTP_PROXY", "http://evil:1" } } );
     ASSERT_STR_EQ( "", s.proxy.c_str() );
 
     s = resolve( "http://localhost:8200", { { "HTTP_PROXY", "http://evil:1" }, { "http_proxy", "http://good:2" } } );
@@ -76,7 +83,7 @@ static void test_httpsLowerThenUpper( void** testFixtureState )
 {
     ELASTIC_APM_UNUSED( testFixtureState );
 
-    ProxyEnvSnapshot s = resolve( "HTTPS://host", { { "HTTPS_PROXY", "http://upper:1" } } );
+    Resolved s = resolve( "HTTPS://host", { { "HTTPS_PROXY", "http://upper:1" } } );
     ASSERT_STR_EQ( "http://upper:1", s.proxy.c_str() );
 
     s = resolve( "https://host", { { "HTTPS_PROXY", "http://upper:1" }, { "https_proxy", "http://lower:2" } } );
@@ -93,7 +100,7 @@ static void test_allProxyFallback( void** testFixtureState )
 
     for ( const char* url : { "http://host", "https://host" } )
     {
-        ProxyEnvSnapshot s = resolve( url, { { "ALL_PROXY", "http://all-upper:1" } } );
+        Resolved s = resolve( url, { { "ALL_PROXY", "http://all-upper:1" } } );
         ASSERT_STR_EQ( "http://all-upper:1", s.proxy.c_str() );
 
         s = resolve( url, { { "ALL_PROXY", "http://all-upper:1" }, { "all_proxy", "http://all-lower:2" } } );
@@ -101,7 +108,7 @@ static void test_allProxyFallback( void** testFixtureState )
     }
 
     // scheme specific variable wins over all_proxy
-    ProxyEnvSnapshot s = resolve( "http://host", { { "http_proxy", "http://p:1" }, { "all_proxy", "http://all:2" } } );
+    Resolved s = resolve( "http://host", { { "http_proxy", "http://p:1" }, { "all_proxy", "http://all:2" } } );
     ASSERT_STR_EQ( "http://p:1", s.proxy.c_str() );
 }
 
@@ -109,7 +116,7 @@ static void test_emptyValueIsTreatedAsNotSet( void** testFixtureState )
 {
     ELASTIC_APM_UNUSED( testFixtureState );
 
-    ProxyEnvSnapshot s = resolve( "http://host", { { "http_proxy", "" }, { "all_proxy", "http://all:2" }, { "no_proxy", "" }, { "NO_PROXY", "example.com" } } );
+    Resolved s = resolve( "http://host", { { "http_proxy", "" }, { "all_proxy", "http://all:2" }, { "no_proxy", "" }, { "NO_PROXY", "example.com" } } );
     ASSERT_STR_EQ( "http://all:2", s.proxy.c_str() );
     ASSERT_STR_EQ( "example.com", s.noProxy.c_str() );
 }
@@ -118,7 +125,7 @@ static void test_noProxy( void** testFixtureState )
 {
     ELASTIC_APM_UNUSED( testFixtureState );
 
-    ProxyEnvSnapshot s = resolve( "http://host", { { "NO_PROXY", "upper.com" } } );
+    Resolved s = resolve( "http://host", { { "NO_PROXY", "upper.com" } } );
     ASSERT_STR_EQ( "upper.com", s.noProxy.c_str() );
 
     s = resolve( "http://host", { { "NO_PROXY", "upper.com" }, { "no_proxy", "lower.com" } } );
@@ -130,7 +137,7 @@ static void test_longValuesAreNotTruncated( void** testFixtureState )
     ELASTIC_APM_UNUSED( testFixtureState );
 
     std::string longNoProxy( 10000, 'a' );
-    ProxyEnvSnapshot s = resolve( "http://host", { { "no_proxy", longNoProxy } } );
+    Resolved s = resolve( "http://host", { { "no_proxy", longNoProxy } } );
     ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 10000, (int)s.noProxy.size() );
 }
 
@@ -140,9 +147,24 @@ static void test_urlEdgeCases( void** testFixtureState )
 
     for ( const char* url : { (const char*)nullptr, "", "h", "https", "http", "httpx://host" } )
     {
-        ProxyEnvSnapshot s = resolve( url, { { "http_proxy", "http://p:1" }, { "https_proxy", "http://s:2" } } );
+        Resolved s = resolve( url, { { "http_proxy", "http://p:1" }, { "https_proxy", "http://s:2" } } );
         ASSERT_STR_EQ( "http://p:1", s.proxy.c_str() );
     }
+}
+
+static void test_bothSchemesResolvedFromOneSnapshot( void** testFixtureState )
+{
+    ELASTIC_APM_UNUSED( testFixtureState );
+
+    g_fakeEnv = { { "http_proxy", "http://p:1" }, { "https_proxy", "http://s:2" } };
+    ProxyEnvSnapshot snapshot = resolveProxyEnvSnapshot( &fakeGetEnv );
+    ASSERT_STR_EQ( "http://p:1", snapshot.proxyForUrl( "http://host" ).c_str() );
+    ASSERT_STR_EQ( "http://s:2", snapshot.proxyForUrl( "https://host" ).c_str() );
+
+    // the environment is not read again when choosing the proxy
+    g_fakeEnvLookups.clear();
+    snapshot.proxyForUrl( "https://host" );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 0, (int)g_fakeEnvLookups.size() );
 }
 
 int run_proxy_env_snapshot_tests()
@@ -157,6 +179,7 @@ int run_proxy_env_snapshot_tests()
         ELASTIC_APM_CMOCKA_UNIT_TEST( test_noProxy ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( test_longValuesAreNotTruncated ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( test_urlEdgeCases ),
+        ELASTIC_APM_CMOCKA_UNIT_TEST( test_bothSchemesResolvedFromOneSnapshot ),
     };
 
     return cmocka_run_group_tests( tests, NULL, NULL );

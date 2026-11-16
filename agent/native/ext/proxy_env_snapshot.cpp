@@ -55,20 +55,18 @@ std::string firstNonEmptyEnvVar( GetEnvFunc getEnv, std::initializer_list< const
 }
 } // namespace
 
-ProxyEnvSnapshot resolveProxyEnvSnapshot( const char* serverUrl, GetEnvFunc getEnv )
+const std::string& ProxyEnvSnapshot::proxyForUrl( const char* url ) const
+{
+    return startsWithHttpsScheme( url ) ? httpsProxy : httpProxy;
+}
+
+ProxyEnvSnapshot resolveProxyEnvSnapshot( GetEnvFunc getEnv )
 {
     ProxyEnvSnapshot result;
 
-    if ( startsWithHttpsScheme( serverUrl ) )
-    {
-        result.proxy = firstNonEmptyEnvVar( getEnv, { "https_proxy", "HTTPS_PROXY", "all_proxy", "ALL_PROXY" } );
-    }
-    else
-    {
-        // HTTP_PROXY is deliberately not used (httpoxy)
-        result.proxy = firstNonEmptyEnvVar( getEnv, { "http_proxy", "all_proxy", "ALL_PROXY" } );
-    }
-
+    // HTTP_PROXY is deliberately not used (httpoxy)
+    result.httpProxy = firstNonEmptyEnvVar( getEnv, { "http_proxy", "all_proxy", "ALL_PROXY" } );
+    result.httpsProxy = firstNonEmptyEnvVar( getEnv, { "https_proxy", "HTTPS_PROXY", "all_proxy", "ALL_PROXY" } );
     result.noProxy = firstNonEmptyEnvVar( getEnv, { "no_proxy", "NO_PROXY" } );
 
     return result;
