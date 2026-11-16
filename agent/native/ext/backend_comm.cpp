@@ -35,6 +35,7 @@
 
 #include <string_view>
 #include <stdlib.h>
+#include <new>
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_BACKEND_COMM
 
@@ -319,14 +320,26 @@ void enableCurlVerboseMode( CURL* curlHandle )
  * Proxy settings are resolved on the PHP thread before the sender thread is created (see takeProxyEnvSnapshot())
  * so that libcurl does not call getenv() for them on the sender thread - see proxy_env_snapshot.h.
  * Note: values are fixed when the sender thread is created, later putenv() calls do not affect them.
- * Written only before the sender thread is created, the sender thread only reads it.
+ *
+ * The snapshot is published before the sender thread is created and the sender thread only reads it.
+ * It is intentionally never freed (neither on re-creation nor at process exit): a sender thread that did not
+ * stop in time must never see destroyed data, and the amount is tiny and bounded by the number of sender threads.
  */
-static ProxyEnvSnapshot g_proxyEnvSnapshot;
+static const ProxyEnvSnapshot* g_proxyEnvSnapshot = NULL;
 
 // Must be called on the PHP thread, before the thread that sends the data is created
-static void takeProxyEnvSnapshot()
+static ResultCode takeProxyEnvSnapshot()
 {
-    g_proxyEnvSnapshot = resolveProxyEnvSnapshot( []( const char* name ) -> const char* { return getenv( name ); } );
+    try
+    {
+        g_proxyEnvSnapshot = new ProxyEnvSnapshot( resolveProxyEnvSnapshot( []( const char* name ) -> const char* { return getenv( name ); } ) );
+    }
+    catch ( const std::bad_alloc& )
+    {
+        ELASTIC_APM_LOG_ERROR( "Failed to allocate memory for proxy settings snapshot" );
+        return resultFailure;
+    }
+    return resultSuccess;
 }
 
 ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* connectionData, StringView userAgentHttpHeader )
@@ -477,14 +490,14 @@ ResultCode syncSendEventsToApmServerWithConn( const ConfigSnapshot* config, Conn
     if ( useProxyEnvSnapshot )
     {
         // Sender thread: explicit values (empty string means "no proxy") prevent libcurl from calling getenv()
-        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_PROXY, g_proxyEnvSnapshot.proxyForUrl( config->serverUrl ).c_str() );
-        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_NOPROXY, g_proxyEnvSnapshot.noProxy.c_str() );
+        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_PROXY, g_proxyEnvSnapshot->proxyForUrl( config->serverUrl ).c_str() );
+        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_NOPROXY, g_proxyEnvSnapshot->noProxy.c_str() );
     }
     else
     {
         // PHP thread: libcurl default, i.e. resolve from the current environment (safe on this thread)
-        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_PROXY, NULL );
-        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_NOPROXY, NULL );
+        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_PROXY, static_cast< const char* >( nullptr ) );
+        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_NOPROXY, static_cast< const char* >( nullptr ) );
     }
 
     curlResult = curl_easy_perform( connectionData->curlHandle );
@@ -1098,7 +1111,7 @@ ResultCode newBackgroundBackendComm( const ConfigSnapshot* config, BackgroundBac
     ELASTIC_APM_CALL_IF_FAILED_GOTO( newMutex( &( backgroundBackendComm->mutex ), /* dbgDesc */ "Background backend communications" ) );
     ELASTIC_APM_CALL_IF_FAILED_GOTO( newConditionVariable( &( backgroundBackendComm->condVar ), /* dbgDesc */ "Background backend communications" ) );
 
-    takeProxyEnvSnapshot();
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( takeProxyEnvSnapshot() );
 
     resultCode = newThread( &( backgroundBackendComm->thread )
                             , &backgroundBackendCommThreadFunc
