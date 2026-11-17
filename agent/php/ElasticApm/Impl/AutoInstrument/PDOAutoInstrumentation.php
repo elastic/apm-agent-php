@@ -46,6 +46,22 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
     private const PDO_CLASS_NAME = 'PDO';
     private const PDO_STATEMENT_CLASS_NAME = 'PDOStatement';
 
+    /**
+     * Since PHP 8.4 there are driver-specific subclasses of PDO (created by PDO::connect() or instantiated directly).
+     * PHP copies methods inherited by internal classes so hooks registered on PDO do not apply to them
+     * and each class has to be hooked separately.
+     *
+     * @link https://wiki.php.net/rfc/pdo_driver_specific_subclasses
+     */
+    private const PDO_DRIVER_SPECIFIC_CLASS_NAMES = [
+        'Pdo\\Dblib',
+        'Pdo\\Firebird',
+        'Pdo\\Mysql',
+        'Pdo\\Odbc',
+        'Pdo\\Pgsql',
+        'Pdo\\Sqlite',
+    ];
+
     private const PER_OBJECT_KEYS_TO_PROPAGATE = [
         DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_TYPE,
         DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME,
@@ -104,21 +120,83 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
             return;
         }
 
-        $this->interceptPDOConstruct($ctx);
-        $this->interceptPDOExec($ctx);
-        $this->interceptPDOQuery($ctx);
-        $this->interceptPDOPrepare($ctx);
-        $this->interceptPDOStatementExecute($ctx);
+        $classNames = [self::PDO_CLASS_NAME];
+        foreach (self::PDO_DRIVER_SPECIFIC_CLASS_NAMES as $driverSpecificClassName) {
+            if (class_exists($driverSpecificClassName, /* autoload */ false)) {
+                $classNames[] = $driverSpecificClassName;
+            }
+        }
 
-        $this->interceptPDOMethodToSpanAsFuncCall($ctx, 'beginTransaction');
-        $this->interceptPDOMethodToSpanAsFuncCall($ctx, 'commit');
-        $this->interceptPDOMethodToSpanAsFuncCall($ctx, 'rollBack');
+        foreach ($classNames as $className) {
+            $this->interceptPDOConstruct($ctx, $className);
+            if (method_exists($className, 'connect')) {
+                $this->interceptPDOConnect($ctx, $className);
+            }
+            $this->interceptPDOExec($ctx, $className);
+            $this->interceptPDOQuery($ctx, $className);
+            $this->interceptPDOPrepare($ctx, $className);
+            $this->interceptPDOMethodToSpanAsFuncCall($ctx, $className, 'beginTransaction');
+            $this->interceptPDOMethodToSpanAsFuncCall($ctx, $className, 'commit');
+            $this->interceptPDOMethodToSpanAsFuncCall($ctx, $className, 'rollBack');
+        }
+        $this->interceptPDOStatementExecute($ctx);
     }
 
-    private function interceptPDOConstruct(RegistrationContextInterface $ctx): void
+    private function storeDbInfoFromDsn(PDO $pdoObj, string $dsn): void
+    {
+        /** @var ?string $dbType */
+        $dbType = null;
+        /** @var ?string $dbName */
+        $dbName = null;
+        $this->dataSourceNameParser->parse($dsn, /* ref */ $dbType, /* ref */ $dbName);
+        $mapToStoreForPdoObj = [];
+        if ($dbType !== null) {
+            $mapToStoreForPdoObj[DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_TYPE] = $dbType;
+        }
+        if ($dbName !== null) {
+            $mapToStoreForPdoObj[DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME] = $dbName;
+        }
+        $this->mapPerObject->setMultiple($pdoObj, $mapToStoreForPdoObj);
+    }
+
+    /**
+     * PDO::connect() (PHP 8.4+) is a static factory that does not call __construct()
+     */
+    private function interceptPDOConnect(RegistrationContextInterface $ctx, string $className): void
     {
         $ctx->interceptCallsToInternalMethod(
-            self::PDO_CLASS_NAME,
+            $className,
+            'connect',
+            /**
+             * @param ?object $interceptedCallThis
+             * @param mixed[] $interceptedCallArgs
+             *
+             * @return null|callable(int, bool, mixed): void
+             */
+            function (?object $interceptedCallThis, array $interceptedCallArgs): ?callable {
+                if (!$this->util->verifyMinArgsCount(1, $interceptedCallArgs)) {
+                    return null;
+                }
+                $dsn = $interceptedCallArgs[0];
+                if (!$this->util->verifyIsString($dsn)) {
+                    return null;
+                }
+                /** @var string $dsn */
+
+                return function (int $numberOfStackFramesToSkip, bool $hasExitedByException, $returnValueOrThrown) use ($dsn): void {
+                    if ($hasExitedByException || !($returnValueOrThrown instanceof PDO)) {
+                        return;
+                    }
+                    $this->storeDbInfoFromDsn($returnValueOrThrown, $dsn);
+                };
+            }
+        );
+    }
+
+    private function interceptPDOConstruct(RegistrationContextInterface $ctx, string $className): void
+    {
+        $ctx->interceptCallsToInternalMethod(
+            $className,
             '__construct',
             /**
              * @param ?object $interceptedCallThis
@@ -140,28 +218,16 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
                 }
                 /** @var string $dsn */
 
-                /** @var ?string $dbType */
-                $dbType = null;
-                /** @var ?string $dbName */
-                $dbName = null;
-                $this->dataSourceNameParser->parse($dsn, /* ref */ $dbType, /* ref */ $dbName);
-                $mapToStoreForPdoObj = [];
-                if ($dbType !== null) {
-                    $mapToStoreForPdoObj[DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_TYPE] = $dbType;
-                }
-                if ($dbName !== null) {
-                    $mapToStoreForPdoObj[DbAutoInstrumentationUtil::PER_OBJECT_KEY_DB_NAME] = $dbName;
-                }
-                $this->mapPerObject->setMultiple($interceptedCallThis, $mapToStoreForPdoObj);
+                $this->storeDbInfoFromDsn($interceptedCallThis, $dsn);
                 return null; // no post-hook
             }
         );
     }
 
-    private function interceptPDOMethodToSpan(RegistrationContextInterface $ctx, string $methodName, bool $isFirstArgStatement): void
+    private function interceptPDOMethodToSpan(RegistrationContextInterface $ctx, string $className, string $methodName, bool $isFirstArgStatement): void
     {
         $ctx->interceptCallsToInternalMethod(
-            self::PDO_CLASS_NAME,
+            $className,
             $methodName,
             /**
              * @param ?object $interceptedCallThis
@@ -192,25 +258,25 @@ final class PDOAutoInstrumentation extends AutoInstrumentationBase
         );
     }
 
-    private function interceptPDOExec(RegistrationContextInterface $ctx): void
+    private function interceptPDOExec(RegistrationContextInterface $ctx, string $className): void
     {
-        $this->interceptPDOMethodToSpan($ctx, 'exec', /* isFirstArgStatement */ true);
+        $this->interceptPDOMethodToSpan($ctx, $className, 'exec', /* isFirstArgStatement */ true);
     }
 
-    private function interceptPDOQuery(RegistrationContextInterface $ctx): void
+    private function interceptPDOQuery(RegistrationContextInterface $ctx, string $className): void
     {
-        $this->interceptPDOMethodToSpan($ctx, 'query', /* isFirstArgStatement */ true);
+        $this->interceptPDOMethodToSpan($ctx, $className, 'query', /* isFirstArgStatement */ true);
     }
 
-    private function interceptPDOMethodToSpanAsFuncCall(RegistrationContextInterface $ctx, string $methodName): void
+    private function interceptPDOMethodToSpanAsFuncCall(RegistrationContextInterface $ctx, string $className, string $methodName): void
     {
-        $this->interceptPDOMethodToSpan($ctx, $methodName, /* isFirstArgStatement */ false);
+        $this->interceptPDOMethodToSpan($ctx, $className, $methodName, /* isFirstArgStatement */ false);
     }
 
-    private function interceptPDOPrepare(RegistrationContextInterface $ctx): void
+    private function interceptPDOPrepare(RegistrationContextInterface $ctx, string $className): void
     {
         $ctx->interceptCallsToInternalMethod(
-            self::PDO_CLASS_NAME,
+            $className,
             'prepare',
             /**
              * Pre-hook

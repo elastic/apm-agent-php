@@ -314,4 +314,68 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
         SpanSequenceValidator::updateExpectationsEndTime($expectedSpans);
         SpanSequenceValidator::assertSequenceAsExpected($expectedSpans, array_values($dataFromAgent->idToSpan));
     }
+
+    /**
+     * @return iterable<array{string}>
+     */
+    public function dataProviderForTestPhp84DriverSpecificConnection(): iterable
+    {
+        // PHP 8.4+: https://wiki.php.net/rfc/pdo_driver_specific_subclasses
+        yield ['PDO::connect'];
+        yield ['new Pdo\\Sqlite'];
+    }
+
+    public static function appCodeForTestPhp84DriverSpecificConnection(MixedMap $appCodeArgs): void
+    {
+        $connectionMode = $appCodeArgs->getString('connectionMode');
+        $dsn = self::buildConnectionString(self::MEMORY_DB_NAME);
+
+        if ($connectionMode === 'PDO::connect') {
+            $pdo = PDO::connect($dsn);
+        } else {
+            $pdoSqliteClass = 'Pdo\\Sqlite';
+            $pdo = new $pdoSqliteClass($dsn);
+        }
+        self::assertNotSame(PDO::class, get_class($pdo), 'Expected driver-specific PDO subclass');
+        self::assertTrue($pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION));
+        self::assertNotFalse($pdo->exec(self::CREATE_TABLE_SQL));
+        self::assertNotFalse($pdo->query(self::SELECT_SQL));
+    }
+
+    /**
+     * @dataProvider dataProviderForTestPhp84DriverSpecificConnection
+     */
+    public function testPhp84DriverSpecificConnection(string $connectionMode): void
+    {
+        if (PHP_VERSION_ID < 80400) {
+            self::dummyAssert();
+            return;
+        }
+
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeParams): void {
+                self::disableTimingDependentFeatures($appCodeParams);
+            }
+        );
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestPhp84DriverSpecificConnection']),
+            function (AppCodeRequestParams $appCodeRequestParams) use ($connectionMode): void {
+                $appCodeRequestParams->setAppCodeArgs(['connectionMode' => $connectionMode]);
+            }
+        );
+
+        $expectationsBuilder = new DbSpanExpectationsBuilder(/* dbType: */ 'sqlite', self::MEMORY_DB_NAME);
+        $expectedSpans = [
+            $expectationsBuilder->fromStatement(self::CREATE_TABLE_SQL),
+            $expectationsBuilder->fromStatement(self::SELECT_SQL),
+        ];
+
+        $dataFromAgent = $testCaseHandle->waitForDataFromAgent(
+            (new ExpectedEventCounts())->transactions(1)->spans(count($expectedSpans))
+        );
+
+        SpanSequenceValidator::updateExpectationsEndTime($expectedSpans);
+        SpanSequenceValidator::assertSequenceAsExpected($expectedSpans, array_values($dataFromAgent->idToSpan));
+    }
 }
