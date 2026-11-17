@@ -258,6 +258,29 @@ The logging level for `stderr` logging sink. See [Logging](/reference/configurat
 The logging level for `syslog` logging sink. See [Logging](/reference/configuration.md#configure-logging) for details.
 
 
+## `max_send_queue_size` [config-max-send-queue-size]
+
+| Environment variable name | Option name in `php.ini` |
+| --- | --- |
+| `ELASTIC_APM_MAX_SEND_QUEUE_SIZE` | `elastic_apm.max_send_queue_size` |
+
+| Default | Type |
+| --- | --- |
+| `10MB` | Size |
+
+The maximum total size of serialized events that can be queued for background sending to APM Server.
+
+When adding a new batch of events would make the queue exceed this limit, the agent drops that batch locally and logs an error.
+
+This option only affects background sending. If the agent sends events synchronously, this limit is not used.
+
+The value has to be provided in **[size format](/reference/configuration.md#configure-size-format)**.
+
+This option’s default unit is `MB` (megabytes).
+
+Values less than `1B` are invalid and result in the default value being used instead.
+
+
 ## `profiling_inferred_spans_enabled` [config-profiling-inferred-spans-enabled]
 
 ::::{warning}
@@ -570,4 +593,3 @@ By default, the agent verifies the SSL certificate if you use an HTTPS connectio
 With this option, you can group several URL paths together by using wildcard expressions like `/user/*` - this way `/user/Alice` and `/user/Bob` will be mapped to transaction name `/user/*`.
 
 See [Wildcard](/reference/configuration.md#configure-wildcard) section for more details on how to use wildcard expressions.
-

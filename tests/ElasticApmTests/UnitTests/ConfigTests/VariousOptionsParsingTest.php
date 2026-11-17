@@ -37,6 +37,7 @@ use Elastic\Apm\Impl\Config\OptionMetadata;
 use Elastic\Apm\Impl\Config\OptionParser;
 use Elastic\Apm\Impl\Config\ParseException;
 use Elastic\Apm\Impl\Config\Parser;
+use Elastic\Apm\Impl\Config\SizeOptionParser;
 use Elastic\Apm\Impl\Config\StringOptionParser;
 use Elastic\Apm\Impl\Config\WildcardListOptionParser;
 use Elastic\Apm\Impl\Log\LoggableToString;
@@ -90,6 +91,9 @@ class VariousOptionsParsingTest extends TestCaseBase
         }
         if ($optionParser instanceof LabelsOptionParser) {
             return LabelsOptionTestValuesGenerator::singletonInstance(); // @phpstan-ignore-line
+        }
+        if ($optionParser instanceof SizeOptionParser) {
+            return new SizeOptionTestValuesGenerator($optionParser); // @phpstan-ignore-line
         }
 
         throw new RuntimeException('Unknown option metadata type: ' . DbgUtil::getType($optMeta));

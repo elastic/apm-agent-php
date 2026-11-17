@@ -681,8 +681,6 @@ static void freeDataToSendQueue( DataToSendQueue* dataQueue )
     }
 }
 
-#define ELASTIC_APM_MAX_QUEUE_SIZE_IN_BYTES (10 * 1024 * 1024)
-
 struct BackgroundBackendComm
 {
     Mutex* mutex;
@@ -697,6 +695,7 @@ struct BackgroundBackendComm
     ProxyEnvSnapshot* proxyEnvSnapshot;
     DataToSendQueue dataToSendQueue;
     size_t dataToSendTotalSize;
+    UInt64 maxQueueSizeInBytes;
     size_t nextEventsBatchId;
     bool shouldExit;
     TimeSpec shouldExitBy;
@@ -1083,6 +1082,9 @@ ResultCode newBackgroundBackendComm( const ConfigSnapshot* config, BackgroundBac
 
     ResultCode resultCode;
     BackgroundBackendComm* backgroundBackendComm = NULL;
+    Int64 maxQueueSizeInBytes = sizeToBytes( config->maxSendQueueSize );
+
+    ELASTIC_APM_ASSERT( maxQueueSizeInBytes > 0, "maxQueueSizeInBytes: %" PRId64, maxQueueSizeInBytes );
 
     ELASTIC_APM_MALLOC_INSTANCE_IF_FAILED_GOTO( BackgroundBackendComm, /* out */ backgroundBackendComm );
     backgroundBackendComm->condVar = NULL;
@@ -1091,6 +1093,7 @@ ResultCode newBackgroundBackendComm( const ConfigSnapshot* config, BackgroundBac
     backgroundBackendComm->proxyEnvSnapshot = NULL;
     initDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
     backgroundBackendComm->dataToSendTotalSize = 0;
+    backgroundBackendComm->maxQueueSizeInBytes = (UInt64) maxQueueSizeInBytes;
     backgroundBackendComm->nextEventsBatchId = 1;
     backgroundBackendComm->shouldExit = false;
     ELASTIC_APM_CALL_IF_FAILED_GOTO( newMutex( &( backgroundBackendComm->mutex ), /* dbgDesc */ "Background backend communications" ) );
@@ -1223,15 +1226,21 @@ ResultCode enqueueEventsToSendToApmServer( StringView userAgentHttpHeader, Strin
     bool shouldUnlockMutex = false;
     UInt64 id;
     BackgroundBackendComm* backgroundBackendComm = g_backgroundBackendComm;
+    UInt64 totalSizeAfterEnqueue;
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( lockMutex( backgroundBackendComm->mutex, &shouldUnlockMutex, __FUNCTION__ ) );
 
-    if ( backgroundBackendComm->dataToSendTotalSize >= ELASTIC_APM_MAX_QUEUE_SIZE_IN_BYTES )
+    totalSizeAfterEnqueue = (UInt64) backgroundBackendComm->dataToSendTotalSize + (UInt64) serializedEvents.length;
+    if ( totalSizeAfterEnqueue > backgroundBackendComm->maxQueueSizeInBytes )
     {
         ELASTIC_APM_LOG_ERROR(
-                "Already queued events are above max queue size - dropping these events"
+                "Queueing these events would exceed max queue size - dropping these events"
                 "; size of already queued events: %" PRIu64
-                , (UInt64) backgroundBackendComm->dataToSendTotalSize );
+                "; size of events to queue: %" PRIu64
+                "; max queue size: %" PRIu64
+                , (UInt64) backgroundBackendComm->dataToSendTotalSize
+                , (UInt64) serializedEvents.length
+                , backgroundBackendComm->maxQueueSizeInBytes );
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 

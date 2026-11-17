@@ -4,6 +4,7 @@ Setting configuration option to invalid value via environment variables
 ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 ELASTIC_APM_ENABLED=not_valid_boolean_value
 ELASTIC_APM_ASSERT_LEVEL=|:/:\:|
+ELASTIC_APM_MAX_SEND_QUEUE_SIZE=0
 ELASTIC_APM_SECRET_TOKEN=\|<>|/
 ELASTIC_APM_SERVER_URL=<\/\/>
 ELASTIC_APM_SERVICE_NAME=/\><\/
@@ -29,6 +30,13 @@ elasticApmAssertSame("elastic_apm_get_config_option_by_name('enabled')", elastic
 elasticApmAssertSame("getenv('ELASTIC_APM_ASSERT_LEVEL')", getenv('ELASTIC_APM_ASSERT_LEVEL'), '|:/:\:|');
 
 elasticApmAssertSame("elastic_apm_get_config_option_by_name('assert_level')", elastic_apm_get_config_option_by_name('assert_level'), ELASTIC_APM_ASSERT_LEVEL_NOT_SET);
+
+//////////////////////////////////////////////
+///////////////  max_send_queue_size
+
+elasticApmAssertSame("getenv('ELASTIC_APM_MAX_SEND_QUEUE_SIZE')", getenv('ELASTIC_APM_MAX_SEND_QUEUE_SIZE'), '0');
+
+elasticApmAssertSame("elastic_apm_get_config_option_by_name('max_send_queue_size')", elastic_apm_get_config_option_by_name('max_send_queue_size'), 10.0 * 1024 * 1024);
 
 //////////////////////////////////////////////
 ///////////////  secret_token

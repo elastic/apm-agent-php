@@ -3,9 +3,11 @@ When value in ini is invalid the fallback is the default and not environment var
 --ENV--
 ELASTIC_APM_LOG_LEVEL_STDERR=CRITICAL
 ELASTIC_APM_ASSERT_LEVEL=O_n
+ELASTIC_APM_MAX_SEND_QUEUE_SIZE=123MB
 ELASTIC_APM_MEMORY_TRACKING_LEVEL=ALL
 ELASTIC_APM_VERIFY_SERVER_CERT=false
 --INI--
+elastic_apm.max_send_queue_size=0
 elastic_apm.memory_tracking_level=not a valid memory tracking level
 elastic_apm.verify_server_cert=not a valid bool
 elastic_apm.bootstrap_php_part_file=../../php/bootstrap_php_part.php
@@ -17,6 +19,10 @@ require __DIR__ . '/../tests_util/tests_util.php';
 // assert_level is not set in ini so it falls back on env vars
 elasticApmAssertSame("elastic_apm_get_config_option_by_name('assert_level')", elastic_apm_get_config_option_by_name('assert_level'), ELASTIC_APM_ASSERT_LEVEL_O_N);
 elasticApmAssertSame("getenv('ELASTIC_APM_ASSERT_LEVEL')", getenv('ELASTIC_APM_ASSERT_LEVEL'), 'O_n');
+
+// max_send_queue_size is set in ini but the value is invalid so it falls back on default (which is `10MB`) and not the value set by env vars (which is `123MB`)
+elasticApmAssertSame("elastic_apm_get_config_option_by_name('max_send_queue_size')", elastic_apm_get_config_option_by_name('max_send_queue_size'), 10.0 * 1024 * 1024);
+elasticApmAssertSame("getenv('ELASTIC_APM_MAX_SEND_QUEUE_SIZE')", getenv('ELASTIC_APM_MAX_SEND_QUEUE_SIZE'), '123MB');
 
 // memory_tracking_level is set in ini but the value is invalid so it falls back on default (which is `ELASTIC_APM_MEMORY_TRACKING_LEVEL_NOT_SET) and not the value set by env vars (which is ELASTIC_APM_MEMORY_TRACKING_LEVEL_ALL)
 elasticApmAssertSame("elastic_apm_get_config_option_by_name('memory_tracking_level')", elastic_apm_get_config_option_by_name('memory_tracking_level'), ELASTIC_APM_MEMORY_TRACKING_LEVEL_NOT_SET);
