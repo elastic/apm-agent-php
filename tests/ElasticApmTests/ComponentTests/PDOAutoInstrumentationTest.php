@@ -330,11 +330,14 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
         $connectionMode = $appCodeArgs->getString('connectionMode');
         $dsn = self::buildConnectionString(self::MEMORY_DB_NAME);
 
+        // PDO::connect() and Pdo\Sqlite exist only since PHP 8.4 so they are referenced dynamically
+        // to keep static analysis (phpstan) passing on older PHP versions
         if ($connectionMode === 'PDO::connect') {
-            $pdo = PDO::connect($dsn);
+            $connectMethodName = $appCodeArgs->getString('connectMethodName');
+            $pdo = PDO::$connectMethodName($dsn);
         } else {
-            $pdoSqliteClass = 'Pdo\\Sqlite';
-            $pdo = new $pdoSqliteClass($dsn);
+            $pdoSqliteClassName = $appCodeArgs->getString('pdoSqliteClassName');
+            $pdo = new $pdoSqliteClassName($dsn);
         }
         self::assertNotSame(PDO::class, get_class($pdo), 'Expected driver-specific PDO subclass');
         self::assertTrue($pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION));
@@ -361,7 +364,13 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
         $appCodeHost->sendRequest(
             AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestPhp84DriverSpecificConnection']),
             function (AppCodeRequestParams $appCodeRequestParams) use ($connectionMode): void {
-                $appCodeRequestParams->setAppCodeArgs(['connectionMode' => $connectionMode]);
+                $appCodeRequestParams->setAppCodeArgs(
+                    [
+                        'connectionMode'     => $connectionMode,
+                        'connectMethodName'  => 'connect',
+                        'pdoSqliteClassName' => 'Pdo\\Sqlite',
+                    ]
+                );
             }
         );
 
