@@ -131,7 +131,9 @@ class TextUtilTest extends TestCaseBase
     public function testFlipLetterCase(): void
     {
         $flipOneLetterString = function (string $src): string {
-            return chr(TextUtil::flipLetterCase(ord($src[0])));
+            /** @var int<0, 255> $codePoint */
+            $codePoint = TextUtil::flipLetterCase(ord($src[0]));
+            return chr($codePoint);
         };
 
         self::assertSame('a', $flipOneLetterString('A'));

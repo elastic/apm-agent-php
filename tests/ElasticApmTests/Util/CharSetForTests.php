@@ -93,8 +93,9 @@ final class CharSetForTests implements IteratorAggregate
         $firstCodePoint = ord($first);
         $lastCodePoint = ord($last);
         TestCase::assertGreaterThanOrEqual($firstCodePoint, $lastCodePoint);
-        foreach (RangeUtil::generateFromToIncluding($firstCodePoint, $lastCodePoint) as $codepoint) {
-            $this->addChar(chr($codepoint));
+        foreach (RangeUtil::generateFromToIncluding($firstCodePoint, $lastCodePoint) as $codePoint) {
+            /** @var int<0, 255> $codePoint */
+            $this->addChar(chr($codePoint));
         }
     }
 

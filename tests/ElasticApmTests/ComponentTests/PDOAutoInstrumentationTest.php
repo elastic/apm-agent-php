@@ -257,8 +257,8 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
             $pdo = $connect($dsn);
         }
         // Both PDO::connect() and Pdo\Sqlite::connect() return the driver specific subclass for SQLite DSN
-        self::assertSame($subclassName, get_class($pdo));
         self::assertInstanceOf(PDO::class, $pdo);
+        self::assertSame($subclassName, get_class($pdo));
         return $pdo;
     }
 

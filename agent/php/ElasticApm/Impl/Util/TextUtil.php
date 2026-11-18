@@ -102,7 +102,9 @@ final class TextUtil
             if ($i !== 0) {
                 $result .= '_';
             }
-            $result .= chr(self::toLowerCaseLetter($currentCharAsInt));
+            /** @var int<0, 255> $codePoint */
+            $codePoint = self::toLowerCaseLetter($currentCharAsInt);
+            $result .= chr($codePoint);
             $prevIndex = $i + 1;
         }
         if (self::isEmptyString($result)) {
@@ -143,7 +145,9 @@ final class TextUtil
             if (self::isEmptyString($result)) {
                 $result .= $input[$nonUnderscorePos];
             } else {
-                $result .= chr(self::toUpperCaseLetter(ord($input[$nonUnderscorePos])));
+                /** @var int<0, 255> $codePoint */
+                $codePoint = self::toUpperCaseLetter(ord($input[$nonUnderscorePos]));
+                $result .= chr($codePoint);
             }
             if ($nonUnderscorePos === $inputRemainderPos - 1) {
                 break;
@@ -176,7 +180,9 @@ final class TextUtil
         if (self::isEmptyString($input)) {
             return '';
         }
-        return chr(self::toUpperCaseLetter(ord($input[0]))) . substr($input, 1, strlen($input) - 1);
+        /** @var int<0, 255> $codePoint */
+        $codePoint = self::toUpperCaseLetter(ord($input[0]));
+        return chr($codePoint) . substr($input, 1, strlen($input) - 1);
     }
 
     public static function isPrefixOf(string $prefix, string $text, bool $isCaseSensitive = true): bool
