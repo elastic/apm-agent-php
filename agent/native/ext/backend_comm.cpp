@@ -354,6 +354,46 @@ static int shutdownDeadlineCurlProgressCallback( void* /* clientp */, curl_off_t
     return timeSpecToMilliseconds( now ) > deadline ? 1 /* non-zero aborts the transfer */ : 0;
 }
 
+/**
+ * The same callback for libcurl older than 7.32.0 (e.g. 7.29.0 on CentOS 7) that does not have CURLOPT_XFERINFOFUNCTION.
+ */
+static int shutdownDeadlineCurlLegacyProgressCallback( void* clientp, double /* dltotal */, double /* dlnow */, double /* ultotal */, double /* ulnow */ )
+{
+    return shutdownDeadlineCurlProgressCallback( clientp, 0, 0, 0, 0 );
+}
+
+/**
+ * Registering the callback is optional: it only makes a request that is in progress when the shutdown time limit passes
+ * to be aborted. libcurl on the system might not support it, so a failure must not prevent sending events.
+ */
+static void setShutdownDeadlineCurlProgressCallback( CURL* curlHandle )
+{
+    CURLcode curlResult = curl_easy_setopt( curlHandle, CURLOPT_XFERINFOFUNCTION, shutdownDeadlineCurlProgressCallback );
+    if ( curlResult == CURLE_UNKNOWN_OPTION )
+    {
+        // libcurl older than 7.32.0
+#if defined( __GNUC__ )
+#   pragma GCC diagnostic push
+#   pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+        curlResult = curl_easy_setopt( curlHandle, CURLOPT_PROGRESSFUNCTION, shutdownDeadlineCurlLegacyProgressCallback );
+#if defined( __GNUC__ )
+#   pragma GCC diagnostic pop
+#endif
+    }
+
+    if ( curlResult == CURLE_OK )
+    {
+        curlResult = curl_easy_setopt( curlHandle, CURLOPT_NOPROGRESS, 0L );
+    }
+
+    if ( curlResult != CURLE_OK )
+    {
+        ELASTIC_APM_LOG_DEBUG( "Failed to set libcurl progress callback - a request that is in progress when the shutdown time limit passes will not be aborted"
+                               "; curl error: %s", curl_easy_strerror( curlResult ) );
+    }
+}
+
 ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* connectionData, StringView userAgentHttpHeader )
 {
     ResultCode resultCode;
@@ -404,8 +444,7 @@ ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* con
         ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_TIMEOUT_MS, serverTimeoutInMilliseconds );
     }
 
-    ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_XFERINFOFUNCTION, shutdownDeadlineCurlProgressCallback );
-    ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_NOPROGRESS, 0L );
+    setShutdownDeadlineCurlProgressCallback( connectionData->curlHandle );
 
     if ( ! config->verifyServerCert )
     {
