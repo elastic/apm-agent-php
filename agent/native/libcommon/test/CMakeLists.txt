@@ -19,3 +19,5 @@ target_include_directories(${targetName}
 
 add_test(NAME ${targetName}
     COMMAND ${targetName})
+
+set_tests_properties(${targetName} PROPERTIES TIMEOUT 120)
