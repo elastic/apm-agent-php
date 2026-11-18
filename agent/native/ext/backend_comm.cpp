@@ -32,6 +32,10 @@
 #include "basic_macros.h"
 #include "backend_comm_backoff.h"
 #include "proxy_env_snapshot.h"
+#include "backend_comm_batching.h"
+#include <atomic>
+#include <string>
+#include <vector>
 
 #include <string_view>
 #include <stdlib.h>
@@ -316,6 +320,40 @@ void enableCurlVerboseMode( CURL* curlHandle )
     goto finally;
 }
 
+/**
+ * Absolute time (real-time clock, milliseconds since the epoch) by which sending of the queued events on module shutdown
+ * must end, 0 if module shutdown has not started yet. Written on the PHP thread, read by libcurl's progress callback on
+ * the sender thread.
+ */
+static std::atomic< long long > g_shutdownSendDeadlineInMilliseconds( 0 );
+
+static long long timeSpecToMilliseconds( const TimeSpec& timeSpec )
+{
+    return (long long)timeSpec.tv_sec * 1000 + timeSpec.tv_nsec / 1000000;
+}
+
+/**
+ * Called by libcurl periodically (also while it waits for the server) - aborts the transfer that is still in progress
+ * when the time for sending the queued events on module shutdown is over. Without it a request that was started before
+ * shutdown could block the shutdown for as long as the request timeout (server_timeout) allows or forever if it is 0.
+ */
+static int shutdownDeadlineCurlProgressCallback( void* /* clientp */, curl_off_t /* dltotal */, curl_off_t /* dlnow */, curl_off_t /* ultotal */, curl_off_t /* ulnow */ )
+{
+    long long deadline = g_shutdownSendDeadlineInMilliseconds.load();
+    if ( deadline == 0 )
+    {
+        return 0;
+    }
+
+    TimeSpec now;
+    if ( getCurrentAbsTimeSpec( &now ) != resultSuccess )
+    {
+        return 0;
+    }
+
+    return timeSpecToMilliseconds( now ) > deadline ? 1 /* non-zero aborts the transfer */ : 0;
+}
+
 ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* connectionData, StringView userAgentHttpHeader )
 {
     ResultCode resultCode;
@@ -365,6 +403,9 @@ ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* con
         long serverTimeoutInMilliseconds = (long)durationToMilliseconds( config->serverTimeout );
         ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_TIMEOUT_MS, serverTimeoutInMilliseconds );
     }
+
+    ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_XFERINFOFUNCTION, shutdownDeadlineCurlProgressCallback );
+    ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_NOPROGRESS, 0L );
 
     if ( ! config->verifyServerCert )
     {
@@ -683,6 +724,13 @@ static void freeDataToSendQueue( DataToSendQueue* dataQueue )
 
 #define ELASTIC_APM_MAX_QUEUE_SIZE_IN_BYTES (10 * 1024 * 1024)
 
+/**
+ * On module shutdown the sender thread sends the queued events for at most server_timeout.
+ * If server_timeout is 0 (timeout of a single request is disabled) the time for sending the queued events on shutdown
+ * is limited to this value instead of being unlimited - so a not responding APM Server cannot hang the process.
+ */
+#define ELASTIC_APM_DEFAULT_SHUTDOWN_SEND_TIMEOUT_IN_MILLISECONDS 30000
+
 struct BackgroundBackendComm
 {
     Mutex* mutex;
@@ -844,16 +892,19 @@ ResultCode backgroundBackendCommThreadFunc_shouldBreakLoop(
     goto finally;
 }
 
-ResultCode backgroundBackendCommThreadFunc_removeFirstEventsBatchAndUpdateSnapshot(
+ResultCode backgroundBackendCommThreadFunc_removeFirstEventsBatchesAndUpdateSnapshot(
         BackgroundBackendComm* backgroundBackendComm
+        , size_t batchesCount
         , /* out */ BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
 )
 {
-    size_t firstNodeDataSize = 0;
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_PROLOG()
 
-    firstNodeDataSize = removeFirstNodeInDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
-    backgroundBackendComm->dataToSendTotalSize -= firstNodeDataSize;
+    for ( size_t i = 0; i < batchesCount && ! isDataToSendQueueEmpty( &( backgroundBackendComm->dataToSendQueue ) ); ++i )
+    {
+        size_t firstNodeDataSize = removeFirstNodeInDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
+        backgroundBackendComm->dataToSendTotalSize -= firstNodeDataSize;
+    }
 
     backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot( backgroundBackendComm, /* out */ sharedStateSnapshot );
 
@@ -895,44 +946,133 @@ ResultCode backgroundBackendCommThreadFunc_waitForChangesInSharedState(
     ELASTIC_APM_BACKGROUND_BACKEND_COMM_DO_UNDER_LOCK_EPILOG()
 }
 
-ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatch(
+/**
+ * Collects (under lock) views of the first queued batches whose total size does not exceed the limit for one request
+ * (always at least the first one). The views stay valid after unlocking because only this (sender) thread removes
+ * nodes from the queue - the PHP thread only appends new ones at the tail.
+ */
+static ResultCode backgroundBackendCommThreadFunc_collectEventsBatchesToSend(
+        BackgroundBackendComm* backgroundBackendComm
+        , /* out */ std::vector< EventsBatchView >* batches
+        , /* out */ UInt64* firstBatchId
+)
+{
+    bool shouldUnlockMutex = false;
+    ResultCode resultCode = lockMutex( backgroundBackendComm->mutex, &shouldUnlockMutex, __FUNCTION__ );
+    if ( resultCode != resultSuccess )
+    {
+        return resultCode;
+    }
+
+    try
+    {
+        size_t totalSize = 0;
+        DataToSendQueue* queue = &( backgroundBackendComm->dataToSendQueue );
+        for ( DataToSendNode* node = getFirstNodeInDataToSendQueue( queue ); node != NULL && node != &( queue->tail ); node = node->next )
+        {
+            StringView serializedEvents = stringBufferToView( node->serializedEvents );
+            if ( ! batches->empty() && totalSize + serializedEvents.length > maxCombinedEventsBodySize )
+            {
+                break;
+            }
+
+            StringView userAgentHttpHeader = stringBufferToView( node->userAgentHttpHeader );
+            if ( batches->empty() )
+            {
+                *firstBatchId = node->id;
+            }
+            batches->push_back( EventsBatchView{ std::string_view( userAgentHttpHeader.begin, userAgentHttpHeader.length )
+                                                 , std::string_view( serializedEvents.begin, serializedEvents.length ) } );
+            totalSize += serializedEvents.length;
+        }
+        resultCode = resultSuccess;
+    }
+    catch ( const std::bad_alloc& )
+    {
+        ELASTIC_APM_LOG_ERROR( "Failed to allocate memory for the list of batches of events to send" );
+        resultCode = resultFailure;
+    }
+
+    unlockMutex( backgroundBackendComm->mutex, &shouldUnlockMutex, __FUNCTION__ );
+    return resultCode;
+}
+
+/**
+ * Sends the first queued batches of events as one request to APM Server - see combineEventsBatches().
+ *
+ * @param sentBatchesCount out - number of batches from the head of the queue that were handled (sent or dropped)
+ */
+ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatches(
         const ConfigSnapshot* config
-        , const ProxyEnvSnapshot* proxyEnvSnapshot
-        , const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot )
+        , BackgroundBackendComm* backgroundBackendComm
+        , const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot
+        , /* out */ size_t* sentBatchesCount )
 {
     // This function is called only when data-queue-to-send is not empty
     // so firstDataToSendNode is not NULL
-    StringView serializedEvents = stringBufferToView( sharedStateSnapshot->firstDataToSendNode->serializedEvents );
+    *sentBatchesCount = 0;
+
+    std::vector< EventsBatchView > batches;
+    UInt64 firstBatchId = 0;
+    ResultCode resultCode = backgroundBackendCommThreadFunc_collectEventsBatchesToSend( backgroundBackendComm, &batches, &firstBatchId );
+    if ( resultCode != resultSuccess )
+    {
+        return resultCode;
+    }
+
+    // The queue is not empty (checked by the caller) and only this thread removes batches from it,
+    // but if that ever changes we must not use batches.front() on an empty list or loop forever
+    if ( batches.empty() )
+    {
+        ELASTIC_APM_LOG_ERROR( "Queue of events to send is unexpectedly empty" );
+        return resultFailure;
+    }
+
+    std::string combinedBody;
+    size_t batchesCount;
+    try
+    {
+        batchesCount = combineEventsBatches( batches, maxCombinedEventsBodySize, combinedBody );
+    }
+    catch ( const std::exception& )
+    {
+        ELASTIC_APM_LOG_ERROR( "Failed to allocate memory for the body of the request to APM Server" );
+        return resultFailure;
+    }
 
     ELASTIC_APM_LOG_DEBUG(
-            "About to send batch of events"
-            "; batch ID: %" PRIu64
-            "; batch size: %" PRIu64
+            "About to send batches of events"
+            "; first batch ID: %" PRIu64
+            "; number of batches: %" PRIu64
+            "; request body size: %" PRIu64
             "; total size of queued events: %" PRIu64
-            , (UInt64) sharedStateSnapshot->firstDataToSendNode->id
-            , (UInt64) serializedEvents.length
+            , firstBatchId
+            , (UInt64) batchesCount
+            , (UInt64) combinedBody.size()
             , (UInt64) sharedStateSnapshot->dataToSendTotalSize );
 
-    ResultCode resultCode;
-
+    const std::string_view userAgentHttpHeader = batches.front().userAgentHttpHeader;
     resultCode = syncSendEventsToApmServer( config
-                                            , stringBufferToView( sharedStateSnapshot->firstDataToSendNode->userAgentHttpHeader )
-                                            , serializedEvents
-                                            , /* proxyEnvSnapshot: */ proxyEnvSnapshot );
-    // If we failed to send the currently first batch we return success nevertheless
-    // it means that this batch will be removed, and we will continue on to sending the rest of the queued events
+                                            , StringView{ userAgentHttpHeader.data(), userAgentHttpHeader.size() }
+                                            , StringView{ combinedBody.data(), combinedBody.size() }
+                                            , /* proxyEnvSnapshot: */ backgroundBackendComm->proxyEnvSnapshot );
+    // If we failed to send the current batches we return success nevertheless
+    // it means that these batches will be removed, and we will continue on to sending the rest of the queued events
     if ( resultCode != resultSuccess )
     {
         ELASTIC_APM_LOG_ERROR(
-                "Failed to send batch of events - the batch will be dequeued and dropped"
-                "; batch ID: %" PRIu64
-                "; batch size: %" PRIu64
+                "Failed to send batches of events - the batches will be dequeued and dropped"
+                "; first batch ID: %" PRIu64
+                "; number of batches: %" PRIu64
+                "; request body size: %" PRIu64
                 "; total size of queued events: %" PRIu64
-                , (UInt64) sharedStateSnapshot->firstDataToSendNode->id
-                , (UInt64) serializedEvents.length
+                , firstBatchId
+                , (UInt64) batchesCount
+                , (UInt64) combinedBody.size()
                 , (UInt64) sharedStateSnapshot->dataToSendTotalSize );
     }
 
+    *sentBatchesCount = batchesCount;
     return resultSuccess;
 }
 
@@ -988,8 +1128,19 @@ void* backgroundBackendCommThreadFunc( void* arg )
             continue;
         }
 
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommThreadFunc_sendFirstEventsBatch( config, backgroundBackendComm->proxyEnvSnapshot, /* in */ &sharedStateSnapshot ) );
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommThreadFunc_removeFirstEventsBatchAndUpdateSnapshot( backgroundBackendComm, /* out */ &sharedStateSnapshot ) );
+        size_t sentBatchesCount;
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommThreadFunc_sendFirstEventsBatches( config, backgroundBackendComm, /* in */ &sharedStateSnapshot, /* out */ &sentBatchesCount ) );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommThreadFunc_removeFirstEventsBatchesAndUpdateSnapshot( backgroundBackendComm, sentBatchesCount, /* out */ &sharedStateSnapshot ) );
+    }
+
+    if ( ! isDataToSendQueueEmptyInSnapshot( &sharedStateSnapshot ) )
+    {
+        ELASTIC_APM_LOG_WARNING(
+                "Background backend communications thread is exiting because the time limit for sending queued events on shutdown has passed (server_timeout, or 30 seconds if server_timeout is 0)"
+                " - events that are still queued will be dropped"
+                "; total size of dropped queued events: %" PRIu64
+                " bytes; consider increasing server_timeout or reducing the number of events (e.g. with span compression)"
+                , (UInt64) sharedStateSnapshot.dataToSendTotalSize );
     }
 
     resultCode = resultSuccess;
@@ -1158,6 +1309,8 @@ ResultCode signalBackgroundBackendCommThreadToExit( const ConfigSnapshot* config
 
     ResultCode resultCode;
     bool shouldUnlockMutex = false;
+    size_t queuedEventsTotalSize = 0;
+    long shutdownSendTimeoutInMilliseconds = 0;
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
 
@@ -1166,16 +1319,25 @@ ResultCode signalBackgroundBackendCommThreadToExit( const ConfigSnapshot* config
     backgroundBackendComm->shouldExit = true;
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( getCurrentAbsTimeSpec( /* out */ shouldExitBy ) );
-    addDelayToAbsTimeSpec( /* in, out */ shouldExitBy, (long)durationToMilliseconds( config->serverTimeout ) * ELASTIC_APM_NUMBER_OF_NANOSECONDS_IN_MILLISECOND );
+    // server_timeout 0 means that timeout of a single request is disabled (see syncSendEventsToApmServerWithConn()),
+    // but the time for sending the queued events on shutdown must stay limited
+    shutdownSendTimeoutInMilliseconds = ( config->serverTimeout.valueInUnits == 0 )
+            ? ELASTIC_APM_DEFAULT_SHUTDOWN_SEND_TIMEOUT_IN_MILLISECONDS
+            : (long)durationToMilliseconds( config->serverTimeout );
+    addDelayToAbsTimeSpec( /* in, out */ shouldExitBy, shutdownSendTimeoutInMilliseconds * ELASTIC_APM_NUMBER_OF_NANOSECONDS_IN_MILLISECOND );
     backgroundBackendComm->shouldExitBy = *shouldExitBy;
+    g_shutdownSendDeadlineInMilliseconds.store( timeSpecToMilliseconds( *shouldExitBy ) );
+    queuedEventsTotalSize = backgroundBackendComm->dataToSendTotalSize;
     ELASTIC_APM_CALL_IF_FAILED_GOTO( signalConditionVariable( backgroundBackendComm->condVar, __FUNCTION__ ) );
 
     resultCode = resultSuccess;
     finally:
     unlockMutex( backgroundBackendComm->mutex, &shouldUnlockMutex, __FUNCTION__ );
     ELASTIC_APM_LOG_DEBUG_RESULT_CODE_FUNCTION_EXIT_MSG(
-            "shouldExitBy: %s, serverTimeout: %s"
-            , streamUtcTimeSpecAsLocal( shouldExitBy, &txtOutStream ), streamDuration( config->serverTimeout, &txtOutStream ) );
+            "shouldExitBy: %s, serverTimeout: %s, total size of queued events: %" PRIu64
+            , streamUtcTimeSpecAsLocal( shouldExitBy, &txtOutStream )
+            , streamDuration( config->serverTimeout, &txtOutStream )
+            , (UInt64) queuedEventsTotalSize );
     textOutputStreamRewind( &txtOutStream );
     return resultCode;
 
@@ -1199,6 +1361,7 @@ void backgroundBackendCommOnModuleShutdown( const ConfigSnapshot* config )
     finally:
     cleanupConnectionData( &g_connectionData );
     g_backgroundBackendComm = NULL;
+    g_shutdownSendDeadlineInMilliseconds.store( 0 );
     return;
 
     failure:
