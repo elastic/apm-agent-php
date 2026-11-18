@@ -3,9 +3,10 @@
 #include "ForkableInterface.h"
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <functional>
-#include <stop_token>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -24,7 +25,9 @@ public:
     using task_t = std::function<void(time_point_t)>;
     using worker_init_t = std::function<void()>;
 
-    PeriodicTaskExecutor(std::vector<task_t> periodicTasks, worker_init_t workerInit = {}) : periodicTasks_(periodicTasks), workerInit_(std::move(workerInit)),  thread_(getThreadWorkerFunction()) {
+    PeriodicTaskExecutor(std::vector<task_t> periodicTasks, worker_init_t workerInit = {}) : periodicTasks_(std::move(periodicTasks)), workerInit_(std::move(workerInit)) {
+        // thread_ must be started after all other members are initialized
+        thread_ = std::thread(getThreadWorkerFunction());
     }
 
     ~PeriodicTaskExecutor() {
@@ -52,8 +55,20 @@ public:
                 break;
             }
 
+            // interruptible sleep: shutdown()/suspendPeriodicTasks() wake it up immediately,
+            // so prefork()/destructor don't have to wait for the whole interval
+            pauseCondition_.wait_for(lock, sleepInterval_.load(), [this]() -> bool {
+                return !resumed_ || !working_;
+            });
+
+            if (!working_) {
+                break;
+            }
+            if (!resumed_) {
+                continue; // suspended while sleeping: skip this tick, wait for resume
+            }
+
             lock.unlock();
-            std::this_thread::sleep_for(sleepInterval_);
             for (auto const &task : periodicTasks_) {
                 task(std::chrono::time_point_cast<std::chrono::milliseconds>(clock_t::now()));
             }
@@ -69,9 +84,15 @@ public:
     }
 
     void postfork([[maybe_unused]] bool child) final {
-        working_ = true;
-
         mutex_.lock();
+        if (thread_.joinable()) {
+            // postfork without prefork; never move-assign onto a joinable thread (std::terminate)
+            mutex_.unlock();
+            shutdown();
+            thread_.join();
+            mutex_.lock();
+        }
+        working_ = true;
         thread_ = std::thread(getThreadWorkerFunction());
         mutex_.unlock();
         pauseCondition_.notify_all();
@@ -93,7 +114,7 @@ public:
     }
 
     void setInterval(std::chrono::milliseconds interval) {
-        sleepInterval_ = interval;
+        sleepInterval_.store(interval);
     }
 
 private:
@@ -110,14 +131,15 @@ private:
 
 private:
 
-    std::chrono::milliseconds sleepInterval_ = std::chrono::milliseconds(20);
+    std::atomic<std::chrono::milliseconds> sleepInterval_{std::chrono::milliseconds(20)};
     std::vector<task_t> periodicTasks_;
     worker_init_t workerInit_;
     std::mutex mutex_;
-    std::thread thread_;
     std::condition_variable pauseCondition_;
     bool working_ = true;
     bool resumed_ = false;
+    // keep last: the worker thread uses the members above
+    std::thread thread_;
 };
 
 
