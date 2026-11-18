@@ -31,8 +31,11 @@
 #include "util_for_PHP.h"
 #include "basic_macros.h"
 #include "backend_comm_backoff.h"
+#include "proxy_env_snapshot.h"
 
 #include <string_view>
+#include <stdlib.h>
+#include <new>
 
 #define ELASTIC_APM_CURRENT_LOG_CATEGORY ELASTIC_APM_LOG_CATEGORY_BACKEND_COMM
 
@@ -426,7 +429,7 @@ ResultCode initConnectionData( const ConfigSnapshot* config, ConnectionData* con
     goto finally;
 }
 
-ResultCode syncSendEventsToApmServerWithConn( const ConfigSnapshot* config, ConnectionData* connectionData, StringView serializedEvents )
+ResultCode syncSendEventsToApmServerWithConn( const ConfigSnapshot* config, ConnectionData* connectionData, StringView serializedEvents, const ProxyEnvSnapshot* proxyEnvSnapshot )
 {
     ResultCode resultCode;
     CURLcode curlResult;
@@ -455,6 +458,21 @@ ResultCode syncSendEventsToApmServerWithConn( const ConfigSnapshot* config, Conn
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
     ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_URL, url );
+
+    // Set on every transfer (not only when the handle is created) because the handle can outlive config changes
+    // (serverUrl scheme, sync/async mode).
+    if ( proxyEnvSnapshot != NULL )
+    {
+        // Sender thread: explicit values (empty string means "no proxy") prevent libcurl from calling getenv()
+        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_PROXY, proxyEnvSnapshot->proxyForUrl( config->serverUrl ).c_str() );
+        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_NOPROXY, proxyEnvSnapshot->noProxy.c_str() );
+    }
+    else
+    {
+        // PHP thread: libcurl default, i.e. resolve from the current environment (safe on this thread)
+        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_PROXY, static_cast< const char* >( nullptr ) );
+        ELASTIC_APM_CURL_EASY_SETOPT( connectionData->curlHandle, CURLOPT_NOPROXY, static_cast< const char* >( nullptr ) );
+    }
 
     curlResult = curl_easy_perform( connectionData->curlHandle );
     if ( curlResult != CURLE_OK )
@@ -489,7 +507,10 @@ ResultCode syncSendEventsToApmServerWithConn( const ConfigSnapshot* config, Conn
     goto finally;
 }
 
-ResultCode syncSendEventsToApmServer( const ConfigSnapshot* config, StringView userAgentHttpHeader, StringView serializedEvents )
+/**
+ * @param proxyEnvSnapshot not NULL when called on the background sender thread (which must not read the environment)
+ */
+ResultCode syncSendEventsToApmServer( const ConfigSnapshot* config, StringView userAgentHttpHeader, StringView serializedEvents, const ProxyEnvSnapshot* proxyEnvSnapshot )
 {
     char txtOutStreamBuf[ ELASTIC_APM_TEXT_OUTPUT_STREAM_ON_STACK_BUFFER_SIZE ];
     TextOutputStream txtOutStream = ELASTIC_APM_TEXT_OUTPUT_STREAM_FROM_STATIC_BUFFER( txtOutStreamBuf );
@@ -527,7 +548,7 @@ ResultCode syncSendEventsToApmServer( const ConfigSnapshot* config, StringView u
         ELASTIC_APM_CALL_IF_FAILED_GOTO( initConnectionData( config, connectionData, userAgentHttpHeader ) );
     }
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( syncSendEventsToApmServerWithConn( config, connectionData, serializedEvents ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( syncSendEventsToApmServerWithConn( config, connectionData, serializedEvents, proxyEnvSnapshot ) );
     backendCommBackoff_onSuccess( &connectionData->backoff );
 
     resultCode = resultSuccess;
@@ -667,6 +688,13 @@ struct BackgroundBackendComm
     Mutex* mutex;
     ConditionVariable* condVar;
     Thread* thread;
+    /**
+     * Proxy settings resolved on the PHP thread before the sender thread is created so that libcurl does not call
+     * getenv() for them on the sender thread - see proxy_env_snapshot.h.
+     * Values are fixed when the sender thread is created, later putenv() calls do not affect them.
+     * Written before the thread is created, the thread only reads it, freed after the thread is joined.
+     */
+    ProxyEnvSnapshot* proxyEnvSnapshot;
     DataToSendQueue dataToSendQueue;
     size_t dataToSendTotalSize;
     size_t nextEventsBatchId;
@@ -869,6 +897,7 @@ ResultCode backgroundBackendCommThreadFunc_waitForChangesInSharedState(
 
 ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatch(
         const ConfigSnapshot* config
+        , const ProxyEnvSnapshot* proxyEnvSnapshot
         , const BackgroundBackendCommSharedStateSnapshot* sharedStateSnapshot )
 {
     // This function is called only when data-queue-to-send is not empty
@@ -888,7 +917,8 @@ ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatch(
 
     resultCode = syncSendEventsToApmServer( config
                                             , stringBufferToView( sharedStateSnapshot->firstDataToSendNode->userAgentHttpHeader )
-                                            , serializedEvents );
+                                            , serializedEvents
+                                            , /* proxyEnvSnapshot: */ proxyEnvSnapshot );
     // If we failed to send the currently first batch we return success nevertheless
     // it means that this batch will be removed, and we will continue on to sending the rest of the queued events
     if ( resultCode != resultSuccess )
@@ -958,7 +988,7 @@ void* backgroundBackendCommThreadFunc( void* arg )
             continue;
         }
 
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommThreadFunc_sendFirstEventsBatch( config, /* in */ &sharedStateSnapshot ) );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommThreadFunc_sendFirstEventsBatch( config, backgroundBackendComm->proxyEnvSnapshot, /* in */ &sharedStateSnapshot ) );
         ELASTIC_APM_CALL_IF_FAILED_GOTO( backgroundBackendCommThreadFunc_removeFirstEventsBatchAndUpdateSnapshot( backgroundBackendComm, /* out */ &sharedStateSnapshot ) );
     }
 
@@ -1020,6 +1050,8 @@ ResultCode unwindBackgroundBackendComm( BackgroundBackendComm** backgroundBacken
     }
 
     resultCode = resultSuccess;
+    delete backgroundBackendComm->proxyEnvSnapshot;
+    backgroundBackendComm->proxyEnvSnapshot = NULL;
     freeDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
     ELASTIC_APM_FREE_INSTANCE_AND_SET_TO_NULL( BackgroundBackendComm, *backgroundBackendCommOutPtr );
 
@@ -1056,12 +1088,24 @@ ResultCode newBackgroundBackendComm( const ConfigSnapshot* config, BackgroundBac
     backgroundBackendComm->condVar = NULL;
     backgroundBackendComm->mutex = NULL;
     backgroundBackendComm->thread = NULL;
+    backgroundBackendComm->proxyEnvSnapshot = NULL;
     initDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
     backgroundBackendComm->dataToSendTotalSize = 0;
     backgroundBackendComm->nextEventsBatchId = 1;
     backgroundBackendComm->shouldExit = false;
     ELASTIC_APM_CALL_IF_FAILED_GOTO( newMutex( &( backgroundBackendComm->mutex ), /* dbgDesc */ "Background backend communications" ) );
     ELASTIC_APM_CALL_IF_FAILED_GOTO( newConditionVariable( &( backgroundBackendComm->condVar ), /* dbgDesc */ "Background backend communications" ) );
+
+    // Must be taken on the PHP thread, before the thread that sends the data is created
+    try
+    {
+        backgroundBackendComm->proxyEnvSnapshot = new ProxyEnvSnapshot( resolveProxyEnvSnapshot( []( const char* name ) -> const char* { return getenv( name ); } ) );
+    }
+    catch ( const std::bad_alloc& )
+    {
+        ELASTIC_APM_LOG_ERROR( "Failed to allocate memory for proxy settings snapshot" );
+        ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE_EX( resultFailure );
+    }
 
     resultCode = newThread( &( backgroundBackendComm->thread )
                             , &backgroundBackendCommThreadFunc
@@ -1257,7 +1301,7 @@ ResultCode sendEventsToApmServer( const ConfigSnapshot* config, StringView userA
     }
     else
     {
-        ELASTIC_APM_CALL_IF_FAILED_GOTO( syncSendEventsToApmServer( config, userAgentHttpHeader, serializedEvents ) );
+        ELASTIC_APM_CALL_IF_FAILED_GOTO( syncSendEventsToApmServer( config, userAgentHttpHeader, serializedEvents, /* proxyEnvSnapshot: */ NULL ) );
     }
 
     resultCode = resultSuccess;

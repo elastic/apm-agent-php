@@ -55,6 +55,19 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
     public const MEMORY_DB_NAME = 'memory';
     public const FILE_DB_NAME = '<file DB>';
 
+    private const PDO_CREATION_KEY = 'PDO_CREATION';
+    private const PDO_CREATION_NEW_PDO = 'new PDO';
+    private const PDO_CREATION_PDO_CONNECT = 'PDO::connect';
+    private const PDO_CREATION_NEW_SUBCLASS = 'new Pdo\\Sqlite';
+    private const PDO_CREATION_SUBCLASS_CONNECT = 'Pdo\\Sqlite::connect';
+
+    /**
+     * Driver specific PDO subclass for SQLite added in PHP 8.4
+     *
+     * @link https://wiki.php.net/rfc/pdo_driver_specific_subclasses
+     */
+    private const PDO_SQLITE_SUBCLASS = 'Pdo\\Sqlite';
+
     public const MESSAGES
         = [
             'Just testing...'    => 1,
@@ -167,9 +180,18 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
         $dbNames[] = self::TEMP_DB_NAME;
         $dbNames[] = self::FILE_DB_NAME;
 
+        $pdoCreationVariants = [self::PDO_CREATION_NEW_PDO];
+        // PDO::connect() and driver specific PDO subclasses were added in PHP 8.4
+        if (PHP_VERSION_ID >= 80400) {
+            $pdoCreationVariants[] = self::PDO_CREATION_PDO_CONNECT;
+            $pdoCreationVariants[] = self::PDO_CREATION_NEW_SUBCLASS;
+            $pdoCreationVariants[] = self::PDO_CREATION_SUBCLASS_CONNECT;
+        }
+
         $result = (new DataProviderForTestBuilder())
             ->addGeneratorOnlyFirstValueCombinable(AutoInstrumentationUtilForTests::disableInstrumentationsDataProviderGenerator($disableInstrumentationsVariants))
             ->addKeyedDimensionOnlyFirstValueCombinable(DbAutoInstrumentationUtilForTests::DB_NAME_KEY, $dbNames)
+            ->addKeyedDimensionOnlyFirstValueCombinable(self::PDO_CREATION_KEY, $pdoCreationVariants)
             ->addGeneratorOnlyFirstValueCombinable(DbAutoInstrumentationUtilForTests::wrapTxRelatedArgsDataProviderGenerator())
             ->build();
 
@@ -196,11 +218,55 @@ final class PDOAutoInstrumentationTest extends ComponentTestCaseBase
         $callEndTxInShutdownFunction = $args->getBool(DbAutoInstrumentationUtilForTests::CALL_END_TX_IN_SHUTDOWN_FUNCTION_KEY);
     }
 
+    /**
+     * Returns the argument as plain `string' (and not as a constant string)
+     * so that static analysis on PHP before 8.4 does not complain about PDO::connect() and Pdo\Sqlite
+     */
+    private static function hideFromStaticAnalysis(string $value): string
+    {
+        return $value;
+    }
+
+    private static function createPdo(string $pdoCreation, string $dsn): PDO
+    {
+        if ($pdoCreation === self::PDO_CREATION_NEW_PDO) {
+            $pdo = new PDO($dsn);
+            self::assertSame(PDO::class, get_class($pdo));
+            return $pdo;
+        }
+
+        $subclassName = self::hideFromStaticAnalysis(self::PDO_SQLITE_SUBCLASS);
+        switch ($pdoCreation) {
+            case self::PDO_CREATION_PDO_CONNECT:
+                $connect = [PDO::class, self::hideFromStaticAnalysis('connect')];
+                break;
+            case self::PDO_CREATION_SUBCLASS_CONNECT:
+                $connect = [$subclassName, self::hideFromStaticAnalysis('connect')];
+                break;
+            case self::PDO_CREATION_NEW_SUBCLASS:
+                $connect = null;
+                break;
+            default:
+                self::fail('Unexpected PDO creation variant: ' . $pdoCreation);
+        }
+
+        if ($connect === null) {
+            $pdo = new $subclassName($dsn);
+        } else {
+            self::assertIsCallable($connect);
+            $pdo = $connect($dsn);
+        }
+        // Both PDO::connect() and Pdo\Sqlite::connect() return the driver specific subclass for SQLite DSN
+        self::assertSame($subclassName, get_class($pdo));
+        self::assertInstanceOf(PDO::class, $pdo);
+        return $pdo;
+    }
+
     public static function appCodeForTestAutoInstrumentation(MixedMap $appCodeArgs): void
     {
         self::extractSharedArgs($appCodeArgs, /* out */ $dbName, /* out */ $wrapInTx, /* out */ $rollback, /* out */ $callEndTxInShutdownFunction);
 
-        $pdo = new PDO(self::buildConnectionString($dbName));
+        $pdo = self::createPdo($appCodeArgs->getString(self::PDO_CREATION_KEY), self::buildConnectionString($dbName));
         self::assertTrue($pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION));
         if ($wrapInTx) {
             self::assertTrue($pdo->beginTransaction());
