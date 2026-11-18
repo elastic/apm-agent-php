@@ -731,6 +731,15 @@ static void freeDataToSendQueue( DataToSendQueue* dataQueue )
  */
 #define ELASTIC_APM_DEFAULT_SHUTDOWN_SEND_TIMEOUT_IN_MILLISECONDS 30000
 
+static long getShutdownSendTimeoutInMilliseconds( const ConfigSnapshot* config )
+{
+    // server_timeout 0 means that timeout of a single request is disabled (see syncSendEventsToApmServerWithConn()),
+    // but the time for sending the queued events on shutdown must stay limited
+    return ( config->serverTimeout.valueInUnits == 0 )
+            ? ELASTIC_APM_DEFAULT_SHUTDOWN_SEND_TIMEOUT_IN_MILLISECONDS
+            : (long)durationToMilliseconds( config->serverTimeout );
+}
+
 struct BackgroundBackendComm
 {
     Mutex* mutex;
@@ -745,6 +754,7 @@ struct BackgroundBackendComm
     ProxyEnvSnapshot* proxyEnvSnapshot;
     DataToSendQueue dataToSendQueue;
     size_t dataToSendTotalSize;
+    size_t dataToSendBatchesCount;
     size_t nextEventsBatchId;
     bool shouldExit;
     TimeSpec shouldExitBy;
@@ -755,6 +765,7 @@ struct BackgroundBackendCommSharedStateSnapshot
 {
     const DataToSendNode* firstDataToSendNode;
     size_t dataToSendTotalSize;
+    size_t dataToSendBatchesCount;
     bool shouldExit;
     TimeSpec shouldExitBy;
 };
@@ -814,6 +825,7 @@ void backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot(
 
     sharedStateSnapshot->firstDataToSendNode = getFirstNodeInDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
     sharedStateSnapshot->dataToSendTotalSize = backgroundBackendComm->dataToSendTotalSize;
+    sharedStateSnapshot->dataToSendBatchesCount = backgroundBackendComm->dataToSendBatchesCount;
     sharedStateSnapshot->shouldExit = backgroundBackendComm->shouldExit;
     sharedStateSnapshot->shouldExitBy = backgroundBackendComm->shouldExitBy;
 }
@@ -904,6 +916,7 @@ ResultCode backgroundBackendCommThreadFunc_removeFirstEventsBatchesAndUpdateSnap
     {
         size_t firstNodeDataSize = removeFirstNodeInDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
         backgroundBackendComm->dataToSendTotalSize -= firstNodeDataSize;
+        --backgroundBackendComm->dataToSendBatchesCount;
     }
 
     backgroundBackendCommThreadFunc_underLockCopySharedStateToSnapshot( backgroundBackendComm, /* out */ sharedStateSnapshot );
@@ -954,7 +967,6 @@ ResultCode backgroundBackendCommThreadFunc_waitForChangesInSharedState(
 static ResultCode backgroundBackendCommThreadFunc_collectEventsBatchesToSend(
         BackgroundBackendComm* backgroundBackendComm
         , /* out */ std::vector< EventsBatchView >* batches
-        , /* out */ UInt64* firstBatchId
 )
 {
     bool shouldUnlockMutex = false;
@@ -977,10 +989,6 @@ static ResultCode backgroundBackendCommThreadFunc_collectEventsBatchesToSend(
             }
 
             StringView userAgentHttpHeader = stringBufferToView( node->userAgentHttpHeader );
-            if ( batches->empty() )
-            {
-                *firstBatchId = node->id;
-            }
             batches->push_back( EventsBatchView{ std::string_view( userAgentHttpHeader.begin, userAgentHttpHeader.length )
                                                  , std::string_view( serializedEvents.begin, serializedEvents.length ) } );
             totalSize += serializedEvents.length;
@@ -989,7 +997,7 @@ static ResultCode backgroundBackendCommThreadFunc_collectEventsBatchesToSend(
     }
     catch ( const std::bad_alloc& )
     {
-        ELASTIC_APM_LOG_ERROR( "Failed to allocate memory for the list of batches of events to send" );
+        ELASTIC_APM_LOG_WARNING( "Failed to allocate memory for the list of batches of events to send - sending the first batch of events only" );
         resultCode = resultFailure;
     }
 
@@ -1010,34 +1018,33 @@ ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatches(
 {
     // This function is called only when data-queue-to-send is not empty
     // so firstDataToSendNode is not NULL
-    *sentBatchesCount = 0;
+    const DataToSendNode* firstNode = sharedStateSnapshot->firstDataToSendNode;
+    const UInt64 firstBatchId = firstNode->id;
+    StringView userAgentHttpHeader = stringBufferToView( firstNode->userAgentHttpHeader );
+    // By default send only the first batch directly from its own buffer, without any allocation.
+    // Combining batches is just an optimization - if it is not possible (e.g. out of memory) the sender thread
+    // must stay alive, otherwise events would be queued with nobody to send them.
+    StringView eventsToSend = stringBufferToView( firstNode->serializedEvents );
+    size_t batchesCount = 1;
 
     std::vector< EventsBatchView > batches;
-    UInt64 firstBatchId = 0;
-    ResultCode resultCode = backgroundBackendCommThreadFunc_collectEventsBatchesToSend( backgroundBackendComm, &batches, &firstBatchId );
-    if ( resultCode != resultSuccess )
-    {
-        return resultCode;
-    }
-
-    // The queue is not empty (checked by the caller) and only this thread removes batches from it,
-    // but if that ever changes we must not use batches.front() on an empty list or loop forever
-    if ( batches.empty() )
-    {
-        ELASTIC_APM_LOG_ERROR( "Queue of events to send is unexpectedly empty" );
-        return resultFailure;
-    }
-
     std::string combinedBody;
-    size_t batchesCount;
-    try
+    if ( backgroundBackendCommThreadFunc_collectEventsBatchesToSend( backgroundBackendComm, &batches ) == resultSuccess
+         && batches.size() > 1 )
     {
-        batchesCount = combineEventsBatches( batches, maxCombinedEventsBodySize, combinedBody );
-    }
-    catch ( const std::exception& )
-    {
-        ELASTIC_APM_LOG_ERROR( "Failed to allocate memory for the body of the request to APM Server" );
-        return resultFailure;
+        try
+        {
+            size_t combinedBatchesCount = combineEventsBatches( batches, maxCombinedEventsBodySize, combinedBody );
+            if ( combinedBatchesCount > 1 )
+            {
+                batchesCount = combinedBatchesCount;
+                eventsToSend = StringView{ combinedBody.data(), combinedBody.size() };
+            }
+        }
+        catch ( const std::exception& )
+        {
+            ELASTIC_APM_LOG_WARNING( "Failed to allocate memory for the body of the request to APM Server - sending the first batch of events only" );
+        }
     }
 
     ELASTIC_APM_LOG_DEBUG(
@@ -1048,14 +1055,13 @@ ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatches(
             "; total size of queued events: %" PRIu64
             , firstBatchId
             , (UInt64) batchesCount
-            , (UInt64) combinedBody.size()
+            , (UInt64) eventsToSend.length
             , (UInt64) sharedStateSnapshot->dataToSendTotalSize );
 
-    const std::string_view userAgentHttpHeader = batches.front().userAgentHttpHeader;
-    resultCode = syncSendEventsToApmServer( config
-                                            , StringView{ userAgentHttpHeader.data(), userAgentHttpHeader.size() }
-                                            , StringView{ combinedBody.data(), combinedBody.size() }
-                                            , /* proxyEnvSnapshot: */ backgroundBackendComm->proxyEnvSnapshot );
+    ResultCode resultCode = syncSendEventsToApmServer( config
+                                                       , userAgentHttpHeader
+                                                       , eventsToSend
+                                                       , /* proxyEnvSnapshot: */ backgroundBackendComm->proxyEnvSnapshot );
     // If we failed to send the current batches we return success nevertheless
     // it means that these batches will be removed, and we will continue on to sending the rest of the queued events
     if ( resultCode != resultSuccess )
@@ -1068,7 +1074,7 @@ ResultCode backgroundBackendCommThreadFunc_sendFirstEventsBatches(
                 "; total size of queued events: %" PRIu64
                 , firstBatchId
                 , (UInt64) batchesCount
-                , (UInt64) combinedBody.size()
+                , (UInt64) eventsToSend.length
                 , (UInt64) sharedStateSnapshot->dataToSendTotalSize );
     }
 
@@ -1136,11 +1142,17 @@ void* backgroundBackendCommThreadFunc( void* arg )
     if ( ! isDataToSendQueueEmptyInSnapshot( &sharedStateSnapshot ) )
     {
         ELASTIC_APM_LOG_WARNING(
-                "Background backend communications thread is exiting because the time limit for sending queued events on shutdown has passed (server_timeout, or 30 seconds if server_timeout is 0)"
-                " - events that are still queued will be dropped"
-                "; total size of dropped queued events: %" PRIu64
-                " bytes; consider increasing server_timeout or reducing the number of events (e.g. with span compression)"
-                , (UInt64) sharedStateSnapshot.dataToSendTotalSize );
+                "Async shutdown drain timed out with queued events still pending - remaining queued events will be dropped"
+                "; time limit for sending queued events on shutdown: %" PRId64 " ms (server_timeout, or %d ms if server_timeout is 0)"
+                "; dropped batches of events: %" PRIu64
+                "; total size of dropped events: %" PRIu64 " bytes"
+                "; first dropped batch ID: %" PRIu64
+                "; consider increasing server_timeout or reducing the number of events (e.g. with span compression)"
+                , (Int64) getShutdownSendTimeoutInMilliseconds( config )
+                , ELASTIC_APM_DEFAULT_SHUTDOWN_SEND_TIMEOUT_IN_MILLISECONDS
+                , (UInt64) sharedStateSnapshot.dataToSendBatchesCount
+                , (UInt64) sharedStateSnapshot.dataToSendTotalSize
+                , (UInt64) sharedStateSnapshot.firstDataToSendNode->id );
     }
 
     resultCode = resultSuccess;
@@ -1242,6 +1254,7 @@ ResultCode newBackgroundBackendComm( const ConfigSnapshot* config, BackgroundBac
     backgroundBackendComm->proxyEnvSnapshot = NULL;
     initDataToSendQueue( &( backgroundBackendComm->dataToSendQueue ) );
     backgroundBackendComm->dataToSendTotalSize = 0;
+    backgroundBackendComm->dataToSendBatchesCount = 0;
     backgroundBackendComm->nextEventsBatchId = 1;
     backgroundBackendComm->shouldExit = false;
     ELASTIC_APM_CALL_IF_FAILED_GOTO( newMutex( &( backgroundBackendComm->mutex ), /* dbgDesc */ "Background backend communications" ) );
@@ -1319,11 +1332,7 @@ ResultCode signalBackgroundBackendCommThreadToExit( const ConfigSnapshot* config
     backgroundBackendComm->shouldExit = true;
 
     ELASTIC_APM_CALL_IF_FAILED_GOTO( getCurrentAbsTimeSpec( /* out */ shouldExitBy ) );
-    // server_timeout 0 means that timeout of a single request is disabled (see syncSendEventsToApmServerWithConn()),
-    // but the time for sending the queued events on shutdown must stay limited
-    shutdownSendTimeoutInMilliseconds = ( config->serverTimeout.valueInUnits == 0 )
-            ? ELASTIC_APM_DEFAULT_SHUTDOWN_SEND_TIMEOUT_IN_MILLISECONDS
-            : (long)durationToMilliseconds( config->serverTimeout );
+    shutdownSendTimeoutInMilliseconds = getShutdownSendTimeoutInMilliseconds( config );
     addDelayToAbsTimeSpec( /* in, out */ shouldExitBy, shutdownSendTimeoutInMilliseconds * ELASTIC_APM_NUMBER_OF_NANOSECONDS_IN_MILLISECOND );
     backgroundBackendComm->shouldExitBy = *shouldExitBy;
     g_shutdownSendDeadlineInMilliseconds.store( timeSpecToMilliseconds( *shouldExitBy ) );
@@ -1406,6 +1415,7 @@ ResultCode enqueueEventsToSendToApmServer( StringView userAgentHttpHeader, Strin
                                       , serializedEvents ) );
 
     backgroundBackendComm->dataToSendTotalSize += serializedEvents.length;
+    ++backgroundBackendComm->dataToSendBatchesCount;
     ++backgroundBackendComm->nextEventsBatchId;
 
     ELASTIC_APM_LOG_DEBUG(
