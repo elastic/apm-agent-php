@@ -30,6 +30,27 @@ std::string_view getEventsBatchEventLines( std::string_view serializedEvents )
     return metadataLineEnd == std::string_view::npos ? std::string_view() : serializedEvents.substr( metadataLineEnd + 1 );
 }
 
+static std::string_view trimTrailingNewLines( std::string_view text )
+{
+    while ( ! text.empty() && text.back() == '\n' )
+    {
+        text.remove_suffix( 1 );
+    }
+    return text;
+}
+
+bool canBeCombinedWithFirstBatch( const EventsBatchView& firstBatch, const EventsBatchView& batch )
+{
+    return batch.userAgentHttpHeader == firstBatch.userAgentHttpHeader
+           && getEventsBatchMetadataLine( batch.serializedEvents ) == getEventsBatchMetadataLine( firstBatch.serializedEvents );
+}
+
+size_t sizeAddedToCombinedBody( std::string_view serializedEvents )
+{
+    std::string_view eventLines = trimTrailingNewLines( getEventsBatchEventLines( serializedEvents ) );
+    return eventLines.empty() ? 0 : 1 + eventLines.size();
+}
+
 size_t combineEventsBatches( const std::vector< EventsBatchView >& batches, size_t maxBodySize, std::string& combinedBody )
 {
     combinedBody.clear();
@@ -39,7 +60,6 @@ size_t combineEventsBatches( const std::vector< EventsBatchView >& batches, size
     }
 
     const EventsBatchView& first = batches.front();
-    const std::string_view firstMetadataLine = getEventsBatchMetadataLine( first.serializedEvents );
 
     combinedBody.append( first.serializedEvents );
     size_t count = 1;
@@ -47,31 +67,29 @@ size_t combineEventsBatches( const std::vector< EventsBatchView >& batches, size
     for ( ; count < batches.size(); ++count )
     {
         const EventsBatchView& batch = batches[ count ];
-        if ( batch.userAgentHttpHeader != first.userAgentHttpHeader
-             || getEventsBatchMetadataLine( batch.serializedEvents ) != firstMetadataLine )
+        if ( ! canBeCombinedWithFirstBatch( first, batch ) )
         {
             break;
         }
 
-        std::string_view eventLines = getEventsBatchEventLines( batch.serializedEvents );
+        const size_t addedSize = sizeAddedToCombinedBody( batch.serializedEvents );
+        if ( addedSize == 0 )
+        {
+            // metadata only
+            continue;
+        }
+
+        if ( combinedBody.size() + addedSize > maxBodySize )
+        {
+            break;
+        }
+
         // A trailing '\n' of a batch would produce an empty line in the middle of the combined body
-        while ( ! eventLines.empty() && eventLines.back() == '\n' )
+        if ( combinedBody.back() != '\n' )
         {
-            eventLines.remove_suffix( 1 );
+            combinedBody.push_back( '\n' );
         }
-        if ( ! eventLines.empty() )
-        {
-            // +1 for '\n' that separates the last line of the previous batch from the first event line of this one
-            if ( combinedBody.size() + 1 + eventLines.size() > maxBodySize )
-            {
-                break;
-            }
-            if ( combinedBody.back() != '\n' )
-            {
-                combinedBody.push_back( '\n' );
-            }
-            combinedBody.append( eventLines );
-        }
+        combinedBody.append( trimTrailingNewLines( getEventsBatchEventLines( batch.serializedEvents ) ) );
     }
 
     return count;

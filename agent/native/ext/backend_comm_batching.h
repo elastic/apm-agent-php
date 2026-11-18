@@ -52,6 +52,18 @@ std::string_view getEventsBatchMetadataLine( std::string_view serializedEvents )
 std::string_view getEventsBatchEventLines( std::string_view serializedEvents );
 
 /**
+ * @return true if the batch has the same user agent and the same metadata line as the first batch, i.e. if its event lines
+ *         can be appended to the first batch without changing the metadata that applies to them
+ */
+bool canBeCombinedWithFirstBatch( const EventsBatchView& firstBatch, const EventsBatchView& batch );
+
+/**
+ * @return the number of bytes that the event lines of the batch add to the combined body, including the '\n' that separates
+ *         them from the previous line, 0 if the batch has no events (trailing '\n' are not counted)
+ */
+size_t sizeAddedToCombinedBody( std::string_view serializedEvents );
+
+/**
  * Combines consecutive batches (starting with the first one) into one ND-JSON body that is sent as a single request:
  * the first batch as is and, for each following batch, only its event lines (the metadata line is sent once).
  *

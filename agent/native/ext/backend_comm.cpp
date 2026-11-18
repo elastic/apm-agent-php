@@ -1017,20 +1017,35 @@ static ResultCode backgroundBackendCommThreadFunc_collectEventsBatchesToSend(
 
     try
     {
-        size_t totalSize = 0;
+        // The same rules as in combineEventsBatches() so the batches that the combining would not take are not collected
+        // (this is done under the lock that the PHP thread needs for queueing new events)
+        size_t bodySize = 0;
         DataToSendQueue* queue = &( backgroundBackendComm->dataToSendQueue );
         for ( DataToSendNode* node = getFirstNodeInDataToSendQueue( queue ); node != NULL && node != &( queue->tail ); node = node->next )
         {
             StringView serializedEvents = stringBufferToView( node->serializedEvents );
-            if ( ! batches->empty() && totalSize + serializedEvents.length > maxCombinedEventsBodySize )
-            {
-                break;
-            }
-
             StringView userAgentHttpHeader = stringBufferToView( node->userAgentHttpHeader );
-            batches->push_back( EventsBatchView{ std::string_view( userAgentHttpHeader.begin, userAgentHttpHeader.length )
-                                                 , std::string_view( serializedEvents.begin, serializedEvents.length ) } );
-            totalSize += serializedEvents.length;
+            const EventsBatchView batch{ std::string_view( userAgentHttpHeader.begin, userAgentHttpHeader.length )
+                                         , std::string_view( serializedEvents.begin, serializedEvents.length ) };
+
+            if ( batches->empty() )
+            {
+                bodySize = batch.serializedEvents.size();
+            }
+            else
+            {
+                if ( ! canBeCombinedWithFirstBatch( batches->front(), batch ) )
+                {
+                    break;
+                }
+                const size_t addedSize = sizeAddedToCombinedBody( batch.serializedEvents );
+                if ( bodySize + addedSize > maxCombinedEventsBodySize )
+                {
+                    break;
+                }
+                bodySize += addedSize;
+            }
+            batches->push_back( batch );
         }
         resultCode = resultSuccess;
     }

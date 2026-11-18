@@ -188,6 +188,22 @@ static void test_trailingNewLinesDoNotProduceEmptyLines( void** )
     ASSERT_STR_EQ( expected.c_str(), body.c_str() );
 }
 
+static void test_helpersUsedForCollectingBatches( void** )
+{
+    const EventsBatchView first{ "ua", "m\n{\"span\":1}" };
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 1, (int)canBeCombinedWithFirstBatch( first, EventsBatchView{ "ua", "m\n{\"span\":2}" } ) );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 1, (int)canBeCombinedWithFirstBatch( first, EventsBatchView{ "ua", "m" } ) );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 0, (int)canBeCombinedWithFirstBatch( first, EventsBatchView{ "other ua", "m\n{\"span\":2}" } ) );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 0, (int)canBeCombinedWithFirstBatch( first, EventsBatchView{ "ua", "other metadata\n{\"span\":2}" } ) );
+
+    // 1 (for '\n') + length of "{\"span\":2}" (10)
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 11, (int)sizeAddedToCombinedBody( "m\n{\"span\":2}" ) );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 11, (int)sizeAddedToCombinedBody( "m\n{\"span\":2}\n\n" ) );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 0, (int)sizeAddedToCombinedBody( "m" ) );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 0, (int)sizeAddedToCombinedBody( "m\n" ) );
+    ELASTIC_APM_CMOCKA_ASSERT_INT_EQUAL( 0, (int)sizeAddedToCombinedBody( "" ) );
+}
+
 int run_backend_comm_batching_tests()
 {
     const struct CMUnitTest tests [] =
@@ -203,6 +219,7 @@ int run_backend_comm_batching_tests()
         ELASTIC_APM_CMOCKA_UNIT_TEST( test_firstBatchIsAlwaysTakenEvenIfOverLimit ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( test_batchWithoutNewLine ),
         ELASTIC_APM_CMOCKA_UNIT_TEST( test_trailingNewLinesDoNotProduceEmptyLines ),
+        ELASTIC_APM_CMOCKA_UNIT_TEST( test_helpersUsedForCollectingBatches ),
     };
 
     return cmocka_run_group_tests( tests, NULL, NULL );
