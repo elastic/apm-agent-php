@@ -354,7 +354,7 @@ If the value is `0` (or `0ms`, `0s`, etc.) the timeout for sending events to the
 
 Negative values are invalid and result in the default value being used instead.
 
-When the PHP process exits, the agent keeps sending the events that are still queued for at most this time. If the value is `0` (the timeout is disabled), the agent waits for at most 30 seconds. A request that is still in progress when this time passes is canceled, the events that are still queued are dropped and a warning is logged.
+When the PHP process exits, the agent keeps sending the events that are still queued for at most this time. If the value is `0` (the timeout is turned off), the agent waits for at most 30 seconds. A request that is still in progress when this time passes is canceled, the events that are still queued are dropped and a warning is logged.
 
 
 ## `server_url` [config-server-url]
