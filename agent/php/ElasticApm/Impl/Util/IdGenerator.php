@@ -37,6 +37,21 @@ final class IdGenerator
 
     public static function generateId(int $idLengthInBytes): string
     {
-        return bin2hex(random_bytes($idLengthInBytes));
+        try {
+            return bin2hex(random_bytes($idLengthInBytes));
+        } catch (\Throwable $ex) {
+            // random_bytes() throws if no OS entropy source is available (for example getrandom() blocked by seccomp).
+            // The agent must never break the host application so fall back to mt_rand().
+            return self::generateIdUsingMtRand($idLengthInBytes);
+        }
+    }
+
+    private static function generateIdUsingMtRand(int $idLengthInBytes): string
+    {
+        $result = '';
+        for ($i = 0; $i < $idLengthInBytes; ++$i) {
+            $result .= sprintf('%02x', mt_rand(0, 255));
+        }
+        return $result;
     }
 }
