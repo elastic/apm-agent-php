@@ -32,8 +32,16 @@ final class RandomUtil
 {
     use StaticClassTrait;
 
+    private const MAX_INT_FOR_01_FLOAT = 0x7FFFFFFF;
+
     public static function generate01Float(): float
     {
-        return mt_rand(0, mt_getrandmax()) / mt_getrandmax();
+        try {
+            return random_int(0, self::MAX_INT_FOR_01_FLOAT) / self::MAX_INT_FOR_01_FLOAT;
+        } catch (\Throwable $ex) {
+            // random_int() throws if no OS entropy source is available (for example getrandom() blocked by seccomp).
+            // The agent must never break the host application so fall back to mt_rand().
+            return mt_rand(0, mt_getrandmax()) / mt_getrandmax();
+        }
     }
 }
