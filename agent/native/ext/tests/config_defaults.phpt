@@ -25,9 +25,11 @@ elasticApmAssertSame("getenv('ELASTIC_APM_ENABLED')", getenv('ELASTIC_APM_ENABLE
 
 elasticApmAssertEqual("ini_get('elastic_apm.enabled')", ini_get('elastic_apm.enabled'), false);
 
-elasticApmAssertSame("elastic_apm_is_enabled()", elastic_apm_is_enabled(), true);
-
-elasticApmAssertSame("elastic_apm_get_config_option_by_name('enabled')", elastic_apm_get_config_option_by_name('enabled'), true);
+if (($agentEnabledConfigDefaultEnvVar = getenv('ELASTIC_APM_PHP_TESTS_AGENT_ENABLED_CONFIG_DEFAULT')) !== false) {
+    $agentEnabledConfigDefault = json_decode($agentEnabledConfigDefaultEnvVar);
+    elasticApmAssertSame("elastic_apm_is_enabled()", elastic_apm_is_enabled(), $agentEnabledConfigDefault);
+    elasticApmAssertSame("elastic_apm_get_config_option_by_name('enabled')", elastic_apm_get_config_option_by_name('enabled'), $agentEnabledConfigDefault);
+}
 
 //////////////////////////////////////////////
 ///////////////  log_file
