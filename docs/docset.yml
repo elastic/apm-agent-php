@@ -4,6 +4,7 @@ products:
 cross_links:
   - apm-agent-rum-js
   - docs-content
+  - elastic-otel-php
 toc:
   - toc: reference
   - toc: release-notes

@@ -41,6 +41,10 @@ use Psr\Http\Message\ServerRequestInterface;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 use React\Http\HttpServer;
+use React\Http\Middleware\LimitConcurrentRequestsMiddleware;
+use React\Http\Middleware\RequestBodyBufferMiddleware;
+use React\Http\Middleware\RequestBodyParserMiddleware;
+use React\Http\Middleware\StreamingRequestMiddleware;
 use React\Promise\Promise;
 use React\Socket\ConnectionInterface;
 use React\Socket\SocketServer;
@@ -180,6 +184,18 @@ abstract class TestInfraHttpServerProcessBase extends SpawnedProcessBase
                 }
             );
             $httpServer = new HttpServer(
+                /**
+                 * By default (when only a request handler is passed) ReactPHP HTTP server buffers request body
+                 * up to 64 KiB and passes bigger requests to the handler with an empty body.
+                 * The agent sends multiple queued batches of events in one request (up to 768 KiB), so the limit
+                 * of the buffer has to be bigger. StreamingRequestMiddleware switches off the default
+                 * middleware, so the same middleware (see HttpServer's constructor) are added explicitly
+                 * but with the bigger limit.
+                 */
+                new StreamingRequestMiddleware(),
+                new LimitConcurrentRequestsMiddleware(/* concurrent requests limit: */ 1024),
+                new RequestBodyBufferMiddleware(/* body size limit: */ 16 * 1024 * 1024),
+                new RequestBodyParserMiddleware(),
                 /**
                  * @param ServerRequestInterface $request
                  *

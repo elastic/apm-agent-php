@@ -1,6 +1,6 @@
 name: "php-headers-83"
 version: "1.0"
-php_source_version: 8.3.2
+php_source_version: 8.3.36
 
 sources:
   7.2.34:
@@ -23,11 +23,11 @@ sources:
     linux:
       - url: "https://www.php.net/distributions/php-8.1.18.tar.gz"
         contentsRoot: "php-8.1.18"
-  8.2.5:
+  8.2.35:
     linux:
-      - url: "https://www.php.net/distributions/php-8.2.5.tar.gz"
-        contentsRoot: "php-8.2.5"
-  8.3.2:
+      - url: "https://www.php.net/distributions/php-8.2.35.tar.gz"
+        contentsRoot: "php-8.2.35"
+  8.3.36:
     linux:
-      - url: "https://www.php.net/distributions/php-8.3.2.tar.gz"
-        contentsRoot: "php-8.3.2"
+      - url: "https://www.php.net/distributions/php-8.3.36.tar.gz"
+        contentsRoot: "php-8.3.36"

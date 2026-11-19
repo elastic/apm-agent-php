@@ -195,7 +195,7 @@ bool isZendAstListKind( zend_ast_kind kind )
  *      - Increment minor part of PHP version in static_assert below
  */
 static_assert(
-    PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 5, 0 ),
+    PHP_VERSION_ID < ELASTIC_APM_BUILD_PHP_VERSION_ID( 8, 6, 0 ),
     "Make sure g_astNodeMaxChildCount is correct. See max number of children in enum _zend_ast_kind in <php-src>/Zend/zend_ast.h"
 );
 static constexpr size_t g_astNodeMaxChildCount =

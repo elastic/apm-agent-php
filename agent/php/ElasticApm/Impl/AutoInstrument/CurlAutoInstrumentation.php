@@ -47,6 +47,7 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
     public const CURL_COPY_HANDLE_ID = 4;
     public const CURL_EXEC_ID = 5;
     private const CURL_CLOSE_ID = 6;
+    public const CURL_RESET_ID = 7;
 
     /** @var Logger */
     private $logger;
@@ -86,6 +87,7 @@ final class CurlAutoInstrumentation extends AutoInstrumentationBase
         $this->registerDelegatingToHandleTracker($ctx, 'curl_copy_handle', self::CURL_COPY_HANDLE_ID);
         $this->registerDelegatingToHandleTracker($ctx, 'curl_exec', self::CURL_EXEC_ID);
         $this->registerDelegatingToHandleTracker($ctx, 'curl_close', self::CURL_CLOSE_ID);
+        $this->registerDelegatingToHandleTracker($ctx, 'curl_reset', self::CURL_RESET_ID);
     }
 
     public function registerDelegatingToHandleTracker(RegistrationContextInterface $ctx, string $funcName, int $funcId): void

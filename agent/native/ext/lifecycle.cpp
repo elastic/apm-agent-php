@@ -610,6 +610,12 @@ void elasticApmRequestShutdown()
 
     tracerPhpPartOnRequestShutdown();
 
+    // Zvals holding PHP objects (exception, error backtrace) must be released here, before the engine runs
+    // shutdown_executor(). Newer PHP versions reset EG(objects_store) there so releasing objects
+    // later (in post deactivate) dereferences NULL object_buckets and crashes.
+    ELASTICAPM_G(lastErrorData).reset(nullptr);
+    resetLastThrown();
+
     // there is no guarantee that following code will be executed - in case of error on php side
 
     ELASTIC_APM_LOG_DEBUG_FUNCTION_EXIT();
@@ -643,8 +649,10 @@ int  elasticApmRequestPostDeactivate(void) {
 
     resetCallInterceptionOnRequestShutdown();
 
-    ELASTICAPM_G(lastErrorData).reset(nullptr);
-    resetLastThrown();
+    // Objects were already released in RSHUTDOWN. Do not release PHP objects here - object store is already gone.
+    // Anything that was (unexpectedly) set after RSHUTDOWN belongs to request memory that is freed by the engine.
+    ZVAL_UNDEF(&ELASTICAPM_G(lastException));
+    ELASTICAPM_G(lastErrorData).release();
 
     if ( tracer->isInited && isMemoryTrackingEnabled( &tracer->memTracker ) )
     {

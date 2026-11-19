@@ -52,7 +52,7 @@ jobs:
       contents: write
       id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Download package artifacts
         uses: actions/download-artifact@v8
@@ -140,7 +140,7 @@ jobs:
       TAG_NAME: ${{ github.ref_name }}
     steps:
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           name: signed-artifacts

@@ -24,8 +24,10 @@ declare(strict_types=1);
 namespace ElasticApmTests\ComponentTests;
 
 use Elastic\Apm\ElasticApm;
+use Elastic\Apm\Impl\Config\OptionNames;
 use Elastic\Apm\Impl\Log\Logger;
 use Elastic\Apm\Impl\Util\RangeUtil;
+use ElasticApmTests\ComponentTests\Util\AppCodeHostParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeRequestParams;
 use ElasticApmTests\ComponentTests\Util\AppCodeTarget;
 use ElasticApmTests\ComponentTests\Util\ComponentTestCaseBase;
@@ -81,6 +83,170 @@ final class BackendCommTest extends ComponentTestCaseBase
             self::assertSame($txNames[$txIndex], $tx->name);
             ++$txIndex;
         }
+    }
+
+    private const DELAY_OF_INTAKE_API_RESPONSE_MS_KEY = 'delay_of_intake_api_response_ms';
+    private const SPANS_COUNT_KEY = 'spans_count';
+
+    public static function mockApmServerBehaviorWithDelayedResponses(MockApmServer $mockApmServer, MixedMap $args): MockApmServerBehavior
+    {
+        return new class ($mockApmServer, $args->getInt(self::DELAY_OF_INTAKE_API_RESPONSE_MS_KEY)) extends MockApmServerBehavior {
+            /** @var int */
+            private $delayInMilliseconds;
+
+            public function __construct(MockApmServer $mockApmServer, int $delayInMilliseconds)
+            {
+                parent::__construct($mockApmServer);
+                $this->delayInMilliseconds = $delayInMilliseconds;
+            }
+
+            /** @inheritDoc */
+            public function processIntakeApiRequest(ServerRequestInterface $request): ResponseInterface
+            {
+                $response = parent::processIntakeApiRequest($request);
+                // The mock APM Server is single-threaded so blocking here makes the agent wait for the response
+                usleep($this->delayInMilliseconds * 1000);
+                return $response;
+            }
+        };
+    }
+
+    public static function appCodeForTestManySpans(MixedMap $appCodeArgs): void
+    {
+        $tx = ElasticApm::getCurrentTransaction();
+        foreach (RangeUtil::generateUpTo($appCodeArgs->getInt(self::SPANS_COUNT_KEY)) as $spanIndex) {
+            // Long names make events bigger so a backlog of queued events is bigger than 64 KiB
+            $span = $tx->beginChildSpan('span_' . $spanIndex . '_' . str_repeat('x', 800), 'test_span_type');
+            $span->end();
+        }
+    }
+
+    /**
+     * Agent sends queued batches of events in one request. When APM Server is slow the queue grows so this test
+     * makes sure that all the events are delivered when the requests are combined (they are bigger than 64 KiB)
+     */
+    public function testAllEventsAreDeliveredWhenQueuedBatchesAreCombined(): void
+    {
+        $spansCount = 300;
+
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeHostParams): void {
+                $appCodeHostParams->setAgentOption(OptionNames::ASYNC_BACKEND_COMM, 'true');
+            }
+        );
+        $testCaseHandle->setMockApmServerBehavior(
+            [__CLASS__, 'mockApmServerBehaviorWithDelayedResponses'],
+            [self::DELAY_OF_INTAKE_API_RESPONSE_MS_KEY => 100]
+        );
+
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestManySpans']),
+            function (AppCodeRequestParams $appCodeRequestParams) use ($spansCount): void {
+                $appCodeRequestParams->setAppCodeArgs([self::SPANS_COUNT_KEY => $spansCount]);
+            }
+        );
+
+        $dataFromAgent = $testCaseHandle->waitForDataFromAgent((new ExpectedEventCounts())->transactions(1)->spans($spansCount, $spansCount));
+        self::assertCount($spansCount, $dataFromAgent->idToSpan);
+        $spanNames = [];
+        foreach ($dataFromAgent->idToSpan as $span) {
+            $spanNames[$span->name] = true;
+        }
+        self::assertCount($spansCount, $spanNames);
+
+        // The delay of the responses makes the agent queue the events so the requests are combined.
+        // Count the lines of spans (not all the lines) because the batch with the transaction has many lines anyway.
+        $maxSpansInOneRequest = 0;
+        $maxRequestBodySize = 0;
+        foreach ($dataFromAgent->getRaw()->getAllIntakeApiRequests() as $intakeApiRequest) {
+            $maxSpansInOneRequest = max($maxSpansInOneRequest, substr_count($intakeApiRequest->body, "\n{\"span\":"));
+            $maxRequestBodySize = max($maxRequestBodySize, strlen($intakeApiRequest->body));
+        }
+        self::assertGreaterThan(1, $maxSpansInOneRequest);
+        // The mock APM Server has to handle requests bigger than 64 KiB (the default limit of ReactPHP HTTP server)
+        self::assertGreaterThan(64 * 1024, $maxRequestBodySize);
+    }
+
+    /**
+     * The time the agent waits for the APM Server on process exit has to be limited by server_timeout,
+     * it should not depend on how long the APM Server takes to respond.
+     *
+     * Note that in this case the limit is enforced also by the timeout of a single request (server_timeout).
+     * @see testShutdownIsBoundedWhenServerTimeoutIsZero for the case when it is not
+     */
+    public function testShutdownIsBoundedWhenApmServerIsSlow(): void
+    {
+        if (self::skipIfMainAppCodeHostIsNotCliScript()) {
+            return;
+        }
+
+        $serverTimeoutInSeconds = 1;
+        $delayOfResponseInSeconds = 3;
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeHostParams) use ($serverTimeoutInSeconds): void {
+                $appCodeHostParams->setAgentOption(OptionNames::ASYNC_BACKEND_COMM, 'true');
+                $appCodeHostParams->setAgentOption(OptionNames::SERVER_TIMEOUT, $serverTimeoutInSeconds . 's');
+            }
+        );
+        $testCaseHandle->setMockApmServerBehavior(
+            [__CLASS__, 'mockApmServerBehaviorWithDelayedResponses'],
+            [self::DELAY_OF_INTAKE_API_RESPONSE_MS_KEY => $delayOfResponseInSeconds * 1000]
+        );
+
+        $startTime = microtime(/* as_float */ true);
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestManySpans']),
+            function (AppCodeRequestParams $appCodeRequestParams): void {
+                $appCodeRequestParams->setAppCodeArgs([self::SPANS_COUNT_KEY => 5]);
+            }
+        );
+        $elapsedInSeconds = microtime(/* as_float */ true) - $startTime;
+
+        // The process has to exit not later than about server_timeout after the end of the script.
+        // If it waited for the responses of all the requests it would take at least 2 * $delayOfResponseInSeconds.
+        self::assertLessThan(2 * $delayOfResponseInSeconds - 1, $elapsedInSeconds);
+    }
+
+    /**
+     * When server_timeout is 0 the timeout of a single request is disabled, but the time the agent waits for the APM Server
+     * on process exit is still limited (to 30 seconds). A request that is in progress when the limit passes is aborted
+     * (libcurl progress callback), the request timeout cannot do it in this case.
+     * If it was not aborted the process would exit only after the APM Server responds (after 36 seconds).
+     */
+    public function testShutdownIsBoundedWhenServerTimeoutIsZero(): void
+    {
+        if (self::skipIfMainAppCodeHostIsNotCliScript()) {
+            return;
+        }
+
+        $shutdownLimitInSeconds = 30; // see ELASTIC_APM_DEFAULT_SHUTDOWN_SEND_TIMEOUT_IN_MILLISECONDS
+        $delayOfResponseInSeconds = $shutdownLimitInSeconds + 6;
+        $testCaseHandle = $this->getTestCaseHandle();
+        $appCodeHost = $testCaseHandle->ensureMainAppCodeHost(
+            function (AppCodeHostParams $appCodeHostParams): void {
+                $appCodeHostParams->setAgentOption(OptionNames::ASYNC_BACKEND_COMM, 'true');
+                $appCodeHostParams->setAgentOption(OptionNames::SERVER_TIMEOUT, '0');
+            }
+        );
+        $testCaseHandle->setMockApmServerBehavior(
+            [__CLASS__, 'mockApmServerBehaviorWithDelayedResponses'],
+            [self::DELAY_OF_INTAKE_API_RESPONSE_MS_KEY => $delayOfResponseInSeconds * 1000]
+        );
+
+        $startTime = microtime(/* as_float */ true);
+        $appCodeHost->sendRequest(
+            AppCodeTarget::asRouted([__CLASS__, 'appCodeForTestManySpans']),
+            function (AppCodeRequestParams $appCodeRequestParams): void {
+                $appCodeRequestParams->setAppCodeArgs([self::SPANS_COUNT_KEY => 3]);
+            }
+        );
+        $elapsedInSeconds = microtime(/* as_float */ true) - $startTime;
+
+        // It took the limit and not less (the agent waited for the response) and not as long as the response
+        self::assertGreaterThan($shutdownLimitInSeconds - 3, $elapsedInSeconds);
+        self::assertLessThan($delayOfResponseInSeconds - 2.5, $elapsedInSeconds);
     }
 
     private const WAIT_FOR_RECONNECT_COUNT_KEY = 'wait_for_reconnect_count';

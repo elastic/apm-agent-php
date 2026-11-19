@@ -52,7 +52,7 @@ final class GenerateUnpackScriptsTest extends ComponentTestCaseBase implements L
     private const PHP_VERSION_7_4 = '7.4';
     // Make sure list of PHP versions supported by the Elastic APM PHP Agent is in sync.
     // See the comment in .ci/shared.sh
-    private const SUPPORTED_PHP_VERSIONS = ['7.2', '7.3', self::PHP_VERSION_7_4, '8.0', '8.1', '8.2', '8.3', '8.4'];
+    private const SUPPORTED_PHP_VERSIONS = ['7.2', '7.3', self::PHP_VERSION_7_4, '8.0', '8.1', '8.2', '8.3', '8.4', '8.5'];
 
     private const LINUX_PACKAGE_TYPE_DEB = 'deb';
     private const LINUX_PACKAGE_TYPE_RPM = 'rpm';

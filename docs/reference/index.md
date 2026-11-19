@@ -14,6 +14,9 @@ applies_to:
 
 The Elastic APM PHP Agent measures the performance of your application and tracks errors. It is an extension that must be installed in your PHP environment.
 
+:::::{note}
+Elastic supports OpenTelemetry, which allows logs, metrics, and trace signal collection for many of the [supported technologies](/reference/supported-technologies.md) below. Consider using the [EDOT PHP SDK](elastic-otel-php://reference/edot-php/index.md) for observability data so you continue to get the full power of Elastic's platform.
+:::::
 
 ## Additional Components [additional-components]
 
