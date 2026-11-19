@@ -383,7 +383,7 @@ final class TransactionForExtensionRequest
         if (
             $this->lastThrown !== null
             && $phpErrorData->message !== null
-            && TextUtil::isPrefixOf('Uncaught Exception: ', $phpErrorData->message, /* isCaseSensitive: */ false)
+            && TextUtil::isPrefixOf('Uncaught ' . get_class($this->lastThrown) . ':', $phpErrorData->message, /* isCaseSensitive: */ false)
         ) {
             $relatedThrowable = $this->lastThrown;
             $this->lastThrown = null;
