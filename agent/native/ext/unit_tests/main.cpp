@@ -52,6 +52,7 @@ int run_ResultCode_tests( int argc, const char* argv[] );
 // int run_parse_value_with_units_tests();
 int run_backend_comm_backoff_tests();
 int run_proxy_env_snapshot_tests();
+int run_backend_comm_batching_tests();
 
 int main( int argc, const char* argv[] )
 {
@@ -76,6 +77,7 @@ int main( int argc, const char* argv[] )
     // failedTestsCount += run_parse_value_with_units_tests();
     failedTestsCount += run_backend_comm_backoff_tests();
     failedTestsCount += run_proxy_env_snapshot_tests();
+    failedTestsCount += run_backend_comm_batching_tests();
 
     // gen_numbered_intercepting_callbacks_src( 1000 );
 
