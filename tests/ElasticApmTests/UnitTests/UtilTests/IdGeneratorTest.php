@@ -49,6 +49,12 @@ class IdGeneratorTest extends TestCase
         self::assertSame(1, preg_match('/^[0-9a-f]+$/', $id));
     }
 
+    public function testNonPositiveLength(): void
+    {
+        self::assertSame('', IdGenerator::generateId(0));
+        self::assertSame('', IdGenerator::generateId(-1));
+    }
+
     public function testUniqueEvenIfMtRandIsReseeded(): void
     {
         $count = 10000;

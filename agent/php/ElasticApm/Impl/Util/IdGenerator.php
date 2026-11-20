@@ -37,6 +37,10 @@ final class IdGenerator
 
     public static function generateId(int $idLengthInBytes): string
     {
+        if ($idLengthInBytes < 1) {
+            return '';
+        }
+
         try {
             return bin2hex(random_bytes($idLengthInBytes));
         } catch (\Throwable $ex) {
