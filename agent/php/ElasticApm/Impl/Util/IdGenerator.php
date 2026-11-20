@@ -41,13 +41,18 @@ final class IdGenerator
             return '';
         }
 
-        try {
-            return bin2hex(random_bytes($idLengthInBytes));
-        } catch (\Throwable $ex) {
-            // random_bytes() throws if no OS entropy source is available (for example getrandom() blocked by seccomp).
-            // The agent must never break the host application so fall back to mt_rand().
-            return self::generateIdUsingMtRand($idLengthInBytes);
+        // function_exists() is false if random_bytes() is turned off by disable_functions. On PHP 7.x calling
+        // a disabled function emits a warning (visible to the application's error handler) instead of throwing.
+        if (function_exists('random_bytes')) {
+            try {
+                return bin2hex(random_bytes($idLengthInBytes));
+            } catch (\Throwable $ex) {
+                // random_bytes() throws if no OS entropy source is available (for example getrandom() blocked by
+                // seccomp). The agent must never break the host application so fall back to mt_rand().
+            }
         }
+
+        return self::generateIdUsingMtRand($idLengthInBytes);
     }
 
     private static function generateIdUsingMtRand(int $idLengthInBytes): string
