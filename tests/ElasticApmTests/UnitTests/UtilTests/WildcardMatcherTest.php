@@ -53,8 +53,14 @@ class WildcardMatcherTest extends TestCase
         $externalDataJson = ExternalTestData::readJsonSpecsFile('wildcard_matcher_tests.json');
         self::assertIsArray($externalDataJson);
         foreach ($externalDataJson as $testDesc => $testCases) {
+            self::assertIsString($testDesc);
+            self::assertIsArray($testCases);
             foreach ($testCases as $expr => $textToExpectedResultPairs) {
+                self::assertIsString($expr);
+                self::assertIsArray($textToExpectedResultPairs);
                 foreach ($textToExpectedResultPairs as $text => $expectedResult) {
+                    self::assertIsString($text);
+                    self::assertIsBool($expectedResult);
                     yield [$testDesc, $expr, $text, $expectedResult];
                 }
             }

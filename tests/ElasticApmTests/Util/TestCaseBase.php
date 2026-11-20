@@ -105,8 +105,8 @@ class TestCaseBase extends TestCase
     }
 
     /**
-     * @param array<mixed> $subSet
-     * @param array<mixed> $largerSet
+     * @param array<int|string> $subSet
+     * @param array<int|string> $largerSet
      */
     public static function assertListArrayIsSubsetOf(array $subSet, array $largerSet): void
     {
@@ -320,8 +320,8 @@ class TestCaseBase extends TestCase
      */
     public static function assertEqualAsSets(array $expected, array $actual, string $message = ''): void
     {
-        self::assertTrue(sort(/* ref */ $expected));
-        self::assertTrue(sort(/* ref */ $actual));
+        sort(/* ref */ $expected);
+        sort(/* ref */ $actual);
         self::assertEqualsCanonicalizing($expected, $actual, $message);
     }
 
@@ -484,9 +484,21 @@ class TestCaseBase extends TestCase
         );
     }
 
+    /**
+     * Increments PHPUnit's assertion count so that a test without other assertions is not reported as risky
+     */
     public static function dummyAssert(): void
     {
-        self::assertTrue(true);
+        self::assertThat(true, self::isTrue());
+    }
+
+    /**
+     * Verifies that a line number hardcoded in tests (for example as a constant) still matches the source code.
+     * It is a separate method to make it explicit that the values are expected to be known at the time of writing the test.
+     */
+    public static function assertSameLineNumber(int $expected, int $actual): void
+    {
+        self::assertSame($expected, $actual);
     }
 
     protected static function addMessageStackToException(Exception $ex): void
@@ -1163,7 +1175,7 @@ class TestCaseBase extends TestCase
          *      and
          *  - PHPUnit 9, where assertDirectoryNotExists is deprecated
          */
-        if (method_exists(Assert::class, __FUNCTION__)) {
+        if (method_exists(Assert::class, __FUNCTION__)) { // @phpstan-ignore function.alreadyNarrowedType (method does not exist in PHPUnit 8.5)
             Assert::assertDirectoryDoesNotExist($directory, $message);
         } else {
             /** @noinspection PhpDeprecationInspection, PhpUnitDeprecatedCallsIn10VersionInspection */

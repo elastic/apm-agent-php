@@ -75,8 +75,10 @@ final class IterableUtilForTests
     }
 
     /**
-     * @param iterable<mixed> $iterable
-     * @param mixed          &$valOut
+     * @template TValue
+     *
+     * @param iterable<TValue> $iterable
+     * @param TValue          &$valOut
      *
      * @return bool
      */
@@ -88,7 +90,7 @@ final class IterableUtilForTests
     /**
      * @template TValue
      *
-     * @param iterable<mixed>  $iterable
+     * @param iterable<TValue> $iterable
      * @param int              $n
      * @param TValue          &$valOut
      *
@@ -202,9 +204,11 @@ final class IterableUtilForTests
     }
 
     /**
-     * @param iterable<mixed> $iterables
+     * @template TValue
      *
-     * @return Generator<mixed[]>
+     * @param iterable<TValue> ...$iterables
+     *
+     * @return Generator<int, list<TValue>>
      */
     public static function zip(iterable ...$iterables): Generator
     {

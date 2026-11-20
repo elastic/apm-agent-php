@@ -49,6 +49,7 @@ final class RegistrationContext implements RegistrationContextInterface
          *
          * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
          * @phpstan-ignore-next-line
+         * @var int $interceptRegistrationId
          */
         $interceptRegistrationId = \elastic_apm_intercept_calls_to_internal_method(
             // PHP internals store classes, methods and functions in a hashtable
@@ -70,14 +71,15 @@ final class RegistrationContext implements RegistrationContextInterface
         string $functionName,
         callable $preHook
     ): void {
+        // PHP internals store classes, methods and functions in a hashtable
+        // where key is a name converted to lower case
         /**
          * elastic_apm_* functions are provided by the elastic_apm extension
          *
          * @noinspection PhpFullyQualifiedNameUsageInspection, PhpUndefinedFunctionInspection
          * @phpstan-ignore-next-line
+         * @var int $interceptRegistrationId
          */
-        // PHP internals store classes, methods and functions in a hashtable
-        // where key is a name converted to lower case
         $interceptRegistrationId = \elastic_apm_intercept_calls_to_internal_function(strtolower($functionName));
         if ($interceptRegistrationId >= 0) {
             $this->interceptedCallRegistrations[$interceptRegistrationId] = new Registration(

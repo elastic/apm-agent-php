@@ -39,6 +39,7 @@ trait JsonSerializableTrait
 
         $className = ClassNameUtil::fqToShort(get_class($this));
         foreach (get_object_vars($this) as $propName => $propValue) {
+            /** @var string $propName */
             JsonUtilForTests::assertJsonDeserializable($propValue, $className . '->' . $propName);
             $result[$propName] = $propValue;
         }

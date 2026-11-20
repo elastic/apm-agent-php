@@ -459,6 +459,7 @@ final class WordPressMockBridge
         AssertMessageStack::newScope(/* out */ $dbgCtx);
 
         global $wp_filter;
+        /** @var array<string, WordPressMockWpHook> $wp_filter */
         self::assertInvariant($wp_filter);
 
         foreach (self::$removeFilterCalls as $removeFilterCall) {

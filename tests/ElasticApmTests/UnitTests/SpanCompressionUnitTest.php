@@ -72,8 +72,6 @@ class SpanCompressionUnitTest extends TracerUnitTestCaseBase
 
     /**
      * @param array<string, string|int|float|bool> $options
-     *
-     * @phpstan-assert !null $this->mockClock
      */
     private function rebuildTracerWithMockClock(array $options): MockClock
     {

@@ -128,6 +128,7 @@ class BreakdownMetricsTest extends TracerUnitTestCaseBase
             $this->assertNotNull($metricSet->spanType);
             $found = false;
             foreach ($expectedSelfTimes as $expectedSelfTime) {
+                $this->assertIsArray($expectedSelfTime);
                 if ($expectedSelfTime[self::EXPECTED_SPAN_TYPE] !== $metricSet->spanType) {
                     continue;
                 }
@@ -146,6 +147,7 @@ class BreakdownMetricsTest extends TracerUnitTestCaseBase
                 $actualSpanDurationSum = $metricSet->getSample(self::EXPECTED_SPAN_SELF_TIME_SUM_US_SAMPLE_KEY);
                 $expectedSpanCount = $expectedSelfTime[self::EXPECTED_SPAN_SELF_TIME_COUNT];
                 $expectedSpanDurationSum = $expectedSelfTime[self::EXPECTED_SPAN_SELF_TIME_SUM];
+                $this->assertIsNumeric($expectedSpanDurationSum);
                 $this->assertSame($expectedSpanCount, $actualSpanCount);
                 $this->assertSame(floatval($expectedSpanDurationSum), floatval($actualSpanDurationSum));
 

@@ -1,11 +1,18 @@
 {
     "name": "elastic/apm-agent",
     "description": "Elastic APM PHP Agent",
-    "keywords": [ "elastic", "apm", "tracing", "apm-agent" ],
+    "keywords": [
+        "elastic",
+        "apm",
+        "tracing",
+        "apm-agent"
+    ],
     "type": "library",
     "license": "Apache-2.0",
     "authors": [
-        { "name": "Sergey Kleyman" }
+        {
+            "name": "Sergey Kleyman"
+        }
     ],
     "require": {
         "php": "^7.2||8.0.*||8.1.*||8.2.*||8.3.*||8.4.*||8.5.*",
@@ -27,8 +34,8 @@
         "php-ds/php-ds": "^1.5.0",
         "php-parallel-lint/php-console-highlighter": "^1.0",
         "php-parallel-lint/php-parallel-lint": "1.3.2",
-        "phpstan/phpstan": "^1.12",
-        "phpstan/phpstan-phpunit": "^1.4",        
+        "phpstan/phpstan": "^1.12||^2.3",
+        "phpstan/phpstan-phpunit": "^1.4||^2.1",
         "phpunit/phpunit": "^8.5||^9.5",
         "react/async": "^3.0",
         "react/http": "^1.6",

@@ -83,6 +83,7 @@ final class StringOptionTestValuesGenerator implements OptionTestValuesGenerator
 
         $stringFromAllCharsToUse = '';
         foreach ($charsToUse as $charToUse) {
+            /** @var int<0, 255> $charToUse */
             $stringFromAllCharsToUse .= chr($charToUse);
         }
         yield $stringFromAllCharsToUse;
@@ -90,6 +91,7 @@ final class StringOptionTestValuesGenerator implements OptionTestValuesGenerator
         // any two chars (even the same one twice)
         foreach (RangeUtil::generateUpTo(count($charsToUse)) as $i) {
             foreach (RangeUtil::generateUpTo(count($charsToUse)) as $j) {
+                /** @var array<int<0, 255>> $charsToUse */
                 yield chr($charsToUse[$i]) . chr($charsToUse[$j]);
             }
         }
@@ -100,7 +102,12 @@ final class StringOptionTestValuesGenerator implements OptionTestValuesGenerator
             $randString = '';
             /** @noinspection PhpUnusedLocalVariableInspection */
             foreach (RangeUtil::generateUpTo($numberOfChars) as $__) {
-                $randString .= chr(RandomUtilForTests::generateIntInRange(0, count($charsToUse) - 1));
+                // Select a character from the configured set: passing the index directly to chr()
+                // produced control characters and excluded configured characters with higher byte values.
+                $index = RandomUtilForTests::generateIntInRange(0, count($charsToUse) - 1);
+                /** @var int<0, 255> $codePoint */
+                $codePoint = $charsToUse[$index];
+                $randString .= chr($codePoint);
             }
             yield $randString;
         }

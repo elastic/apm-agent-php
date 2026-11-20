@@ -69,10 +69,10 @@ final class MockApmServerBehaviorDto implements JsonSerializable, JsonDeserializ
 
         TestCaseBase::assertIsCallable($this->buildCallable);
         TestCaseBase::assertIsArray($this->buildCallable);
-        /** @var array<mixed> $buildCallableAsArray */
         $buildCallableAsArray = $this->buildCallable;
         TestCaseBase::assertCount(2, $buildCallableAsArray);
         TestCaseBase::assertIsString($buildCallableAsArray[0]);
+        TestCaseBase::assertIsString($buildCallableAsArray[1]);
         TestCaseBase::assertTrue(class_exists($buildCallableAsArray[0]));
         TestCaseBase::assertTrue(method_exists($buildCallableAsArray[0], $buildCallableAsArray[1]));
     }

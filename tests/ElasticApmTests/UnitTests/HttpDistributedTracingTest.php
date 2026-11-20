@@ -68,9 +68,6 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
     private static function generateVendorKeyEx(int $length, CharSetForTests $firstCharSet): string
     {
         Assert::assertGreaterThan(0, $length);
-        if ($length === 0) {
-            return '';
-        }
         return $firstCharSet->getRandom() . self::validVendorIdSuffixChars()->generateString($length - 1);
     }
 
@@ -240,6 +237,8 @@ class HttpDistributedTracingTest extends TracerUnitTestCaseBase
         foreach ($headers as $header) {
             self::assertIsArray($header);
             self::assertCount(2, $header);
+            self::assertIsString($header[0]);
+            self::assertIsString($header[1]);
             if (strtolower($header[0]) === 'traceparent') {
                 $traceParentHeaderValues[] = $header[1];
             }

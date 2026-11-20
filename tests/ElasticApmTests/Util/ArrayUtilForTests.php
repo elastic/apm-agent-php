@@ -66,9 +66,14 @@ final class ArrayUtilForTests
     }
 
     /**
-     * @param string|int           $key
-     * @param mixed                $value
-     * @param array<string, mixed> $result
+     * @template TKey of array-key
+     * @template TValue
+     *
+     * @param TKey                $key
+     * @param TValue              $value
+     * @param array<TKey, TValue> $result
+     *
+     * @param-out array<TKey, TValue> $result
      */
     public static function addUnique($key, $value, array &$result): void
     {
@@ -151,8 +156,8 @@ final class ArrayUtilForTests
     }
 
     /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
+     * @param string                  $argKey
+     * @param array<array-key, mixed> $argsMap
      *
      * @return mixed
      */
@@ -163,8 +168,8 @@ final class ArrayUtilForTests
     }
 
     /**
-     * @param string               $argKey
-     * @param array<string, mixed> $argsMap
+     * @param string                  $argKey
+     * @param array<array-key, mixed> $argsMap
      *
      * @return bool
      */

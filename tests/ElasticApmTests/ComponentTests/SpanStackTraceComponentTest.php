@@ -54,7 +54,7 @@ class SpanStackTraceComponentTest extends ComponentTestCaseBase
      */
     private static function sharedCodeForTestAllSpanCreatingApis(): array
     {
-        /** @var array<string, mixed> $expectedData */
+        /** @var array<string, array<string, mixed>> $expectedData */
         $expectedData = [];
         $createSpanApis = SpanStackTraceTestSharedCode::allSpanCreatingApis(/* ref */ $expectedData);
 

@@ -90,7 +90,9 @@ final class EnumOptionTestValuesGenerator implements OptionTestValuesGeneratorIn
         $remainderStartIndex = 0;
         foreach ($letterToFlipIndexes as $letterToFlipIndex) {
             $result .= substr($srcStr, $remainderStartIndex, $letterToFlipIndex - $remainderStartIndex);
-            $result .= chr(TextUtil::flipLetterCase(ord($srcStr[$letterToFlipIndex])));
+            /** @var int<0, 255> $codePoint */
+            $codePoint = TextUtil::flipLetterCase(ord($srcStr[$letterToFlipIndex]));
+            $result .= chr($codePoint);
             $remainderStartIndex = $letterToFlipIndex + 1;
         }
         $result .= substr($srcStr, $remainderStartIndex);

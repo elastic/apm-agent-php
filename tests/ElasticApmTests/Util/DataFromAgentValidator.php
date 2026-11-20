@@ -149,6 +149,7 @@ class DataFromAgentValidator
 
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
+        /** @var array<int, ErrorDto[]> $orderTraceReceivedIndexToErrors */
         $orderTraceReceivedIndexToErrors = [];
         foreach ($this->actual->idToError as $error) {
             $orderTraceReceivedIndex = array_search($error->traceId, $traceIdsInOrderReceived, /* strict */ true);

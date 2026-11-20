@@ -40,7 +40,7 @@ final class ConfigSnapshotForTests implements LoggableInterface
     use LoggableTrait;
 
     /** @var ?AppCodeHostKind */
-    private $appCodeHostKind = null;
+    private $appCodeHostKind = null; // @phpstan-ignore property.unusedType (assigned dynamically by SnapshotTrait)
 
     /** @var ?string */
     public $appCodePhpExe;

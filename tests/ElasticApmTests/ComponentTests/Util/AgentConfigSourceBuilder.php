@@ -50,9 +50,6 @@ final class AgentConfigSourceBuilder implements LoggableInterface
     /** @var AppCodeHostParams */
     private $appCodeHostParams;
 
-    /** @var ?string */
-    private $tempIniFileFullPath = null;
-
     public function __construct(ResourcesClient $resourcesClient, AppCodeHostParams $appCodeHostParams)
     {
         $this->logger = AmbientContextForTests::loggerFactory()->loggerForClass(
@@ -238,10 +235,6 @@ final class AgentConfigSourceBuilder implements LoggableInterface
 
     private function ensureTempIniFileCreated(): string
     {
-        if ($this->tempIniFileFullPath !== null) {
-            return $this->tempIniFileFullPath;
-        }
-
         $tempIniFileFullPath = $this->resourcesClient->createTempFile(
             'php.ini for app code host' /* <- dbgTempFilePurpose */,
             AmbientContextForTests::testConfig()->deleteTempPhpIni /* <- shouldBeDeletedOnTestExit */

@@ -191,23 +191,24 @@ final class Transaction extends ExecutionSegment implements TransactionInterface
             return;
         }
 
-        /**
-         * @param null|string|string[] $headersExtractorRetVal
-         *
-         * @return string[]
-         */
-        $adaptHeadersExtractorRetVal = function ($headersExtractorRetVal): array {
-            return $headersExtractorRetVal === null
-                ? []
-                : (is_string($headersExtractorRetVal) ? [$headersExtractorRetVal] : $headersExtractorRetVal);
-        };
-
-        $traceParentHeaderValues = $adaptHeadersExtractorRetVal(
+        $traceParentHeaderValues = self::adaptHeadersExtractorRetVal(
             $headersExtractor(HttpDistributedTracing::TRACE_PARENT_HEADER_NAME)
         );
-        $traceStateHeaderValues = $adaptHeadersExtractorRetVal(
+        $traceStateHeaderValues = self::adaptHeadersExtractorRetVal(
             $headersExtractor(HttpDistributedTracing::TRACE_STATE_HEADER_NAME)
         );
+    }
+
+    /**
+     * @param null|string|string[] $headersExtractorRetVal
+     *
+     * @return string[]
+     */
+    private static function adaptHeadersExtractorRetVal($headersExtractorRetVal): array
+    {
+        return $headersExtractorRetVal === null
+            ? []
+            : (is_string($headersExtractorRetVal) ? [$headersExtractorRetVal] : $headersExtractorRetVal);
     }
 
     /** @inheritDoc */

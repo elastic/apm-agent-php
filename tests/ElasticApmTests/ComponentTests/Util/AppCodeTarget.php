@@ -49,6 +49,7 @@ final class AppCodeTarget implements JsonDeserializableInterface, LoggableInterf
         TestCaseBase::assertIsArray($appCodeClassMethod);
         /** @noinspection PhpParamsInspection */
         TestCaseBase::assertCount(2, $appCodeClassMethod);
+        TestCaseBase::assertIsString($appCodeClassMethod[0]);
 
         $thisObj = new AppCodeTarget();
         $thisObj->appCodeClass = $appCodeClassMethod[0];

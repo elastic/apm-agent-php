@@ -504,7 +504,7 @@ final class SpanCompressionSharedCode implements LoggableInterface
             TestCaseBase::assertNotNull($expectedParentSpan);
 
             $receivedChildrenSpans = $receivedSpans;
-            /** @var SpanDto $receivedParentSpan */
+            /** @var ?SpanDto $receivedParentSpan */
             $receivedParentSpan = null;
             foreach ($receivedChildrenSpans as $key => $receivedSpan) {
                 if ($receivedSpan->name === 'test_parent_span_name') {

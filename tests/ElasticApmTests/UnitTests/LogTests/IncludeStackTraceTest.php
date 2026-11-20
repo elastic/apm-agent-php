@@ -64,7 +64,7 @@ class IncludeStackTraceTest extends TestCaseBase
 
     /**
      * @param array<string, mixed> $expectedSrcCodeData
-     * @param array<string, mixed> $actualFrame
+     * @param array<mixed>         $actualFrame
      *
      * @return void
      */
@@ -116,16 +116,21 @@ class IncludeStackTraceTest extends TestCaseBase
         self::assertArrayHasKeyWithValue(LogBackend::NAMESPACE_KEY, __NAMESPACE__, $actualCtx);
         self::assertArrayHasKey(LogBackend::CLASS_KEY, $actualCtx);
         $thisClassShortName = ClassNameUtil::fqToShort(__CLASS__);
-        self::assertSame($thisClassShortName, ClassNameUtil::fqToShort($actualCtx[LogBackend::CLASS_KEY]));
+        $actualClass = $actualCtx[LogBackend::CLASS_KEY];
+        self::assertIsString($actualClass);
+        self::assertSame($thisClassShortName, ClassNameUtil::fqToShort($actualClass)); // @phpstan-ignore argument.type (logged class name is not necessarily fully qualified)
 
         self::assertArrayHasKey(LoggableStackTrace::STACK_TRACE_KEY, $actualCtx);
         $actualStackTrace = $actualCtx[LoggableStackTrace::STACK_TRACE_KEY];
+        self::assertIsArray($actualStackTrace);
         self::assertGreaterThanOrEqual(2, count($actualStackTrace));
+        self::assertIsArray($actualStackTrace[0]);
         self::verifyStackFrame($expectedSrcCodeDataForTopFrame, $actualStackTrace[0]);
         $expectedSrcCodeDataForThisFrame = [
             StackTraceUtil::FUNCTION_KEY => __FUNCTION__,
             StackTraceUtil::LINE_KEY     => $expectedSrcCodeLineForThisFrame,
         ];
+        self::assertIsArray($actualStackTrace[1]);
         self::verifyStackFrame($expectedSrcCodeDataForThisFrame, $actualStackTrace[1]);
     }
 }

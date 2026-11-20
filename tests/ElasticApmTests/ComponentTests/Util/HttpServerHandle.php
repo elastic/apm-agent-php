@@ -165,10 +165,12 @@ class HttpServerHandle implements LoggableInterface
             Assert::assertIsArray($propVal);
             Assert::assertNotEmpty($propVal);
             Assert::assertNotEmpty(ArrayUtil::isList($propVal));
+            $result = [];
             foreach ($propVal as $arrayElement) {
                 Assert::assertIsInt($arrayElement);
+                $result[] = $arrayElement;
             }
-            return $propVal;
+            return $result;
         };
 
         return new self(

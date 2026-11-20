@@ -36,7 +36,7 @@ class CreateErrorTest extends TracerUnitTestCaseBase
         // Act
 
         // Assert
-        $this->assertSame(1, 1);
+        self::dummyAssert();
     }
 
     public function testFromThrowableGetCodeReturnsInt(): void
@@ -46,7 +46,7 @@ class CreateErrorTest extends TracerUnitTestCaseBase
         // Act
 
         // Assert
-        $this->assertSame(1, 1);
+        self::dummyAssert();
     }
 
     public function testFromThrowableGetCodeReturnsString(): void
@@ -56,7 +56,7 @@ class CreateErrorTest extends TracerUnitTestCaseBase
         // Act
 
         // Assert
-        $this->assertSame(1, 1);
+        self::dummyAssert();
     }
 
     public function testFromThrowableGetCodeReturnsArray(): void
@@ -66,7 +66,7 @@ class CreateErrorTest extends TracerUnitTestCaseBase
         // Act
 
         // Assert
-        $this->assertSame(1, 1);
+        self::dummyAssert();
     }
 
     public function testFromThrowableGetCodeReturnsObject(): void
@@ -76,6 +76,6 @@ class CreateErrorTest extends TracerUnitTestCaseBase
         // Act
 
         // Assert
-        $this->assertSame(1, 1);
+        self::dummyAssert();
     }
 }

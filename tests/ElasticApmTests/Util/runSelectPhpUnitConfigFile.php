@@ -25,5 +25,6 @@ require __DIR__ . '/../../bootstrap.php';
 
 use ElasticApmTests\Util\SelectPhpUnitConfigFile;
 
-$phpUnitConfigFileName = SelectPhpUnitConfigFile::run($_SERVER['argv']);
+assert(isset($argv));
+$phpUnitConfigFileName = SelectPhpUnitConfigFile::run($argv);
 echo $phpUnitConfigFileName;
