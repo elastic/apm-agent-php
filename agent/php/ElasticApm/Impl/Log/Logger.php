@@ -212,7 +212,7 @@ final class Logger implements LoggableInterface
         if ($this->data->backend->isEnabledForLevel(Level::TRACE)) {
             return $value;
         }
-        return 'REDUCTED (POSSIBLY SECURITY SENSITIVE) DATA';
+        return 'REDACTED (POSSIBLY SECURITY SENSITIVE) DATA';
     }
 
     public function toLog(LogStreamInterface $stream): void
