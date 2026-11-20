@@ -37,33 +37,29 @@ final class IdGenerator
 
     public static function generateId(int $idLengthInBytes): string
     {
-        return self::convertBinaryIdToString(self::generateBinaryId($idLengthInBytes));
+        if ($idLengthInBytes < 1) {
+            return '';
+        }
+
+        // function_exists() is false if random_bytes() is turned off by disable_functions. On PHP 7.x calling
+        // a disabled function emits a warning (visible to the application's error handler) instead of throwing.
+        if (function_exists('random_bytes')) {
+            try {
+                return bin2hex(random_bytes($idLengthInBytes));
+            } catch (\Throwable $ex) {
+                // random_bytes() throws if no OS entropy source is available (for example getrandom() blocked by
+                // seccomp). The agent must never break the host application so fall back to mt_rand().
+            }
+        }
+
+        return self::generateIdUsingMtRand($idLengthInBytes);
     }
 
-    /**
-     * @param array<int> $binaryId
-     *
-     * @return string
-     */
-    private static function convertBinaryIdToString(array $binaryId): string
+    private static function generateIdUsingMtRand(int $idLengthInBytes): string
     {
         $result = '';
-        for ($i = 0; $i < count($binaryId); ++$i) {
-            $result .= sprintf('%02x', $binaryId[$i]);
-        }
-        return $result;
-    }
-
-    /**
-     * @param int $idLengthInBytes
-     *
-     * @return array<int>
-     */
-    private static function generateBinaryId(int $idLengthInBytes): array
-    {
-        $result = [];
         for ($i = 0; $i < $idLengthInBytes; ++$i) {
-            $result[] = mt_rand(0, 255);
+            $result .= sprintf('%02x', mt_rand(0, 255));
         }
         return $result;
     }

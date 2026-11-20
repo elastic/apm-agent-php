@@ -32,8 +32,21 @@ final class RandomUtil
 {
     use StaticClassTrait;
 
+    private const MAX_INT_FOR_01_FLOAT = 0x7FFFFFFF;
+
     public static function generate01Float(): float
     {
+        // function_exists() is false if random_int() is turned off by disable_functions. On PHP 7.x calling
+        // a disabled function emits a warning and returns null instead of throwing.
+        if (function_exists('random_int')) {
+            try {
+                return random_int(0, self::MAX_INT_FOR_01_FLOAT) / self::MAX_INT_FOR_01_FLOAT;
+            } catch (\Throwable $ex) {
+                // random_int() throws if no OS entropy source is available (for example getrandom() blocked by
+                // seccomp). The agent must never break the host application so fall back to mt_rand().
+            }
+        }
+
         return mt_rand(0, mt_getrandmax()) / mt_getrandmax();
     }
 }
