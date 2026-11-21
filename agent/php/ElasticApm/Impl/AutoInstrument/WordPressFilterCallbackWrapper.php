@@ -91,6 +91,11 @@ final class WordPressFilterCallbackWrapper implements LoggableInterface
      */
     public function __invoke()
     {
+        if ( ! $this->shouldInstrument() ) {
+            /** @phpstan-assert callable(mixed ...): mixed $this->callback */
+            return call_user_func_array( $this->callback, func_get_args() );
+        }
+
         /** @phpstan-assert callable(mixed ...): mixed $this->callback */
         return AutoInstrumentationUtil::captureCurrentSpan(
             $this->hookName . ' - ' . ($this->callbackGroupName ?? WordPressAutoInstrumentation::SPAN_NAME_PART_FOR_CORE) /* <- name */,
@@ -102,4 +107,18 @@ final class WordPressFilterCallbackWrapper implements LoggableInterface
             1 /* <- numberOfStackFramesToSkip - 1 because we don't want the current method (i.e., WordPressFilterCallbackWrapper->__invoke) to be kept */
         );
     }
+
+    private function shouldInstrument()
+    {
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            return true;
+        }
+    
+        if ( null !== $this->callbackGroupName && WordPressAutoInstrumentation::SPAN_NAME_PART_FOR_CORE !== $this->callbackGroupName ) {
+            return true;
+        }
+    
+        return false;
+    }
+
 }
