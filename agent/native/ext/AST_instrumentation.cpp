@@ -533,7 +533,7 @@ zend_ast* createAstStandaloneNotFqFunctionCall( StringView funcName, zend_ast* a
     return createAstStandaloneFunctionCall( funcName, /* isFullyQualified */ false, astArgList );
 }
 
-ResultCode createPreHookAstArgListByCaptureSpec( zend_ast_decl* astDecl, ArgCaptureSpecArrayView argCaptureSpecs, /* out */ zend_ast** pResult )
+ResultCode createPreHookAstArgListByCaptureSpec( zend_ast_decl *parentClass, zend_ast_decl* astDecl, ArgCaptureSpecArrayView argCaptureSpecs, /* out */ zend_ast** pResult )
 {
     // AST for PHP code:
     //
@@ -552,12 +552,14 @@ ResultCode createPreHookAstArgListByCaptureSpec( zend_ast_decl* astDecl, ArgCapt
     uint32_t lineNumber = astDecl->start_lineno;
     zend_ast* capturedArgsAstArray = NULL;
 
+
+
     ELASTIC_APM_CALL_IF_FAILED_GOTO( createCapturedArgsAstArray( astDecl, argCaptureSpecs, lineNumber, /* out */ &capturedArgsAstArray ) );
 
     *pResult = createAstListWithThreeChildren(
             ZEND_AST_ARG_LIST
-            , astDecl->kind == ZEND_AST_METHOD ? createAstMagicConst__CLASS__( lineNumber ) : createAstConstNull( lineNumber )
-            , createAstMagicConst__FUNCTION__( lineNumber )
+            , astDecl->kind == ZEND_AST_METHOD ? createAstZValString(makeStringView(ZSTR_VAL(((zend_ast_decl *)parentClass)->name), ZSTR_LEN(((zend_ast_decl *)parentClass)->name)), lineNumber) : createAstConstNull( lineNumber )
+            , createAstZValString(makeStringView(ZSTR_VAL(astDecl->name), ZSTR_LEN(astDecl->name)), lineNumber)
             , capturedArgsAstArray
     );
     resultCode = resultSuccess;
@@ -578,7 +580,7 @@ static StringView g_elastic_apm_ast_instrumentation_pre_hook_funcName = ELASTIC_
  */
 static const size_t g_funcDeclBodyChildIndex = 2;
 
-ResultCode insertAstForFunctionPreHook( zend_ast_decl* funcAstDecl, ArgCaptureSpecArrayView argCaptureSpecs )
+ResultCode insertAstForFunctionPreHook( zend_ast_decl *parentClass, zend_ast_decl* funcAstDecl, ArgCaptureSpecArrayView argCaptureSpecs )
 {
     // Before:
     //
@@ -649,7 +651,7 @@ ResultCode insertAstForFunctionPreHook( zend_ast_decl* funcAstDecl, ArgCaptureSp
         ELASTIC_APM_SET_RESULT_CODE_AND_GOTO_FAILURE();
     }
 
-    ELASTIC_APM_CALL_IF_FAILED_GOTO( createPreHookAstArgListByCaptureSpec( funcAstDecl, argCaptureSpecs, /* out */ &preHookCallAstArgList ) );
+    ELASTIC_APM_CALL_IF_FAILED_GOTO( createPreHookAstArgListByCaptureSpec( parentClass, funcAstDecl, argCaptureSpecs, /* out */ &preHookCallAstArgList ) );
 
     funcAstDecl->child[ g_funcDeclBodyChildIndex ] = createAstListWithTwoChildren(
             ZEND_AST_STMT_LIST
