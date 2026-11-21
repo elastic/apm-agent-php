@@ -406,6 +406,8 @@ auto buildPeriodicTaskExecutor() {
     return periodicTaskExecutor;
 }
 
+static const char* gs_custom_build_log_msg_str = "(CUSTOM BUILD 2025-10-13)";
+
 void elasticApmRequestInit()
 {
     if (!ELASTICAPM_G(globals)->sapi_.isSupported()) {
@@ -448,7 +450,7 @@ void elasticApmRequestInit()
 
     g_pidOnRequestInit = getCurrentProcessId();
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "parent PID: %d", (int)(getParentProcessId()) );
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "%s parent PID: %d", gs_custom_build_log_msg_str, (int)(getParentProcessId()) );
 
     ResultCode resultCode;
 
@@ -576,7 +578,7 @@ void elasticApmRequestShutdown()
         return;
     }
 
-    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY();
+    ELASTIC_APM_LOG_DEBUG_FUNCTION_ENTRY_MSG( "%s", gs_custom_build_log_msg_str );
 
     Tracer* const tracer = getGlobalTracer();
     const ConfigSnapshot* const config = getTracerCurrentConfigSnapshot( tracer );
