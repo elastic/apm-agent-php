@@ -189,7 +189,7 @@ final class PDOAutoInstrumentationUnitTest extends TracerUnitTestCaseBase
         }
 
         foreach (self::PHP_84_DRIVER_SPECIFIC_SUBCLASSES as $className) {
-            if (class_exists($className, /* autoload */ false)) {
+            if (class_exists($className, /* autoload */ false)) { // @phpstan-ignore function.impossibleType
                 self::assertContains($className, $actual);
             }
         }
