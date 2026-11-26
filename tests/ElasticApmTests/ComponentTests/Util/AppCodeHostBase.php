@@ -120,7 +120,6 @@ abstract class AppCodeHostBase extends SpawnedProcessBase
 
         $msg = LoggableToString::convert(AmbientContextForTests::testConfig());
         $appCodeTarget = $dataPerRequest->appCodeTarget;
-        TestCase::assertNotNull($appCodeTarget, $msg);
         TestCase::assertNotNull($appCodeTarget->appCodeClass, $msg);
         TestCase::assertNotNull($appCodeTarget->appCodeMethod, $msg);
 

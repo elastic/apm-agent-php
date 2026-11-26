@@ -63,6 +63,8 @@ final class DataProviderForTestBuilder
         if (!is_array($values)) {
             return $values;
         }
+        // An array is always treated as the list of values (even if it happens to be callable)
+        /** @var array<T> $values */
 
         /**
          * @return iterable<T>
@@ -128,6 +130,7 @@ final class DataProviderForTestBuilder
             function (array $resultSoFar) use ($values): iterable {
                 $expectedKeyForList = 0;
                 foreach (self::adaptArrayToMultiUseIterable($values)() as $key => $val) {
+                    /** @var array-key $key */
                     yield array_merge($resultSoFar, ($key === $expectedKeyForList) ? [$val] : [$key => $val]);
                     ++$expectedKeyForList;
                 }
@@ -541,12 +544,13 @@ final class DataProviderForTestBuilder
      */
     public static function keyEachDataSetWithDbgDesc($dataSetsSource, ?int $emitOnlyDataSetWithIndex = null): iterable
     {
-        if (is_array($dataSetsSource)) {
-            $dataSetsCount = IterableUtilForTests::count($dataSetsSource);
-            $dataSets = $dataSetsSource;
-        } else {
+        // Array of data sets (i.e., array of arrays) cannot be callable
+        if (is_callable($dataSetsSource)) {
             $dataSetsCount = IterableUtilForTests::count($dataSetsSource());
             $dataSets = $dataSetsSource();
+        } else {
+            $dataSetsCount = IterableUtilForTests::count($dataSetsSource);
+            $dataSets = $dataSetsSource;
         }
 
         $dataSetIndex = 0;

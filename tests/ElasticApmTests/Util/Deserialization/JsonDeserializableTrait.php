@@ -32,7 +32,7 @@ use ElasticApmTests\Util\TestCaseBase;
 trait JsonDeserializableTrait
 {
     /**
-     * @param array<string, mixed> $decodedJson
+     * @param array<mixed> $decodedJson
      */
     public function deserializeFromDecodedJson(array $decodedJson): void
     {

@@ -23,7 +23,6 @@ declare(strict_types=1);
 
 namespace Elastic\Apm\Impl\Log;
 
-use Elastic\Apm\Impl\Util\ClassicFormatStackTraceFrame;
 use Elastic\Apm\Impl\Util\ClassNameUtil;
 use Elastic\Apm\Impl\Util\StackTraceUtil;
 
@@ -42,39 +41,42 @@ final class LoggableStackTrace
      * @param int           $numberOfStackFramesToSkip
      * @param ?positive-int $maxNumberOfStackFrames
      *
-     * @return ClassicFormatStackTraceFrame[]
+     * @return list<array<string, mixed>>
      *
      * @phpstan-param 0|positive-int $numberOfStackFramesToSkip
      */
     public static function buildForCurrent(int $numberOfStackFramesToSkip, ?int $maxNumberOfStackFrames = self::MAX_NUMBER_OF_STACK_FRAMES): array
     {
-        /**
-         * @param string $key
-         * @param mixed  $value
-         * @param array  $resultFrame
-         */
-        $setIfNotNull = function (string $key, $value, array &$resultFrame): void {
-            if ($value != null) {
-                $resultFrame[$key] = $value;
-            }
-        };
-
         $classicFormatFrames = (new StackTraceUtil(NoopLoggerFactory::singletonInstance()))->captureInClassicFormat(/* offset */ $numberOfStackFramesToSkip + 1, $maxNumberOfStackFrames);
         $result = [];
 
         foreach ($classicFormatFrames as $classicFormatFrame) {
             $resultFrame = [];
             $adaptFilePath = self::adaptSourceCodeFilePath($classicFormatFrame->file);
-            $setIfNotNull(StackTraceUtil::FILE_KEY, $adaptFilePath, $resultFrame);
-            $setIfNotNull(StackTraceUtil::LINE_KEY, $classicFormatFrame->line, $resultFrame);
+            self::setIfNotNull(StackTraceUtil::FILE_KEY, $adaptFilePath, $resultFrame);
+            self::setIfNotNull(StackTraceUtil::LINE_KEY, $classicFormatFrame->line, $resultFrame);
             if ($classicFormatFrame->class !== null) {
                 $classShortName = ClassNameUtil::fqToShort($classicFormatFrame->class); // @phpstan-ignore-line
                 $resultFrame[StackTraceUtil::CLASS_KEY] = $classShortName;
             }
-            $setIfNotNull(StackTraceUtil::FUNCTION_KEY, $classicFormatFrame->function, $resultFrame);
+            self::setIfNotNull(StackTraceUtil::FUNCTION_KEY, $classicFormatFrame->function, $resultFrame);
             $result[] = $resultFrame;
         }
         return $result;
+    }
+
+    /**
+     * @param string               $key
+     * @param mixed                $value
+     * @param array<string, mixed> $resultFrame
+     *
+     * @param-out array<string, mixed> $resultFrame
+     */
+    private static function setIfNotNull(string $key, $value, array &$resultFrame): void
+    {
+        if ($value != null) {
+            $resultFrame[$key] = $value;
+        }
     }
 
     public static function adaptSourceCodeFilePath(?string $srcFile): ?string

@@ -96,7 +96,7 @@ final class StackTraceUtilTestDummyCodeArgs
      * @param SourceCodeLocation            $calledFromCurrentFunc
      * @param StackTraceFrameExpectations[] $expectations
      *
-     * @return array{callable, mixed[]}
+     * @return array{callable(mixed ...): StackTraceUtilTestDummyCodeRetVal, mixed[]}
      */
     public function getNextCallData(SourceCodeLocation $calledFromCurrentFunc, array $expectations): array
     {

@@ -200,7 +200,7 @@ class ComponentTestCaseBase extends TestCaseBase
         self::assertEqualAsSets($expectedNames, $actualNames);
         $astProcessEnabledDefaultValue = AllOptionsMetadata::get()[OptionNames::AST_PROCESS_ENABLED]->defaultValue();
         $isEnabledByDefault = $astProcessEnabledDefaultValue || (!$instr->requiresUserlandCodeInstrumentation());
-        self::assertSame($isEnabledByDefault, $instr->isEnabled());
+        self::assertSame($isEnabledByDefault, $instr->isEnabled(/* out */ $reasonIfDisabled), LoggableToString::convert(['reasonIfDisabled' => $reasonIfDisabled]));
 
         /**
          * @param string $name
@@ -241,7 +241,7 @@ class ComponentTestCaseBase extends TestCaseBase
             $dbgCtx->clearCurrentSubScope(['disableInstrumentationsOptVal' => $disableInstrumentationsOptVal]);
             $tracer = self::buildTracerForTests()->withConfig(OptionNames::DISABLE_INSTRUMENTATIONS, $disableInstrumentationsOptVal)->build();
             $instr = new $instrClassName($tracer);
-            self::assertSame($isEnabledByDefault, $instr->isEnabled());
+            self::assertSame($isEnabledByDefault, $instr->isEnabled(/* out */ $reasonIfDisabled), LoggableToString::convert(['reasonIfDisabled' => $reasonIfDisabled]));
         }
         $dbgCtx->popSubScope();
 
@@ -251,7 +251,7 @@ class ComponentTestCaseBase extends TestCaseBase
             $isEnabledByDefault = $astProcessEnabled || (!$instr->requiresUserlandCodeInstrumentation());
             $tracer = self::buildTracerForTests()->withConfig(OptionNames::AST_PROCESS_ENABLED, BoolUtil::toString($astProcessEnabled))->build();
             $instr = new $instrClassName($tracer);
-            self::assertSame($isEnabledByDefault, $instr->isEnabled());
+            self::assertSame($isEnabledByDefault, $instr->isEnabled(/* out */ $reasonIfDisabled), LoggableToString::convert(['reasonIfDisabled' => $reasonIfDisabled]));
         }
         $dbgCtx->popSubScope();
     }
@@ -269,6 +269,7 @@ class ComponentTestCaseBase extends TestCaseBase
             return $variants;
         }
         foreach ($variants as $key => $value) {
+            /** @var array-key $key */
             return [$key => $value];
         }
         return [];

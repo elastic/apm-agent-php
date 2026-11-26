@@ -96,6 +96,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
          * @return array<string|int, mixed>
          */
         $stringRawToParsedValues = function (array $rawValues): array {
+            /** @var string[] $rawValues */
             $rawToParsedValues = [];
             foreach ($rawValues as $rawVal) {
                 $rawToParsedValues[$rawVal] = trim($rawVal);
@@ -213,9 +214,9 @@ final class ConfigSettingTest extends ComponentTestCaseBase
     public function testBuildOptionNameToRawToValueIncludesAllOptions(): void
     {
         $optNamesFromAllOptionsMetadata = array_keys(AllOptionsMetadata::get());
-        self::assertTrue(sort(/* ref */ $optNamesFromAllOptionsMetadata));
+        sort(/* ref */ $optNamesFromAllOptionsMetadata);
         $optNamesFromBuildOptionNameToRawToParsedValue = array_keys(self::buildOptionNameToRawToValue());
-        self::assertTrue(sort(/* ref */ $optNamesFromAllOptionsMetadata));
+        sort(/* ref */ $optNamesFromBuildOptionNameToRawToParsedValue);
         self::assertEqualsCanonicalizing($optNamesFromAllOptionsMetadata, $optNamesFromBuildOptionNameToRawToParsedValue);
     }
 
@@ -313,6 +314,7 @@ final class ConfigSettingTest extends ComponentTestCaseBase
          * @param array<string, mixed> $varNameToValue
          */
         $addValueAndTypeToDbgCtx = function (array $varNameToValue) use ($dbgCtx): void {
+            /** @var array<string, mixed> $varNameToValue */
             $dbgCtx->add($varNameToValue);
             $varName = ArrayUtilForTests::getSingleValue(array_keys($varNameToValue));
             $dbgCtx->add([$varName . ' type' => DbgUtil::getType($varNameToValue[$varName])]);

@@ -90,8 +90,8 @@ final class DataFromAgentPlusRawValidator implements LoggableInterface
     }
 
     /**
-     * @param array<string, array<string>> $headers
-     * @param AppCodeHostParams            $appCodeHostParams
+     * @param array<array<string>> $headers
+     * @param AppCodeHostParams    $appCodeHostParams
      */
     private function validateIntakeApiHttpRequestHeaders(array $headers, AppCodeHostParams $appCodeHostParams): void
     {
@@ -100,7 +100,7 @@ final class DataFromAgentPlusRawValidator implements LoggableInterface
     }
 
     /**
-     * @param array<string, array<string>> $headers
+     * @param array<array<string>> $headers
      */
     private function validateAuthIntakeApiHttpRequestHeader(array $headers, AppCodeHostParams $appCodeHostParams): void
     {
@@ -110,9 +110,9 @@ final class DataFromAgentPlusRawValidator implements LoggableInterface
     }
 
     /**
-     * @param ?string                      $configuredApiKey
-     * @param ?string                      $configuredSecretToken
-     * @param array<string, array<string>> $headers
+     * @param ?string              $configuredApiKey
+     * @param ?string              $configuredSecretToken
+     * @param array<array<string>> $headers
      */
     public static function verifyAuthIntakeApiHttpRequestHeader(?string $configuredApiKey, ?string $configuredSecretToken, array $headers): void
     {
@@ -130,8 +130,8 @@ final class DataFromAgentPlusRawValidator implements LoggableInterface
     }
 
     /**
-     * @param array<string, array<string>> $headers
-     * @param AppCodeHostParams            $appCodeHostParams
+     * @param array<array<string>> $headers
+     * @param AppCodeHostParams    $appCodeHostParams
      */
     private function validateUserAgentIntakeApiHttpRequestHeader(array $headers, AppCodeHostParams $appCodeHostParams): void
     {
@@ -146,8 +146,8 @@ final class DataFromAgentPlusRawValidator implements LoggableInterface
     }
 
     /**
-     * @param string                       $expectedHeaderValue
-     * @param array<string, array<string>> $headers
+     * @param string               $expectedHeaderValue
+     * @param array<array<string>> $headers
      */
     public static function verifyUserAgentIntakeApiHttpRequestHeader(string $expectedHeaderValue, array $headers): void
     {

@@ -202,6 +202,8 @@ final class AutoInstrumentationUtil
      * @param ?string $dbgParamName
      *
      * @return bool
+     *
+     * @phpstan-assert-if-true string $actualValue
      */
     public function verifyIsString($actualValue, ?string $dbgParamName = null): bool
     {
@@ -213,6 +215,8 @@ final class AutoInstrumentationUtil
      * @param ?string $dbgParamName
      *
      * @return bool
+     *
+     * @phpstan-assert-if-true ?string $actualValue
      */
     public function verifyIsNullableString($actualValue, ?string $dbgParamName = null): bool
     {
@@ -224,6 +228,8 @@ final class AutoInstrumentationUtil
      * @param ?string $dbgParamName
      *
      * @return bool
+     *
+     * @phpstan-assert-if-true int $actualValue
      */
     public function verifyIsInt($actualValue, ?string $dbgParamName = null): bool
     {
@@ -235,6 +241,8 @@ final class AutoInstrumentationUtil
      * @param ?string $dbgParamName
      *
      * @return bool
+     *
+     * @phpstan-assert-if-true bool $actualValue
      */
     public function verifyIsBool($actualValue, ?string $dbgParamName = null): bool
     {
@@ -246,6 +254,8 @@ final class AutoInstrumentationUtil
      * @param ?string $dbgParamName
      *
      * @return bool
+     *
+     * @phpstan-assert-if-true array<mixed> $actualValue
      */
     public function verifyIsArray($actualValue, ?string $dbgParamName = null): bool
     {
@@ -257,6 +267,8 @@ final class AutoInstrumentationUtil
      * @param ?string $dbgParamName
      *
      * @return bool
+     *
+     * @phpstan-assert-if-true object $actualValue
      */
     public function verifyIsObject($actualValue, ?string $dbgParamName = null): bool
     {

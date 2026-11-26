@@ -97,12 +97,12 @@ final class CurlAutoInstrumentationTest extends ComponentTestCaseBase
     public function testLocalClientServer(): void
     {
         // OLD TODO: Implement: CurlAutoInstrumentationTest::testLocalClientServer
-        if (PHP_MAJOR_VERSION < 9) {
+        if (PHP_MAJOR_VERSION < 9) { // @phpstan-ignore smaller.alwaysTrue (the test is disabled until it is implemented)
             self::dummyAssert();
             return;
         }
 
-        $testCaseHandle = $this->getTestCaseHandle();
+        $testCaseHandle = $this->getTestCaseHandle(); // @phpstan-ignore deadCode.unreachable (the test is disabled until it is implemented)
         $serverAppCode = $testCaseHandle->ensureAdditionalHttpAppCodeHost();
         $clientAppCode = $testCaseHandle->ensureMainAppCodeHost();
         $clientAppCode->sendRequest(

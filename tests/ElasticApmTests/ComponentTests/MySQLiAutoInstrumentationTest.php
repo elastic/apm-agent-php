@@ -315,6 +315,7 @@ final class MySQLiAutoInstrumentationTest extends ComponentTestCaseBase
      * @param-out string  $queryKind
      * @param-out bool    $wrapInTx
      * @param-out bool    $rollback
+     * @param-out bool    $callEndTxInShutdownFunction
      */
     public static function extractSharedArgs(
         MixedMap $args,
@@ -429,8 +430,6 @@ final class MySQLiAutoInstrumentationTest extends ComponentTestCaseBase
 
     private function implTestAutoInstrumentation(MixedMap $testArgs): void
     {
-        TestCase::assertNotEmpty(self::MESSAGES);
-
         $logger = self::getLoggerStatic(__NAMESPACE__, __CLASS__, __FILE__);
         ($loggerProxy = $logger->ifTraceLevelEnabled(__LINE__, __FUNCTION__))
         && $loggerProxy->log('Entered', ['$testArgs' => $testArgs]);

@@ -30,6 +30,11 @@ if (!function_exists('array_key_last')) {
 }
 
 if (PHP_MAJOR_VERSION < 8) {
-    require __DIR__ . '/Stringable.php';
-    require __DIR__ . '/WeakMap.php';
+    if (!interface_exists('Stringable', false)) {
+        require __DIR__ . '/Stringable.php';
+    }
+
+    if (!class_exists('WeakMap', false)) {
+        require __DIR__ . '/WeakMap.php';
+    }
 }

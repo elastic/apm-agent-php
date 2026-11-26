@@ -127,6 +127,7 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
 
     private static function getLoggerForThisClass(): Logger
     {
+        /** @var ?Logger $logger */
         static $logger = null;
         if ($logger === null) {
             $logger = AmbientContextForTests::loggerFactory()->loggerForClass(LogCategoryForTests::TEST, __NAMESPACE__, __CLASS__, __FILE__);
@@ -364,51 +365,79 @@ final class WordPressAutoInstrumentationTest extends ComponentTestCaseBase
         $loggerProxy->log(__LINE__, 'Content of ' . $filePath . ' end');
     }
 
+    /**
+     * @param-out string $fileFullPath
+     * @param-out string $fileContents
+     */
+    private static function getGeneratedFileContents(
+        string $astProcessDebugDumpOutDir,
+        string $phpFileRelativePath,
+        bool $isExpectedVariant,
+        bool $isAstDebugDump,
+        ?string &$fileFullPath,
+        ?string &$fileContents
+    ): void {
+        AssertMessageStack::newScope(/* out */ $dbgCtx);
+        $dbgCtx->add(compact('isExpectedVariant', 'isAstDebugDump', 'fileFullPath'));
+
+        $outSubDir = self::buildInputOrExpectedOutputVariantSubDir($astProcessDebugDumpOutDir, $isExpectedVariant);
+        $fileName = $phpFileRelativePath . '.' . ($isExpectedVariant ? self::BEFORE_AST_PROCESS_FILE_NAME_SUFFIX : self::AFTER_AST_PROCESS_FILE_NAME_SUFFIX);
+        $fileName .= '.' . ($isAstDebugDump ? self::DEBUG_DUMP_FILE_EXTENSION : (self::AST_CONVERTED_BACK_TO_SOURCE_FILE_NAME_SUFFIX . '.' . self::CONVERTED_BACK_TO_SOURCE_FILE_EXTENSION));
+
+        $fileFullPath = FileUtilForTests::listToPath([$outSubDir, $fileName]);
+        self::assertFileExists($fileFullPath);
+        $contents = file_get_contents($fileFullPath);
+        self::assertIsString($contents);
+        $fileContents = $contents;
+
+        $dbgCtx->pop();
+    }
+
     private static function verifyAstProcessGeneratedFiles(string $astProcessDebugDumpOutDir, string $phpFileRelativePath): void
     {
         AssertMessageStack::newScope(/* out */ $dbgCtx, AssertMessageStack::funcArgs());
 
         $logger = self::getLoggerForThisClass()->addAllContext(['astProcessDebugDumpOutDir' => $astProcessDebugDumpOutDir, 'phpFileRelativePath' => $phpFileRelativePath]);
 
-        /**
-         * @param-out string $fileFullPath
-         * @param-out string $fileContents
-         */
-        $getGeneratedFileContents = function (
-            bool $isExpectedVariant,
-            bool $isAstDebugDump,
-            ?string &$fileFullPath,
-            ?string &$fileContents
-        ) use (
-            $astProcessDebugDumpOutDir,
-            $phpFileRelativePath
-        ): void {
-            AssertMessageStack::newScope(/* out */ $dbgCtx);
-            $dbgCtx->add(compact('isExpectedVariant', 'isAstDebugDump', 'fileFullPath'));
-
-            $outSubDir = self::buildInputOrExpectedOutputVariantSubDir($astProcessDebugDumpOutDir, $isExpectedVariant);
-            $fileName = $phpFileRelativePath . '.' . ($isExpectedVariant ? self::BEFORE_AST_PROCESS_FILE_NAME_SUFFIX : self::AFTER_AST_PROCESS_FILE_NAME_SUFFIX);
-            $fileName .= '.' . ($isAstDebugDump ? self::DEBUG_DUMP_FILE_EXTENSION : (self::AST_CONVERTED_BACK_TO_SOURCE_FILE_NAME_SUFFIX . '.' . self::CONVERTED_BACK_TO_SOURCE_FILE_EXTENSION));
-
-            $fileFullPath = FileUtilForTests::listToPath([$outSubDir, $fileName]);
-            self::assertFileExists($fileFullPath);
-            $fileContents = file_get_contents($fileFullPath);
-            self::assertNotFalse($fileContents);
-
-            $dbgCtx->pop();
-        };
-
         ($loggerProxy = $logger->ifDebugLevelEnabled(__LINE__, __FUNCTION__)) && $loggerProxy->log('Starting...');
 
-        $getGeneratedFileContents(/* isExpectedVariant */ true, /* isAstDebugDump */ true, /* out */ $expectedAstFilePath, /* out */ $expectedAstFileContents);
+        self::getGeneratedFileContents(
+            $astProcessDebugDumpOutDir,
+            $phpFileRelativePath,
+            /* isExpectedVariant */ true,
+            /* isAstDebugDump */ true,
+            /* out */ $expectedAstFilePath,
+            /* out */ $expectedAstFileContents
+        );
         self::adaptManuallyInstrumentedGeneratedFile(/* in,out */ $expectedAstFilePath, /* out */ $expectedAstFileContents);
-        $getGeneratedFileContents(/* isExpectedVariant */ false, /* isAstDebugDump */ true, /* out */ $actualAstFilePath, /* out */ $actualAstFileContents);
+        self::getGeneratedFileContents(
+            $astProcessDebugDumpOutDir,
+            $phpFileRelativePath,
+            /* isExpectedVariant */ false,
+            /* isAstDebugDump */ true,
+            /* out */ $actualAstFilePath,
+            /* out */ $actualAstFileContents
+        );
         $astMatches = ($actualAstFileContents === $expectedAstFileContents);
 
         if (AmbientContextForTests::testConfig()->compareAstConvertedBackToSource) {
-            $getGeneratedFileContents(/* isExpectedVariant */ true, /* isAstDebugDump */ false, /* out */ $expectedPhpFilePath, /* out */ $expectedPhpFileContents);
+            self::getGeneratedFileContents(
+                $astProcessDebugDumpOutDir,
+                $phpFileRelativePath,
+                /* isExpectedVariant */ true,
+                /* isAstDebugDump */ false,
+                /* out */ $expectedPhpFilePath,
+                /* out */ $expectedPhpFileContents
+            );
             self::adaptManuallyInstrumentedGeneratedFile(/* in,out */ $expectedPhpFilePath, /* out */ $expectedPhpFileContents);
-            $getGeneratedFileContents(/* isExpectedVariant */ false, /* isAstDebugDump */ false, /* out */ $actualPhpFilePath, /* out */ $actualPhpFileContents);
+            self::getGeneratedFileContents(
+                $astProcessDebugDumpOutDir,
+                $phpFileRelativePath,
+                /* isExpectedVariant */ false,
+                /* isAstDebugDump */ false,
+                /* out */ $actualPhpFilePath,
+                /* out */ $actualPhpFileContents
+            );
             $phpMatches = ($actualPhpFileContents === $expectedPhpFileContents);
         } else {
             $phpMatches = true;

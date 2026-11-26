@@ -28,7 +28,7 @@ namespace Elastic\Apm\Impl\Config;
  *
  * @internal
  *
- * @template TParsedValue
+ * @template TParsedValue of int|float
  *
  * @extends  OptionParser<TParsedValue>
  */

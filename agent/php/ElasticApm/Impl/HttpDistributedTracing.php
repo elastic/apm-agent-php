@@ -186,6 +186,11 @@ final class HttpDistributedTracing
 
         $parentFunc = __FUNCTION__;
         $implicitContextToLog = ['headerValue' => $headerValue];
+        /**
+         * @param string               $reason
+         * @param int                  $srcCodeLineNumber
+         * @param array<string, mixed> $context
+         */
         $logParsingFailedMessage = function (
             string $reason,
             int $srcCodeLineNumber,
@@ -194,6 +199,7 @@ final class HttpDistributedTracing
             $parentFunc,
             &$implicitContextToLog
         ): void {
+            /** @var array<string, mixed> $context */
             ($loggerProxy = $this->logger->ifDebugLevelEnabled($srcCodeLineNumber, $parentFunc))
             && $loggerProxy->log(
                 'Failed to parse ' . self::TRACE_PARENT_HEADER_NAME . ' HTTP header: '

@@ -7,6 +7,12 @@ parameters:
 
     reportUnmatchedIgnoredErrors: false
 
+    #
+    # PHPDoc types are not enforced at runtime so checks against them
+    # (for example assertions in tests) are not reported as always true/false
+    #
+    treatPhpDocTypesAsCertain: false
+
     excludePaths:
         - tests/polyfills/Stringable.php
         - tests/polyfills/WeakMap.php

@@ -208,7 +208,8 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
             return $this->fulfillDataRequest($fromIndex);
         }
 
-        return new Promise(
+        /** @var Promise<ResponseInterface> $promise */
+        $promise = new Promise(
             function ($resolve) use ($fromIndex) {
                 $pendingDataRequestId = $this->pendingDataRequestNextId++;
                 Assert::assertNotNull($this->reactLoop);
@@ -221,6 +222,7 @@ final class MockApmServer extends TestInfraHttpServerProcessBase
                 $this->pendingDataRequests->put($pendingDataRequestId, new MockApmServerPendingDataRequest($fromIndex, $resolve, $timer));
             }
         );
+        return $promise;
     }
 
     private function hasNewDataFromAgentRequest(int $fromIndex): bool

@@ -34,7 +34,7 @@ final class DeserializationUtil
     use StaticClassTrait;
 
     /**
-     * @param mixed $key
+     * @param array-key $key
      *
      * @return DeserializationException
      */

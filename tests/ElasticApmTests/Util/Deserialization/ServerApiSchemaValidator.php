@@ -27,7 +27,6 @@ use Closure;
 use Elastic\Apm\Impl\Log\LoggableToString;
 use Elastic\Apm\Impl\Util\ExceptionUtil;
 use Elastic\Apm\Impl\Util\JsonUtil;
-use Elastic\Apm\Impl\Util\TextUtil;
 use ElasticApmTests\ExternalTestData;
 use ElasticApmTests\Util\AssertMessageStack;
 use ElasticApmTests\Util\FileUtilForTests;
@@ -118,6 +117,9 @@ final class ServerApiSchemaValidator
         self::validateEvent($serializedData, self::buildPathToSchemaSupplier(self::METRIC_SET_SCHEMA_INDEX));
     }
 
+    /**
+     * @param Closure(bool): string $pathToSchemaSupplier
+     */
     private static function validateEvent(string $serializedData, Closure $pathToSchemaSupplier): void
     {
         foreach ([true, false] as $isEarliestVariant) {
@@ -199,7 +201,7 @@ final class ServerApiSchemaValidator
     }
 
     /**
-     * @param array<string, mixed> $schema
+     * @param array<mixed> $schema
      *
      * @return string - Absolute path to the temp file
      */
@@ -219,25 +221,26 @@ final class ServerApiSchemaValidator
     /**
      * @param string $absolutePath
      *
-     * @return array<string, mixed>
+     * @return array<mixed>
      */
     private static function loadSchemaAndResolveRefs(string $absolutePath): array
     {
         $fileContents = file_get_contents($absolutePath);
         TestCase::assertNotFalse($fileContents, "Failed to load schema from `$absolutePath'");
         $decodedSchema = JsonUtilForTests::decode($fileContents, /* asAssocArray */ true);
+        TestCase::assertIsArray($decodedSchema);
         self::resolveRefs($absolutePath, /* ref */ $decodedSchema);
         return $decodedSchema;
     }
 
     /**
-     * @param string               $absolutePath
-     * @param array<string, mixed> $decodedSchemaNode
+     * @param string       $absolutePath
+     * @param array<mixed> $decodedSchemaNode
      */
     private static function resolveRefs(string $absolutePath, array &$decodedSchemaNode): void
     {
-        foreach ($decodedSchemaNode as $key => $value) {
-            if (is_array($value)) {
+        foreach (array_keys($decodedSchemaNode) as $key) {
+            if (is_array($decodedSchemaNode[$key])) {
                 self::resolveRefs($absolutePath, /* ref */ $decodedSchemaNode[$key]);
             }
         }
@@ -252,9 +255,9 @@ final class ServerApiSchemaValidator
     }
 
     /**
-     * @param string               $absolutePath
-     * @param array<string, mixed> $refParentNode
-     * @param string               $refValue
+     * @param string       $absolutePath
+     * @param array<mixed> $refParentNode
+     * @param string       $refValue
      */
     private static function loadRefAndMerge(string $absolutePath, array &$refParentNode, string $refValue): void
     {
@@ -269,8 +272,8 @@ final class ServerApiSchemaValidator
     }
 
     /**
-     * @param array<string, mixed> $decodedSchema
-     * @param bool                 $allowAdditionalProperties
+     * @param array<mixed> $decodedSchema
+     * @param bool         $allowAdditionalProperties
      */
     private static function processSchema(array &$decodedSchema, bool $allowAdditionalProperties): void
     {
@@ -285,12 +288,12 @@ final class ServerApiSchemaValidator
     }
 
     /**
-     * @param array<string, mixed> $decodedSchemaNode
+     * @param array<mixed> $decodedSchemaNode
      */
     private static function mergeAllOfFromRef(array &$decodedSchemaNode): void
     {
-        foreach ($decodedSchemaNode as $key => $value) {
-            if (is_array($value)) {
+        foreach (array_keys($decodedSchemaNode) as $key) {
+            if (is_array($decodedSchemaNode[$key])) {
                 self::mergeAllOfFromRef(/* ref */ $decodedSchemaNode[$key]);
             }
         }
@@ -306,7 +309,7 @@ final class ServerApiSchemaValidator
     }
 
     /**
-     * @param array<string, mixed> $decodedSchemaNode
+     * @param array<mixed> $decodedSchemaNode
      */
     private static function doMergeAllOfFromRef(array &$decodedSchemaNode): void
     {
@@ -362,7 +365,7 @@ final class ServerApiSchemaValidator
     }
 
     /**
-     * @param array<string, mixed> $decodedSchemaNode
+     * @param array<mixed> $decodedSchemaNode
      */
     private static function disableAdditionalProperties(array &$decodedSchemaNode): void
     {
@@ -370,19 +373,19 @@ final class ServerApiSchemaValidator
             if (is_string($key) && self::isAdditionalPropertiesCandidate($key)) {
                 $decodedSchemaNode['additionalProperties'] = false;
             }
-            if ($key !== 'allOf' && $key !== 'anyOf' && is_array($value)) {
+            if ($key !== 'allOf' && $key !== 'anyOf' && is_array($decodedSchemaNode[$key])) {
                 self::disableAdditionalProperties(/* ref */ $decodedSchemaNode[$key]);
             }
         }
     }
 
     /**
-     * @param array<string, mixed> $decodedSchemaNode
+     * @param array<mixed> $decodedSchemaNode
      */
     private static function removeRedundantKeysFromRef(array &$decodedSchemaNode): void
     {
-        foreach ($decodedSchemaNode as $key => $value) {
-            if (is_array($value)) {
+        foreach (array_keys($decodedSchemaNode) as $key) {
+            if (is_array($decodedSchemaNode[$key])) {
                 self::removeRedundantKeysFromRef(/* ref */ $decodedSchemaNode[$key]);
             }
         }
@@ -395,12 +398,12 @@ final class ServerApiSchemaValidator
     }
 
     /**
-     * @param array<string, mixed> $decodedSchemaNode
+     * @param array<mixed> $decodedSchemaNode
      */
     private static function adjustTimestampType(array &$decodedSchemaNode): void
     {
-        foreach ($decodedSchemaNode as $key => $value) {
-            if (is_array($value)) {
+        foreach (array_keys($decodedSchemaNode) as $key) {
+            if (is_array($decodedSchemaNode[$key])) {
                 self::adjustTimestampType(/* ref */ $decodedSchemaNode[$key]);
             }
         }
@@ -450,6 +453,7 @@ final class ServerApiSchemaValidator
         Validator $validator,
         string $serializedData
     ): ServerApiSchemaValidationException {
+        /** @var list<array<string, mixed>> $errors */
         $errors = $validator->getErrors();
 
         /**
@@ -464,7 +468,8 @@ final class ServerApiSchemaValidator
              * @return array<string, mixed>
              */
             $nameToValueIfNotNullOrEmpty = function (string $key) use ($error): array {
-                return TextUtil::isNullOrEmptyString($error[$key]) ? [] : [$key => $error[$key]];
+                $value = $error[$key];
+                return ($value === null || $value === '') ? [] : [$key => $value];
             };
 
             $result[] = $nameToValueIfNotNullOrEmpty('message');

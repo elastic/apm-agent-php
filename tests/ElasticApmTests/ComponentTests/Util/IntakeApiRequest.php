@@ -36,7 +36,7 @@ final class IntakeApiRequest implements JsonSerializable, JsonDeserializableInte
     use JsonDeserializableTrait;
     use LoggableTrait;
 
-    /** @var array<string, array<string>> */
+    /** @var array<array<string>> */
     public $headers;
 
     /** @var string */

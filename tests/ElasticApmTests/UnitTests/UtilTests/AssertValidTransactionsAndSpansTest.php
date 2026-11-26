@@ -146,7 +146,7 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
      * @param ExecutionSegmentDto $execSeg
      * @param ?string              $newParentId
      *
-     * @return Closure(): Closure(): void
+     * @return Closure(): (Closure(): void)
      */
     private static function makeCorruptParentIdFunc(ExecutionSegmentDto $execSeg, ?string $newParentId): Closure
     {
@@ -162,7 +162,7 @@ class AssertValidTransactionsAndSpansTest extends TestCaseBase
     /**
      * @param ExecutionSegmentDto $execSeg
      *
-     * @return Closure(): Closure(): void
+     * @return Closure(): (Closure(): void)
      */
     private static function makeCorruptRandomParentIdFunc(ExecutionSegmentDto $execSeg): Closure
     {
